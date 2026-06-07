@@ -4,7 +4,7 @@
 //
 // Runs fully offline: a mock `window.go` (the Wails bindings) is injected before
 // the app loads, so no directory/back-end is required. Captures the journey plus
-// the Reports / License / Stale / 365 surfaces, in light and dark.
+// the Reports / Reclaim (unused licenses) / Stale / 365 surfaces, in light and dark.
 import { chromium } from "playwright";
 import { preview } from "vite";
 import { mkdir, writeFile, rm } from "node:fs/promises";

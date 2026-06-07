@@ -148,7 +148,10 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-5 py-3.5" style={{ borderTop: "1px solid var(--color-line)" }}>
+        <div className="flex items-center gap-2 px-5 py-3.5" style={{ borderTop: "1px solid var(--color-line)" }}>
+          <p className="text-[11px] flex-1 min-w-0" style={{ color: "var(--color-ink-3)" }}>
+            Scans accounts in your AD, then matches them to 365 licenses — cloud-only users (no AD account) aren't included.
+          </p>
           <button className="btn" onClick={onClose}>Close</button>
           <button className="btn btn-primary px-5" onClick={exportCsv} disabled={phase !== "ready" || dormant.length === 0}><Download size={14} /> Export {dormant.length} users</button>
         </div>
