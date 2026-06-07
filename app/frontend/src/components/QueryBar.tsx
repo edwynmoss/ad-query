@@ -1,6 +1,8 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { Play, X, Plus, Loader2, SlidersHorizontal, Columns3, Bookmark, ChevronDown, Upload, FileBarChart, Search, Wrench } from "lucide-react";
 import { OBJECT_TYPES, filterFor, defaultAttributesFor, COMMON_ATTRIBUTES } from "../lib/objectTypes";
+import { labelFor, COMMON_COLUMNS } from "../lib/attrLabels";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FilterBuilder } from "./FilterBuilder";
 import { SavedQueriesBar } from "./SavedQueriesBar";
 
@@ -84,7 +86,16 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
     setNewAttr("");
   }
   function removeAttr(name: string) { setReq({ ...req, attributes: req.attributes.filter((x) => x !== name) }); }
+  function toggleAttr(name: string) { req.attributes.includes(name) ? removeAttr(name) : addAttr(name); }
   function run() { setPanel(null); onRun(); }
+
+  // Common columns the connected directory actually has (case-insensitive
+  // against the live schema; falls back to the full curated list).
+  const schemaLower = useMemo(() => new Set((schemaAttributes ?? []).map((a) => a.toLowerCase())), [schemaAttributes]);
+  const commonAvailable = useMemo(
+    () => schemaLower.size ? COMMON_COLUMNS.filter((a) => schemaLower.has(a.toLowerCase())) : COMMON_COLUMNS,
+    [schemaLower],
+  );
 
   const suggestions = useMemo(
     () => attrSource.filter((a) => !req.attributes.includes(a) && a.toLowerCase().includes(debouncedAttr.toLowerCase())).slice(0, 8),
@@ -204,27 +215,47 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
       )}
 
       {panel === "columns" && (
-        <Pop className="right-4 w-[320px]">
-          <div className="eyebrow mb-2">Columns · {req.attributes.length}</div>
-          <div className="flex flex-wrap gap-1.5 mb-2.5 max-h-32 overflow-auto">
+        <Pop className="right-4 w-[340px]">
+          <div className="eyebrow mb-1.5">Showing {req.attributes.length} columns</div>
+          {/* What's currently shown — friendly names, click ✕ to remove. */}
+          <div className="flex flex-wrap gap-1.5 mb-3 max-h-24 overflow-auto">
+            {req.attributes.length === 0 && <span className="text-[12px] text-ink-3">None — pick some below.</span>}
             {req.attributes.map((a) => (
-              <Badge variant="secondary" key={a} className="font-mono font-normal">{a}<button className="opacity-50 hover:opacity-100" onClick={() => removeAttr(a)} aria-label={`remove ${a}`}><X size={11} /></button></Badge>
+              <Badge variant="secondary" key={a} className="font-normal" title={a}>{labelFor(a)}<button className="opacity-50 hover:opacity-100" onClick={() => removeAttr(a)} aria-label={`remove ${labelFor(a)}`}><X size={11} /></button></Badge>
             ))}
           </div>
-          <div className="relative">
-            <div className="flex items-center gap-1">
-              <Input className="font-mono h-8" value={newAttr} onChange={(e) => setNewAttr(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addAttr(newAttr)} placeholder="add attribute…" />
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => addAttr(newAttr)} aria-label="add"><Plus size={14} /></Button>
-            </div>
-            {newAttr && suggestions.length > 0 && (
-              <div className="mt-1 max-h-44 overflow-auto rounded-[10px] border border-line">
-                {suggestions.map((s) => (
-                  <button key={s} className="block w-full text-left px-2.5 py-1.5 text-[12px] font-mono hover:bg-sunken" onClick={() => addAttr(s)}>{s}</button>
-                ))}
-              </div>
-            )}
+
+          {/* Pick from common columns — no need to know attribute names. */}
+          <div className="eyebrow text-ink-3 mb-1">Common columns</div>
+          <div className="max-h-52 overflow-auto -mx-1 px-1">
+            {commonAvailable.map((a) => (
+              <label key={a} className="flex items-center gap-2.5 py-1 px-1.5 rounded-md hover:bg-sunken cursor-pointer">
+                <Checkbox checked={req.attributes.includes(a)} onCheckedChange={() => toggleAttr(a)} />
+                <span className="flex-1 text-[12.5px]">{labelFor(a)}</span>
+                <span className="text-[10.5px] text-ink-3 font-mono">{a}</span>
+              </label>
+            ))}
           </div>
-          {schemaAttributes && schemaAttributes.length > 0 && <p className="text-[11px] mt-2 text-ink-3">{schemaAttributes.length} attributes in schema</p>}
+
+          {/* Advanced — type any of the directory's attributes by name. */}
+          <details className="mt-3 pt-2.5 border-t border-line">
+            <summary className="eyebrow cursor-pointer select-none text-ink-3">Add any attribute{schemaAttributes && schemaAttributes.length > 0 ? ` · ${schemaAttributes.length} in schema` : ""}</summary>
+            <div className="relative mt-2">
+              <div className="flex items-center gap-1">
+                <Input className="font-mono h-8" value={newAttr} onChange={(e) => setNewAttr(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addAttr(newAttr)} placeholder="attribute name…" />
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => addAttr(newAttr)} aria-label="add"><Plus size={14} /></Button>
+              </div>
+              {newAttr && suggestions.length > 0 && (
+                <div className="mt-1 max-h-44 overflow-auto rounded-[10px] border border-line">
+                  {suggestions.map((s) => (
+                    <button key={s} className="flex w-full items-center justify-between gap-2 text-left px-2.5 py-1.5 text-[12px] hover:bg-sunken" onClick={() => addAttr(s)}>
+                      <span>{labelFor(s)}</span><span className="text-[10.5px] text-ink-3 font-mono">{s}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </details>
         </Pop>
       )}
 

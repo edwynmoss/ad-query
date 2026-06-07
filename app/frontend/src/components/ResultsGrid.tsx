@@ -8,6 +8,7 @@ import { ExportDialog } from "./ExportDialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
+import { labelFor } from "@/lib/attrLabels";
 
 interface Props {
   result: ldap.SearchResult | null;
@@ -107,8 +108,8 @@ export function ResultsGrid({ result, loading, columns, selectedDN, onSelectRow,
           <div className="flex items-center justify-center"><Checkbox checked={checked.size === entries.length && entries.length > 0} onCheckedChange={toggleAll} aria-label="mark all" /></div>
           <div className="flex items-center justify-end pr-2 eyebrow">#</div>
           {columns.map((col) => (
-            <button key={col} onClick={() => toggleSort(col)} className="flex items-center gap-1 h-9 px-3 text-left eyebrow hover:text-ink" title={`Sort by ${col}`}>
-              <span className="truncate">{col}</span>
+            <button key={col} onClick={() => toggleSort(col)} className="flex items-center gap-1 h-9 px-3 text-left eyebrow hover:text-ink" title={`${col} — sort`}>
+              <span className="truncate">{labelFor(col)}</span>
               {sortCol === col && (sortAsc ? <ArrowUp size={11} /> : <ArrowDown size={11} />)}
             </button>
           ))}
