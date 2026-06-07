@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Cloud, CheckCircle2, ExternalLink } from "lucide-react";
-import { M365StartSignIn, M365PollSignIn, M365SignedIn, M365SignOut } from "../../wailsjs/go/main/App";
+import { M365SignInInteractive, M365StartSignIn, M365PollSignIn, M365SignedIn, M365SignOut } from "../../wailsjs/go/main/App";
 import type { m365 } from "../../wailsjs/go/models";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ const CLIENT_KEY = "adquery.m365.client";
 export function M365Dialog({ onClose, onChange }: Props) {
   const [tenant, setTenant] = useState(() => localStorage.getItem(TENANT_KEY) ?? "");
   const [client, setClient] = useState(() => localStorage.getItem(CLIENT_KEY) ?? "");
-  const [phase, setPhase] = useState<"config" | "pending" | "done">("config");
+  const [phase, setPhase] = useState<"config" | "browser" | "pending" | "done">("config");
   const [dc, setDc] = useState<m365.DeviceCode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -25,15 +25,32 @@ export function M365Dialog({ onClose, onChange }: Props) {
     return () => { if (poll.current) clearInterval(poll.current); };
   }, []);
 
+  function persist() {
+    localStorage.setItem(TENANT_KEY, tenant.trim());
+    localStorage.setItem(CLIENT_KEY, client.trim());
+  }
   function finish(signedIn: boolean) {
     if (poll.current) { clearInterval(poll.current); poll.current = null; }
     if (signedIn) { setPhase("done"); onChange?.(true); }
   }
 
+  // Primary: seamless browser sign-in (auth-code + PKCE). Opens the default
+  // browser — silent if already signed in — and resolves when done.
   async function signIn() {
-    setBusy(true); setError(null);
-    localStorage.setItem(TENANT_KEY, tenant.trim());
-    localStorage.setItem(CLIENT_KEY, client.trim());
+    setBusy(true); setError(null); persist();
+    setPhase("browser");
+    try {
+      await M365SignInInteractive(tenant.trim(), client.trim());
+      finish(true);
+    } catch (e: any) {
+      setError(String(e?.message ?? e)); setPhase("config");
+    } finally { setBusy(false); }
+  }
+
+  // Fallback: device code, for headless/locked-down machines where the loopback
+  // browser flow can't complete.
+  async function signInWithCode() {
+    setBusy(true); setError(null); persist();
     try {
       const code = await M365StartSignIn(tenant.trim(), client.trim());
       setDc(code); setPhase("pending");
@@ -75,8 +92,14 @@ export function M365Dialog({ onClose, onChange }: Props) {
                   <p className="text-[11px] text-ink-3">Only needed if your organization requires its own app registration. See docs/M365.md.</p>
                 </div>
               </details>
-              <p className="text-[11px] text-ink-3">Your admin may need to approve the read-only access once for the tenant.</p>
+              <p className="text-[11px] text-ink-3">Opens your browser and signs you in automatically if you already have a Microsoft session. Your admin may need to approve the read-only access once for the tenant.</p>
             </>
+          )}
+
+          {phase === "browser" && (
+            <div className="flex items-center gap-2 text-[12.5px] text-ink-2">
+              <Loader2 size={14} className="animate-spin" /> Continue sign-in in your browser… it'll return here automatically.
+            </div>
           )}
 
           {phase === "pending" && dc && (
@@ -99,11 +122,15 @@ export function M365Dialog({ onClose, onChange }: Props) {
           {error && <div className="text-[12px] px-4 py-2.5 rounded-lg selectable bg-critical-soft text-critical">{error}</div>}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="sm:justify-between items-center">
+          {phase === "config"
+            ? <button className="text-[11px] text-ink-3 hover:text-ink underline-offset-2 hover:underline" onClick={signInWithCode} disabled={busy}>Can't use a browser? Sign in with a code</button>
+            : <span />}
           {phase === "done"
             ? <Button variant="outline" onClick={signOut}>Sign out</Button>
-            : <Button className="px-5" onClick={signIn} disabled={busy || phase === "pending"}>
-                {busy ? <Loader2 size={14} className="animate-spin" /> : <Cloud size={14} />}{phase === "pending" ? "Waiting…" : "Sign in"}
+            : <Button className="px-5" onClick={signIn} disabled={busy || phase === "browser" || phase === "pending"}>
+                {busy || phase === "browser" ? <Loader2 size={14} className="animate-spin" /> : <Cloud size={14} />}
+                {phase === "browser" ? "Waiting…" : phase === "pending" ? "Waiting…" : "Sign in"}
               </Button>}
         </DialogFooter>
       </DialogContent>

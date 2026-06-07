@@ -16,6 +16,60 @@ func resp(status int, body string) *http.Response {
 	return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(body)), Header: http.Header{}}
 }
 
+func TestDefaultClientID(t *testing.T) {
+	if (Config{}).clientID() != DefaultClientID {
+		t.Fatalf("empty client should fall back to the built-in default")
+	}
+	if (Config{ClientID: "custom"}).clientID() != "custom" {
+		t.Fatalf("explicit client should be used as-is")
+	}
+}
+
+func TestAuthorizeURL(t *testing.T) {
+	u := Config{}.authorizeURL("http://localhost:1234/callback", "CHAL", "STATE", "scopeA scopeB")
+	for _, want := range []string{
+		"https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?",
+		"client_id=" + DefaultClientID,
+		"code_challenge=CHAL",
+		"code_challenge_method=S256",
+		"prompt=select_account",
+		"redirect_uri=http%3A%2F%2Flocalhost%3A1234%2Fcallback",
+		"state=STATE",
+	} {
+		if !strings.Contains(u, want) {
+			t.Errorf("authorize URL missing %q\n got: %s", want, u)
+		}
+	}
+}
+
+func TestNewPKCE(t *testing.T) {
+	v, c, err := newPKCE()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v == "" || c == "" || v == c {
+		t.Fatalf("expected distinct non-empty verifier/challenge, got %q / %q", v, c)
+	}
+}
+
+func TestExchangeCode(t *testing.T) {
+	doer := stubDoer{fn: func(r *http.Request) (*http.Response, error) {
+		b, _ := io.ReadAll(r.Body)
+		form := string(b)
+		if !strings.Contains(form, "grant_type=authorization_code") || !strings.Contains(form, "code_verifier=VER") {
+			t.Errorf("token request missing auth-code fields: %s", form)
+		}
+		return resp(http.StatusOK, `{"access_token":"tok","expires_in":3600}`), nil
+	}}
+	tok, err := exchangeCode(doer, Config{}, "http://localhost/cb", "CODE", "VER")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tok == nil || tok.AccessToken != "tok" {
+		t.Fatalf("expected token, got %+v", tok)
+	}
+}
+
 func TestParseDeviceCode(t *testing.T) {
 	dc, err := parseDeviceCode([]byte(`{"device_code":"DC","user_code":"ABCD-EFGH","verification_uri":"https://microsoft.com/devicelogin","expires_in":900,"interval":5,"message":"go here"}`))
 	if err != nil {

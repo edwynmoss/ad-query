@@ -12,6 +12,8 @@ import (
 	"app/backend/ldap"
 	"app/backend/m365"
 	"app/backend/sysenv"
+
+	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App is the Wails-bound application. It owns a single active directory
@@ -42,6 +44,34 @@ func NewApp() *App {
 }
 
 // ---- Microsoft 365 / Entra (Graph) -----------------------------------------
+
+// M365SignInInteractive runs the seamless auth-code + PKCE flow: it opens the
+// user's default browser to the Microsoft sign-in page (silent if they already
+// have an Entra session) and captures the token over a loopback redirect.
+// Blocks until sign-in completes, is cancelled, or times out. Returns when a
+// token is held; the frontend then just calls M365SignedIn/M365Check.
+func (a *App) M365SignInInteractive(tenantID string, clientID string) error {
+	a.mu.Lock()
+	a.m365cfg = Config365{TenantID: tenantID, ClientID: clientID}
+	ctx := a.ctx
+	a.mu.Unlock()
+
+	cfg := m365.Config{TenantID: tenantID, ClientID: clientID}
+	flowCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
+	open := func(url string) error { wruntime.BrowserOpenURL(a.ctx, url); return nil }
+	tok, err := m365.AcquireInteractive(flowCtx, a.http, open, cfg, m365.DefaultScopes)
+	if err != nil {
+		return err
+	}
+
+	a.mu.Lock()
+	a.m365tok = *tok
+	a.m365dc = nil
+	a.mu.Unlock()
+	return nil
+}
 
 // M365StartSignIn begins delegated device-code sign-in and returns the code +
 // URL to present to the user.
