@@ -1,9 +1,16 @@
 import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
+import path from "node:path";
 
-// Pure-logic unit tests run in node (no DOM, no Tailwind/React plugins needed).
+// jsdom for the whole suite: pure-logic lib tests (*.test.ts) don't touch the
+// DOM but run fine here, and component tests (*.test.tsx) need it. React plugin
+// + "@" alias so component tests can import @/components/ui/*.
 export default defineConfig({
+  plugins: [react()],
+  resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
   test: {
-    environment: "node",
-    include: ["src/**/*.test.ts"],
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
   },
 });
