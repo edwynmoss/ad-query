@@ -9,7 +9,7 @@ import { buildCsv, downloadCsv, DEFAULT_CSV_OPTIONS } from "../lib/csv";
 import { ReclaimDialog } from "./ReclaimDialog";
 import { StaleReportDialog } from "./StaleReportDialog";
 import { PrivilegedDialog } from "./PrivilegedDialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -56,6 +56,7 @@ export function ReportsPanel({ req, isAD, onOpen, onClose }: Props) {
         <DialogContent className="w-[600px] max-h-[86vh] overflow-hidden flex flex-col p-0">
           <DialogHeader className="px-5 py-3.5">
             <DialogTitle><span className="flex items-center gap-2"><FileBarChart size={16} className="text-brand" /><span className="display text-[16px] font-semibold">Reports</span></span></DialogTitle>
+            <DialogDescription className="text-[12px] text-ink-3">Built-in and saved reports — run them in the grid or download a CSV.</DialogDescription>
           </DialogHeader>
 
           <div className="overflow-auto px-5 py-2">
