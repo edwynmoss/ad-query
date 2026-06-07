@@ -5,6 +5,7 @@ import type { m365 } from "../../wailsjs/go/models";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ErrorBanner } from "@/components/ui/error-banner";
 
 interface Props { onClose: () => void; onChange?: (signedIn: boolean) => void; }
 
@@ -119,7 +120,7 @@ export function M365Dialog({ onClose, onChange }: Props) {
             </div>
           )}
 
-          {error && <div className="text-[12px] px-4 py-2.5 rounded-lg selectable bg-critical-soft text-critical">{error}</div>}
+          {error && <ErrorBanner error={error} />}
         </div>
 
         <DialogFooter className="sm:justify-between items-center">

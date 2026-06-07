@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { ldap, m365 } from "../../wailsjs/go/models";
 import type { QueryState } from "./QueryBar";
 import { OBJECT_TYPES, filterFor } from "../lib/objectTypes";
@@ -106,7 +107,7 @@ export function StaleReportDialog({ isAD, baseDN, onOpen, onClose }: Props) {
             <b className="text-ink">Preview</b> shows AD-stale candidates in the grid. <b className="text-ink">Download</b> also folds in
             {signedIn365 ? " Microsoft 365 sign-ins (a recent cloud sign-in clears an AD-stale account)" : " — sign in to 365 (☁) to include cloud sign-ins"} and exports the combined set.
           </p>
-          {error && <div className="text-[12px] px-4 py-2.5 rounded-2xl selectable bg-critical-soft text-critical">{error}</div>}
+          {error && <ErrorBanner error={error} />}
         </div>
 
         <DialogFooter className="px-5 py-3.5 border-t border-line">

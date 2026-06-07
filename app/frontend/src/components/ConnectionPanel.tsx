@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { Connect, StoreSecret, GetSecret, DeleteSecret, DetectDomain } from "../../wailsjs/go/main/App";
 import { ldap, sysenv } from "../../wailsjs/go/models";
 import { ConnectionProfile, loadProfiles, saveProfile, deleteProfile } from "../lib/profiles";
@@ -121,7 +122,7 @@ export function ConnectionPanel({ onConnected }: Props) {
             <Button className="w-full" onClick={connectAuto} disabled={busy}>
               {busy ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}{busy ? "Connecting…" : `Connect to ${detected.domain.toUpperCase()}`}
             </Button>
-            {error && <div className="text-[12px] px-4 py-2.5 rounded-lg selectable bg-critical-soft text-critical">{error}</div>}
+            {error && <ErrorBanner error={error} />}
             <Button variant="ghost" size="sm" className="mx-auto flex" onClick={() => { setError(null); setMode("manual"); }}>
               Connect to a different directory <ArrowRight size={12} />
             </Button>
@@ -185,7 +186,7 @@ export function ConnectionPanel({ onConnected }: Props) {
                 </label>
               )}
 
-              {error && <div className="text-[12px] px-4 py-2.5 rounded-lg selectable bg-critical-soft text-critical">{error}</div>}
+              {error && <ErrorBanner error={error} />}
             </div>
 
             <div className="px-7 py-5 flex justify-end border-t border-line">

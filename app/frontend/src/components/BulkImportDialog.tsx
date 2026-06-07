@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -183,7 +184,7 @@ export function BulkImportDialog({ req, onClose }: Props) {
             </>
           )}
 
-          {error && <div className="text-[12px] px-4 py-2.5 rounded-2xl selectable bg-critical-soft text-critical">{error}</div>}
+          {error && <ErrorBanner error={error} />}
 
           {phase === "running" && (
             <div className="space-y-2">

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { LicensePicker } from "./LicensePicker";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ldap, m365 } from "../../wailsjs/go/models";
@@ -142,7 +143,7 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
         <div className="overflow-auto px-5 py-4 min-h-[160px]">
           {phase === "needsSignin" && <div className="text-[12.5px] text-ink-2">Sign in to Microsoft 365 first (the ☁ button) — licences and cloud sign-ins come from Entra.</div>}
           {phase === "scanning" && <div className="flex items-center gap-2 text-[12.5px] text-ink-2"><Loader2 size={14} className="animate-spin" /> Joining licensed users with last-login…</div>}
-          {phase === "error" && <div className="text-[12px] px-4 py-2.5 rounded-lg selectable bg-critical-soft text-critical">{error}</div>}
+          {phase === "error" && <ErrorBanner error={error} />}
 
           {phase === "ready" && all.length === 0 && (
             <div className="text-[12.5px] text-ink-2 space-y-2">
