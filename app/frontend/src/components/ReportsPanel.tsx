@@ -40,18 +40,6 @@ export function ReportsPanel({ req, isAD, onOpen, onClose }: Props) {
     } catch (e: any) { alert("Report failed: " + String(e?.message ?? e)); } finally { setBusy(null); }
   }
 
-  function row(key: string, name: string, description: string, actions: React.ReactNode) {
-    return (
-      <div key={key} className="flex items-start gap-3 py-2.5" style={{ borderBottom: "1px solid var(--color-line)" }}>
-        <div className="flex-1 min-w-0">
-          <div className="text-[13px] font-medium">{name}</div>
-          <div className="text-[11.5px]" style={{ color: "var(--color-ink-3)" }}>{description}</div>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">{actions}</div>
-      </div>
-    );
-  }
-
   // Only one dialog at a time: hide Reports while a sub-report (Reclaim/Stale)
   // is open so the two Radix dialogs don't stack. ReportsPanel stays mounted, so
   // closing the sub-report returns the user to the Reports list.
@@ -62,38 +50,38 @@ export function ReportsPanel({ req, isAD, onOpen, onClose }: Props) {
       <Dialog open={!subOpen} onOpenChange={(o) => { if (!o && !subOpen) onClose(); }}>
         <DialogContent className="w-[600px] max-h-[86vh] overflow-hidden flex flex-col p-0">
           <DialogHeader className="px-5 py-3.5">
-            <DialogTitle><span className="flex items-center gap-2"><FileBarChart size={16} style={{ color: "var(--color-brand)" }} /><span className="display text-[16px]" style={{ fontWeight: 600 }}>Reports</span></span></DialogTitle>
+            <DialogTitle><span className="flex items-center gap-2"><FileBarChart size={16} className="text-brand" /><span className="display text-[16px] font-semibold">Reports</span></span></DialogTitle>
           </DialogHeader>
 
           <div className="overflow-auto px-5 py-2">
             <div className="eyebrow pt-2 pb-1">Built-in</div>
             {BUILTIN_REPORTS.map((r) => {
               if (r.kind === "license")
-                return row(r.id, r.name, r.description, <Button variant="outline" size="sm" onClick={() => setShowReclaim(true)}>Open <ArrowUpRight size={13} /></Button>);
+                return <ReportRow key={r.id} name={r.name} description={r.description} actions={<Button variant="outline" size="sm" onClick={() => setShowReclaim(true)}>Open <ArrowUpRight size={13} /></Button>} />;
               if (r.kind === "stale")
-                return row(r.id, r.name, r.description, <Button variant="outline" size="sm" onClick={() => setShowStale(true)}>Open <ArrowUpRight size={13} /></Button>);
+                return <ReportRow key={r.id} name={r.name} description={r.description} actions={<Button variant="outline" size="sm" onClick={() => setShowStale(true)}>Open <ArrowUpRight size={13} /></Button>} />;
               const q = resolveQuery(r, isAD, req.baseDN);
-              return row(r.id, r.name, r.description, <>
+              return <ReportRow key={r.id} name={r.name} description={r.description} actions={<>
                 <Button variant="ghost" size="sm" onClick={() => onOpen(q)}>Open</Button>
                 <Button variant="outline" size="sm" disabled={busy === r.name} onClick={() => downloadQuery(r.name, q)}>
                   {busy === r.name ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} Download
                 </Button>
-              </>);
+              </>} />;
             })}
 
             <div className="eyebrow pt-3 pb-1">Saved queries</div>
-            {saved.length === 0 && <div className="text-[12px] py-2" style={{ color: "var(--color-ink-3)" }}>None yet — save a query from the ⌘ Saved menu.</div>}
+            {saved.length === 0 && <div className="text-[12px] py-2 text-ink-3">None yet — save a query from the ⌘ Saved menu.</div>}
             {saved.map((s) =>
-              row(s.id, s.name, `${s.query.attributes.length} columns · ${s.query.filter}`, <>
+              <ReportRow key={s.id} name={s.name} description={`${s.query.attributes.length} columns · ${s.query.filter}`} actions={<>
                 <Button variant="ghost" size="sm" onClick={() => onOpen(s.query)}>Open</Button>
                 <Button variant="outline" size="sm" disabled={busy === s.name} onClick={() => downloadQuery(s.name, s.query)}>
                   {busy === s.name ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} Download
                 </Button>
-              </>)
+              </>} />
             )}
           </div>
 
-          <div className="px-5 py-2.5 text-[11px] flex items-center gap-1.5" style={{ borderTop: "1px solid var(--color-line)", color: "var(--color-ink-3)" }}>
+          <div className="px-5 py-2.5 text-[11px] flex items-center gap-1.5 border-t border-line text-ink-3">
             <Cloud size={12} /> {signedIn365 ? "Signed in to 365 — stale & license reports include cloud data." : "Sign in to 365 (☁) for cloud sign-ins and license seats."}
           </div>
         </DialogContent>
@@ -102,5 +90,17 @@ export function ReportsPanel({ req, isAD, onOpen, onClose }: Props) {
       {showReclaim && <ReclaimDialog isAD={isAD} baseDN={req.baseDN} onClose={() => setShowReclaim(false)} />}
       {showStale && <StaleReportDialog isAD={isAD} baseDN={req.baseDN} onOpen={onOpen} onClose={() => setShowStale(false)} />}
     </>
+  );
+}
+
+function ReportRow({ name, description, actions }: { name: string; description: string; actions: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3 py-2.5 border-b border-line">
+      <div className="flex-1 min-w-0">
+        <div className="text-[13px] font-medium">{name}</div>
+        <div className="text-[11.5px] text-ink-3">{description}</div>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">{actions}</div>
+    </div>
   );
 }

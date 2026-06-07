@@ -3,7 +3,7 @@ import { Loader2, Download, RefreshCw } from "lucide-react";
 import { Search, M365SignedIn, M365Check } from "../../wailsjs/go/main/App";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ldap, m365 } from "../../wailsjs/go/models";
 import { OBJECT_TYPES, filterFor } from "../lib/objectTypes";
@@ -97,12 +97,12 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-[680px] max-h-[88vh] overflow-hidden flex flex-col p-0">
-        <DialogHeader className="px-5 py-3.5 text-left" style={{ borderBottom: "1px solid var(--color-line)" }}>
-          <DialogTitle className="display text-[16px]" style={{ fontWeight: 600 }}>Unused licenses</DialogTitle>
-          <DialogDescription className="text-[12px]" style={{ color: "var(--color-ink-3)" }}>Licensed users dormant in both AD and Microsoft 365 — candidates to reclaim.</DialogDescription>
+        <DialogHeader className="px-5 py-3.5 text-left border-b border-line">
+          <DialogTitle className="display text-[16px] font-semibold">Unused licenses</DialogTitle>
+          <DialogDescription className="text-[12px] text-ink-3">Licensed users dormant in both AD and Microsoft 365 — candidates to reclaim.</DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center gap-3 px-5 py-3" style={{ borderBottom: "1px solid var(--color-line)" }}>
+        <div className="flex items-center gap-3 px-5 py-3 border-b border-line">
           <span className="text-[12.5px]">Idle more than</span>
           <Input type="number" min={1} className="w-20 text-center" value={days} onChange={(e) => setDays(Math.max(1, Number(e.target.value) || 90))} disabled={phase !== "ready"} />
           <span className="text-[12.5px]">days</span>
@@ -112,45 +112,45 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
         </div>
 
         <div className="overflow-auto px-5 py-4 min-h-[160px]">
-          {phase === "needsSignin" && <div className="text-[12.5px]" style={{ color: "var(--color-ink-2)" }}>Sign in to Microsoft 365 first (the ☁ button) — licenses and cloud sign-ins come from Entra.</div>}
-          {phase === "scanning" && <div className="flex items-center gap-2 text-[12.5px]" style={{ color: "var(--color-ink-2)" }}><Loader2 size={14} className="animate-spin" /> Joining licensed users with last-login…</div>}
-          {phase === "error" && <div className="text-[12px] px-4 py-2.5 rounded-2xl selectable" style={{ background: "var(--color-danger-weak)", color: "var(--color-danger)" }}>{error}</div>}
+          {phase === "needsSignin" && <div className="text-[12.5px] text-ink-2">Sign in to Microsoft 365 first (the ☁ button) — licenses and cloud sign-ins come from Entra.</div>}
+          {phase === "scanning" && <div className="flex items-center gap-2 text-[12.5px] text-ink-2"><Loader2 size={14} className="animate-spin" /> Joining licensed users with last-login…</div>}
+          {phase === "error" && <div className="text-[12px] px-4 py-2.5 rounded-lg selectable bg-critical-soft text-critical">{error}</div>}
 
           {phase === "ready" && (
             <>
               <div className="flex items-baseline gap-2 mb-2.5">
-                <span className="display text-[20px]" style={{ fontWeight: 600 }}>{dormant.length}</span>
-                <span className="text-[12.5px]" style={{ color: "var(--color-ink-2)" }}>dormant licensed users of {joined.length} licensed</span>
+                <span className="display text-[20px] font-semibold">{dormant.length}</span>
+                <span className="text-[12.5px] text-ink-2">dormant licensed users of {joined.length} licensed</span>
               </div>
               {reclaim.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   <span className="eyebrow self-center">Reclaimable</span>
-                  {reclaim.map((r) => <Badge key={r.label} variant="outline" className="border-transparent" style={{ background: "var(--color-ok-weak)", color: "var(--color-ok)" }}>{r.count} × {r.label}</Badge>)}
+                  {reclaim.map((r) => <StatusBadge key={r.label} tone="success">{r.count} × {r.label}</StatusBadge>)}
                 </div>
               )}
-              <table className="w-full text-[12px]" style={{ fontVariantNumeric: "tabular-nums" }}>
-                <thead><tr style={{ borderBottom: "1px solid var(--color-line-strong)" }}>
+              <table className="w-full text-[12px] tabular-nums">
+                <thead><tr className="border-b border-line-strong">
                   <th className="text-left eyebrow py-1.5">User</th><th className="text-left eyebrow py-1.5">Licenses</th><th className="text-left eyebrow py-1.5">Last seen</th><th className="text-right eyebrow py-1.5">Days idle</th>
                 </tr></thead>
                 <tbody>
                   {dormant.slice(0, 200).map((j) => (
-                    <tr key={j.upn} style={{ borderBottom: "1px solid var(--color-line)" }}>
-                      <td className="py-1.5">{j.displayName || j.sAMAccountName}<span className="ml-1.5 text-[10.5px]" style={{ color: "var(--color-ink-3)", fontFamily: "var(--font-mono)" }}>{j.upn}</span></td>
-                      <td className="py-1.5" style={{ color: "var(--color-ink-2)" }}>{j.licenses.join(", ")}</td>
-                      <td className="py-1.5" style={{ fontFamily: "var(--font-mono)" }}>{j.seen.date ? `${j.seen.date.toISOString().slice(0, 10)} (${j.seen.source})` : "Never"}</td>
-                      <td className="text-right py-1.5" style={{ fontFamily: "var(--font-mono)", color: "var(--color-warn)" }}>{daysSince(j.seen.date) ?? "∞"}</td>
+                    <tr key={j.upn} className="border-b border-line">
+                      <td className="py-1.5">{j.displayName || j.sAMAccountName}<span className="ml-1.5 text-[10.5px] text-ink-3 font-mono">{j.upn}</span></td>
+                      <td className="py-1.5 text-ink-2">{j.licenses.join(", ")}</td>
+                      <td className="py-1.5 font-mono">{j.seen.date ? `${j.seen.date.toISOString().slice(0, 10)} (${j.seen.source})` : "Never"}</td>
+                      <td className="text-right py-1.5 font-mono text-warning">{daysSince(j.seen.date) ?? "∞"}</td>
                     </tr>
                   ))}
-                  {dormant.length === 0 && <tr><td colSpan={4} className="py-6 text-center" style={{ color: "var(--color-ink-3)" }}>No dormant licensed users past {days} days. 🎉</td></tr>}
+                  {dormant.length === 0 && <tr><td colSpan={4} className="py-6 text-center text-ink-3">No dormant licensed users past {days} days. 🎉</td></tr>}
                 </tbody>
               </table>
-              {dormant.length > 200 && <p className="text-[11px] mt-2" style={{ color: "var(--color-ink-3)" }}>Showing first 200 of {dormant.length} — export for the full list.</p>}
+              {dormant.length > 200 && <p className="text-[11px] mt-2 text-ink-3">Showing first 200 of {dormant.length} — export for the full list.</p>}
             </>
           )}
         </div>
 
-        <DialogFooter className="px-5 py-3.5" style={{ borderTop: "1px solid var(--color-line)" }}>
-          <p className="text-[11px] flex-1 min-w-0 mr-auto text-left" style={{ color: "var(--color-ink-3)" }}>
+        <DialogFooter className="px-5 py-3.5 border-t border-line">
+          <p className="text-[11px] flex-1 min-w-0 mr-auto text-left text-ink-3">
             Scans accounts in your AD, then matches them to 365 licenses — cloud-only users (no AD account) aren't included.
           </p>
           <Button variant="outline" onClick={onClose}>Close</Button>

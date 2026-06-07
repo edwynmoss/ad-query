@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 interface Props {
   req: QueryState;
@@ -132,18 +133,18 @@ export function BulkImportDialog({ req, onClose }: Props) {
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-[560px] max-h-[88vh] overflow-hidden flex flex-col p-0">
-        <DialogHeader className="px-5 py-3.5" style={{ borderBottom: "1px solid var(--color-line)" }}>
-          <DialogTitle className="display text-[16px]" style={{ fontWeight: 600 }}>Bulk lookup from file</DialogTitle>
-          <DialogDescription className="text-[12px]" style={{ color: "var(--color-ink-3)" }}>Import a CSV or Excel list and enrich it from the directory.</DialogDescription>
+        <DialogHeader className="px-5 py-3.5 border-b border-line">
+          <DialogTitle className="display text-[16px] font-semibold">Bulk lookup from file</DialogTitle>
+          <DialogDescription className="text-[12px] text-ink-3">Import a CSV or Excel list and enrich it from the directory.</DialogDescription>
         </DialogHeader>
 
         <div className="overflow-auto px-5 py-4 space-y-4">
           {/* File picker */}
-          <label className="flex items-center gap-3 px-4 py-4 rounded-2xl cursor-pointer" style={{ border: "1px dashed var(--color-line-strong)", background: "var(--color-sunken)" }}>
-            <Upload size={18} style={{ color: "var(--color-brand)" }} />
+          <label className="flex items-center gap-3 px-4 py-4 rounded-2xl cursor-pointer border border-dashed border-line-strong bg-sunken">
+            <Upload size={18} className="text-brand" />
             <div className="flex-1">
               <div className="text-[12.5px] font-medium">{fileName || "Choose a .csv or .xlsx file"}</div>
-              <div className="text-[11px]" style={{ color: "var(--color-ink-3)" }}>{sheet ? `${sheet.rows.length} rows · ${sheet.headers.length} columns` : "Identities to look up (one per row)"}</div>
+              <div className="text-[11px] text-ink-3">{sheet ? `${sheet.rows.length} rows · ${sheet.headers.length} columns` : "Identities to look up (one per row)"}</div>
             </div>
             <input type="file" accept=".csv,.xlsx,.xls,text/csv" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
             <span className="inline-flex items-center justify-center h-8 px-3.5 rounded-md border border-border bg-card text-[12.5px] font-medium">Browse</span>
@@ -175,32 +176,32 @@ export function BulkImportDialog({ req, onClose }: Props) {
                 <label className="eyebrow block mb-1.5">Returns your selected columns</label>
                 <div className="flex flex-wrap gap-1.5">{outAttrs.map((a) => <Badge key={a} variant="secondary" className="font-mono font-normal">{a}</Badge>)}</div>
               </div>
-              <label className="flex items-center gap-2 text-[12px] cursor-pointer" style={{ color: signedIn365 ? "var(--color-ink-2)" : "var(--color-ink-3)" }}>
+              <label className={cn("flex items-center gap-2 text-[12px] cursor-pointer", signedIn365 ? "text-ink-2" : "text-ink-3")}>
                 <Checkbox checked={check365} disabled={!signedIn365} onCheckedChange={(v) => setCheck365(!!v)} />
                 <Cloud size={13} /> Also check Microsoft 365 {signedIn365 ? "(enabled · licenses · last sign-in)" : "— sign in via the ☁ button first"}
               </label>
             </>
           )}
 
-          {error && <div className="text-[12px] px-4 py-2.5 rounded-2xl selectable" style={{ background: "var(--color-danger-weak)", color: "var(--color-danger)" }}>{error}</div>}
+          {error && <div className="text-[12px] px-4 py-2.5 rounded-2xl selectable bg-critical-soft text-critical">{error}</div>}
 
           {phase === "running" && (
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-[12.5px]" style={{ color: "var(--color-ink-2)" }}><Loader2 size={14} className="animate-spin" /> Looking up… {Math.round(progress * 100)}%</div>
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--color-sunken)" }}><div style={{ width: `${progress * 100}%`, height: "100%", background: "var(--color-brand)" }} /></div>
+              <div className="flex items-center gap-2 text-[12.5px] text-ink-2"><Loader2 size={14} className="animate-spin" /> Looking up… {Math.round(progress * 100)}%</div>
+              <div className="h-1.5 rounded-full overflow-hidden bg-sunken"><div className="h-full bg-brand" style={{ width: `${progress * 100}%` }} /></div>
             </div>
           )}
 
           {phase === "done" && (
-            <div className="rounded-2xl p-3.5 flex items-center gap-4 text-[12.5px]" style={{ border: "1px solid var(--color-line)", background: "var(--color-sunken)" }}>
-              <span className="flex items-center gap-1.5" style={{ color: "var(--color-ok)" }}><CheckCircle2 size={15} /> {summary.found} found</span>
-              <span className="flex items-center gap-1.5" style={{ color: "var(--color-ink-2)" }}><AlertCircle size={15} /> {summary.notFound} not found</span>
-              {summary.multiple > 0 && <span style={{ color: "var(--color-warn)" }}>{summary.multiple} ambiguous</span>}
+            <div className="rounded-2xl p-3.5 flex items-center gap-4 text-[12.5px] border border-line bg-sunken">
+              <span className="flex items-center gap-1.5 text-success"><CheckCircle2 size={15} /> {summary.found} found</span>
+              <span className="flex items-center gap-1.5 text-ink-2"><AlertCircle size={15} /> {summary.notFound} not found</span>
+              {summary.multiple > 0 && <span className="text-warning">{summary.multiple} ambiguous</span>}
             </div>
           )}
         </div>
 
-        <DialogFooter className="px-5 py-3.5" style={{ borderTop: "1px solid var(--color-line)", background: "var(--color-surface)" }}>
+        <DialogFooter className="px-5 py-3.5 border-t border-line bg-surface">
           <Button variant="outline" onClick={onClose}>Close</Button>
           {phase === "done"
             ? <Button className="px-5" onClick={exportResults}><Download size={14} /> Export results ({resultRows.length})</Button>

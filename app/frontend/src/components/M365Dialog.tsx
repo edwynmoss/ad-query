@@ -58,39 +58,39 @@ export function M365Dialog({ onClose, onChange }: Props) {
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="w-[460px]">
         <DialogHeader>
-          <DialogTitle><span className="flex items-center gap-2"><Cloud size={16} style={{ color: "var(--color-brand)" }} /><span className="display text-[16px]" style={{ fontWeight: 600 }}>Microsoft 365</span></span></DialogTitle>
+          <DialogTitle><span className="flex items-center gap-2"><Cloud size={16} className="text-brand" /><span className="display text-[16px] font-semibold">Microsoft 365</span></span></DialogTitle>
         </DialogHeader>
 
         <div className="py-5 space-y-4">
           {phase === "config" && (
             <>
-              <p className="text-[12px]" style={{ color: "var(--color-ink-2)" }}>
-                Sign in to your tenant to enrich results with Entra facts (account exists/enabled, licenses, last sign-in). Uses delegated sign-in <b style={{ color: "var(--color-ink)" }}>as you</b> — no password stored.
+              <p className="text-[12px] text-ink-2">
+                Sign in to your tenant to enrich results with Entra facts (account exists/enabled, licenses, last sign-in). Uses delegated sign-in <b className="text-ink">as you</b> — no password stored.
               </p>
-              <div><span className="eyebrow block mb-1.5">Tenant ID <span style={{ color: "var(--color-ink-3)" }}>(or "organizations")</span></span><Input className="font-mono" value={tenant} onChange={(e) => setTenant(e.target.value)} placeholder="contoso.onmicrosoft.com or GUID" /></div>
+              <div><span className="eyebrow block mb-1.5">Tenant ID <span className="text-ink-3">(or "organizations")</span></span><Input className="font-mono" value={tenant} onChange={(e) => setTenant(e.target.value)} placeholder="contoso.onmicrosoft.com or GUID" /></div>
               <div><span className="eyebrow block mb-1.5">Client (application) ID</span><Input className="font-mono" value={client} onChange={(e) => setClient(e.target.value)} placeholder="public client app registration GUID" /></div>
-              <p className="text-[11px]" style={{ color: "var(--color-ink-3)" }}>Needs a one-time Entra app registration (public client, delegated <span className="mono">User.Read.All</span>). See docs/M365.md.</p>
+              <p className="text-[11px] text-ink-3">Needs a one-time Entra app registration (public client, delegated <span className="mono">User.Read.All</span>). See docs/M365.md.</p>
             </>
           )}
 
           {phase === "pending" && dc && (
             <div className="space-y-3">
-              <p className="text-[12.5px]" style={{ color: "var(--color-ink-2)" }}>Open the sign-in page and enter this code:</p>
+              <p className="text-[12.5px] text-ink-2">Open the sign-in page and enter this code:</p>
               <div className="text-center py-2">
-                <div className="display text-[30px] tracking-[0.18em] select-all" style={{ fontWeight: 600 }}>{dc.user_code}</div>
+                <div className="display text-[30px] tracking-[0.18em] select-all font-semibold">{dc.user_code}</div>
               </div>
               <Button variant="outline" asChild className="w-full"><a href={dc.verification_uri} target="_blank" rel="noreferrer"><ExternalLink size={14} /> {dc.verification_uri}</a></Button>
-              <div className="flex items-center gap-2 text-[12px]" style={{ color: "var(--color-ink-3)" }}><Loader2 size={13} className="animate-spin" /> Waiting for you to finish signing in…</div>
+              <div className="flex items-center gap-2 text-[12px] text-ink-3"><Loader2 size={13} className="animate-spin" /> Waiting for you to finish signing in…</div>
             </div>
           )}
 
           {phase === "done" && (
-            <div className="flex items-center gap-2 text-[13px]" style={{ color: "var(--color-ok)" }}>
+            <div className="flex items-center gap-2 text-[13px] text-success">
               <CheckCircle2 size={16} /> Signed in to Microsoft 365.
             </div>
           )}
 
-          {error && <div className="text-[12px] px-4 py-2.5 rounded-2xl selectable" style={{ background: "var(--color-danger-weak)", color: "var(--color-danger)" }}>{error}</div>}
+          {error && <div className="text-[12px] px-4 py-2.5 rounded-2xl selectable bg-critical-soft text-critical">{error}</div>}
         </div>
 
         <DialogFooter>

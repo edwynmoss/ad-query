@@ -70,17 +70,6 @@
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
 
-  /* Back-compat aliases for inline styles not yet migrated to utilities. These
-     reference the semantic tokens above (so they adapt to dark too) and get
-     deleted once the last `var(--color-*)` inline style is converted. */
-  --color-paper: var(--color-page);
-  --color-brand-weak: var(--color-brand-soft);
-  --color-ok: var(--color-success);
-  --color-ok-weak: var(--color-success-soft);
-  --color-warn: var(--color-warning);
-  --color-warn-weak: var(--color-warning-soft);
-  --color-danger: var(--color-critical);
-  --color-danger-weak: var(--color-critical-soft);
 }
 
 .dark {
@@ -157,7 +146,7 @@
   html, body, #root { height: 100%; }
   body {
     margin: 0;
-    background-color: var(--color-paper);
+    background-color: var(--color-page);
     color: var(--color-ink);
     font-family: var(--font-ui);
     font-size: 13px;
@@ -169,11 +158,11 @@
   input, textarea, select, .selectable, td, code, pre { user-select: text; }
 
   *::-webkit-scrollbar { width: 12px; height: 12px; }
-  *::-webkit-scrollbar-thumb { background: var(--color-line-strong); border-radius: 8px; border: 3px solid var(--color-paper); }
+  *::-webkit-scrollbar-thumb { background: var(--color-line-strong); border-radius: 8px; border: 3px solid var(--color-page); }
   *::-webkit-scrollbar-thumb:hover { background: var(--color-ink-3); }
   *::-webkit-scrollbar-track { background: transparent; }
   :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 1px; }
-  ::selection { background: var(--color-brand-weak); }
+  ::selection { background: var(--color-brand-soft); }
   input[type="checkbox"] { accent-color: var(--color-brand); width: 14px; height: 14px; cursor: pointer; border-radius: 4px; }
 }
 

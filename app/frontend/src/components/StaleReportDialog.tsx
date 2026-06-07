@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Download, Eye, Cloud } from "lucide-react";
+import { Loader2, Download, Eye } from "lucide-react";
 import { Search, M365SignedIn, M365Check } from "../../wailsjs/go/main/App";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,8 +89,8 @@ export function StaleReportDialog({ isAD, baseDN, onOpen, onClose }: Props) {
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-[480px] max-h-[88vh] overflow-hidden flex flex-col p-0">
-        <DialogHeader className="px-5 py-3.5 text-left" style={{ borderBottom: "1px solid var(--color-line)" }}>
-          <DialogTitle className="display text-[16px]" style={{ fontWeight: 600 }}>Stale accounts</DialogTitle>
+        <DialogHeader className="px-5 py-3.5 text-left border-b border-line">
+          <DialogTitle className="display text-[16px] font-semibold">Stale accounts</DialogTitle>
         </DialogHeader>
 
         <div className="overflow-auto px-5 py-4 space-y-4">
@@ -99,17 +99,17 @@ export function StaleReportDialog({ isAD, baseDN, onOpen, onClose }: Props) {
             <Input type="number" min={1} className="w-20 text-center" value={days} onChange={(e) => setDays(Math.max(1, Number(e.target.value) || 90))} />
             <span>days</span>
           </div>
-          <label className="flex items-center gap-2 text-[12.5px] cursor-pointer" style={{ color: "var(--color-ink-2)" }}>
+          <label className="flex items-center gap-2 text-[12.5px] cursor-pointer text-ink-2">
             <Checkbox checked={enabledOnly} onCheckedChange={(v) => setEnabledOnly(!!v)} disabled={!isAD} /> Enabled accounts only
           </label>
-          <p className="text-[12px] leading-relaxed px-4 py-3 rounded-2xl" style={{ background: "var(--color-sunken)", color: "var(--color-ink-2)" }}>
-            <b style={{ color: "var(--color-ink)" }}>Preview</b> shows AD-stale candidates in the grid. <b style={{ color: "var(--color-ink)" }}>Download</b> also folds in
+          <p className="text-[12px] leading-relaxed px-4 py-3 rounded-2xl bg-sunken text-ink-2">
+            <b className="text-ink">Preview</b> shows AD-stale candidates in the grid. <b className="text-ink">Download</b> also folds in
             {signedIn365 ? " Microsoft 365 sign-ins (a recent cloud sign-in clears an AD-stale account)" : " — sign in to 365 (☁) to include cloud sign-ins"} and exports the combined set.
           </p>
-          {error && <div className="text-[12px] px-4 py-2.5 rounded-2xl selectable" style={{ background: "var(--color-danger-weak)", color: "var(--color-danger)" }}>{error}</div>}
+          {error && <div className="text-[12px] px-4 py-2.5 rounded-2xl selectable bg-critical-soft text-critical">{error}</div>}
         </div>
 
-        <DialogFooter className="px-5 py-3.5" style={{ borderTop: "1px solid var(--color-line)" }}>
+        <DialogFooter className="px-5 py-3.5 border-t border-line">
           <Button variant="outline" onClick={preview}><Eye size={14} /> Preview in grid</Button>
           <Button className="px-5" onClick={download} disabled={busy}>
             {busy ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Download CSV
