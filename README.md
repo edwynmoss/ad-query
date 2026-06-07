@@ -76,8 +76,31 @@ cd app
 wails dev
 ```
 
+## Build a release
+
+```powershell
+cd app
+wails build              # → app/build/bin/ADQuery.exe
+```
+
+Produces a standalone ~14 MB Windows executable (no installer required; the
+WebView2 runtime ships with Windows 11). For distribution outside your own
+machine you'll want to code-sign the binary. `wails build -nsis` produces an
+installer if you have NSIS installed.
+
+## Testing
+
+```powershell
+cd app && go test ./...              # backend (incl. the read-only guard)
+cd app/frontend && npx vitest run    # lib unit + UI component tests
+```
+
+The **read-only guarantee** (`app/readonly_guard_test.go`) is enforced by the
+test suite: the build fails if any LDAP write or non-GET Graph call is ever
+introduced.
+
 ## Requirements
 
 - Go 1.26+, Node 20+, Wails CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)
-- Docker (for the test directory)
+- Docker (for the test directories)
 - WebView2 runtime (preinstalled on Windows 11)
