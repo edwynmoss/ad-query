@@ -6,6 +6,7 @@ import { formatValue } from "../lib/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 interface Props {
   entry: ldap.Entry | null;
@@ -22,16 +23,16 @@ function InspectorBody({ entry, onClose }: { entry: ldap.Entry; onClose: () => v
   const attrs = Object.keys(entry.attributes ?? {}).sort();
 
   return (
-    <div className="w-[360px] shrink-0 flex flex-col min-h-0" style={{ borderLeft: "1px solid var(--color-line)", background: "var(--color-surface)" }}>
-      <div className="flex items-start justify-between gap-2 px-3 py-2.5" style={{ borderBottom: "1px solid var(--color-line)" }}>
+    <div className="w-[360px] shrink-0 flex flex-col min-h-0 border-l border-line bg-surface">
+      <div className="flex items-start justify-between gap-2 px-3 py-2.5 border-b border-line">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold tracking-wide" style={{ color: "var(--color-ink-3)" }}>DISTINGUISHED NAME</div>
-          <div className="text-[12px] break-all selectable" style={{ fontFamily: "var(--font-mono)" }}>{entry.dn}</div>
+          <div className="text-[11px] font-semibold tracking-wide text-ink-3">DISTINGUISHED NAME</div>
+          <div className="text-[12px] break-all selectable font-mono">{entry.dn}</div>
         </div>
         <Button variant="ghost" size="icon" className="shrink-0" onClick={onClose} aria-label="close"><X size={15} /></Button>
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="px-3" style={{ borderBottom: "1px solid var(--color-line)" }}>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="px-3 border-b border-line">
         <TabsList>
           <TabsTrigger value="attrs">Attributes</TabsTrigger>
           <TabsTrigger value="acl">Security</TabsTrigger>
@@ -43,11 +44,11 @@ function InspectorBody({ entry, onClose }: { entry: ldap.Entry; onClose: () => v
           <dl className="space-y-2">
             {attrs.map((a) => (
               <div key={a}>
-                <dt className="text-[11px] font-semibold" style={{ color: "var(--color-ink-3)", fontFamily: "var(--font-mono)" }}>{a}</dt>
-                <dd className="text-[12px] break-words selectable" style={{ fontFamily: "var(--font-mono)" }}>{formatValue(a, entry.attributes[a], "\n")}</dd>
+                <dt className="text-[11px] font-semibold text-ink-3 font-mono">{a}</dt>
+                <dd className="text-[12px] break-words selectable font-mono">{formatValue(a, entry.attributes[a], "\n")}</dd>
               </div>
             ))}
-            {attrs.length === 0 && <div className="text-[12px]" style={{ color: "var(--color-ink-3)" }}>No attributes returned.</div>}
+            {attrs.length === 0 && <div className="text-[12px] text-ink-3">No attributes returned.</div>}
           </dl>
         ) : (
           <AclTab dn={entry.dn} />
@@ -71,26 +72,26 @@ function AclTab({ dn }: { dn: string }) {
   if (status === "idle") {
     return (
       <div className="space-y-2">
-        <p className="text-[12px]" style={{ color: "var(--color-ink-2)" }}>Read the object's security descriptor (owner, group, and access-control entries).</p>
+        <p className="text-[12px] text-ink-2">Read the object's security descriptor (owner, group, and access-control entries).</p>
         <Button variant="outline" size="sm" onClick={load}>Load security descriptor</Button>
       </div>
     );
   }
-  if (status === "loading") return <div className="flex items-center gap-2 text-[12px]" style={{ color: "var(--color-ink-2)" }}><Loader2 size={14} className="animate-spin" /> Reading…</div>;
-  if (status === "error") return <div className="text-[12px] selectable" style={{ color: "var(--color-warn)" }}>{error}</div>;
+  if (status === "loading") return <div className="flex items-center gap-2 text-[12px] text-ink-2"><Loader2 size={14} className="animate-spin" /> Reading…</div>;
+  if (status === "error") return <div className="text-[12px] selectable text-warning">{error}</div>;
 
   return (
     <div className="space-y-3">
       {(acl?.owner || acl?.group) && (
         <div className="space-y-1 text-[12px]">
-          {acl?.owner && <div><span style={{ color: "var(--color-ink-3)" }}>Owner </span><span style={{ fontFamily: "var(--font-mono)" }}>{acl.owner}</span></div>}
-          {acl?.group && <div><span style={{ color: "var(--color-ink-3)" }}>Group </span><span style={{ fontFamily: "var(--font-mono)" }}>{acl.group}</span></div>}
+          {acl?.owner && <div><span className="text-ink-3">Owner </span><span className="font-mono">{acl.owner}</span></div>}
+          {acl?.group && <div><span className="text-ink-3">Group </span><span className="font-mono">{acl.group}</span></div>}
         </div>
       )}
       <div className="space-y-1.5">
-        <div className="text-[11px] font-semibold tracking-wide" style={{ color: "var(--color-ink-3)" }}>DACL · {(acl?.dacl ?? []).length} ACE</div>
+        <div className="text-[11px] font-semibold tracking-wide text-ink-3">DACL · {(acl?.dacl ?? []).length} ACE</div>
         {(acl?.dacl ?? []).map((ace, i) => <AceRow key={i} ace={ace} />)}
-        {(acl?.dacl ?? []).length === 0 && <div className="text-[12px]" style={{ color: "var(--color-ink-3)" }}>No ACEs.</div>}
+        {(acl?.dacl ?? []).length === 0 && <div className="text-[12px] text-ink-3">No ACEs.</div>}
       </div>
     </div>
   );
@@ -98,20 +99,10 @@ function AclTab({ dn }: { dn: string }) {
 
 function AceRow({ ace }: { ace: adtypes.ACE }) {
   return (
-    <div className="p-1.5 rounded" style={{ border: "1px solid var(--color-line)", background: "var(--color-surface)" }}>
+    <div className="p-1.5 rounded-md border border-line bg-surface">
       <div className="flex items-center gap-1.5">
-        <Badge
-          variant="outline"
-          className="border-transparent"
-          style={
-            ace.allow
-              ? { background: "var(--color-ok-weak)", color: "var(--color-ok)" }
-              : { background: "var(--color-danger-weak)", color: "var(--color-danger)" }
-          }
-        >
-          {ace.allow ? "ALLOW" : "DENY"}
-        </Badge>
-        <span className="text-[11.5px] truncate selectable" style={{ fontFamily: "var(--font-mono)" }} title={ace.sid}>{ace.trustee}</span>
+        <StatusBadge tone={ace.allow ? "success" : "critical"}>{ace.allow ? "ALLOW" : "DENY"}</StatusBadge>
+        <span className="text-[11.5px] truncate selectable font-mono" title={ace.sid}>{ace.trustee}</span>
       </div>
       {ace.rights && ace.rights.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-1">
@@ -119,7 +110,7 @@ function AceRow({ ace }: { ace: adtypes.ACE }) {
         </div>
       )}
       {ace.objectType && (
-        <div className="text-[10px] mt-1 truncate" style={{ color: "var(--color-ink-3)", fontFamily: "var(--font-mono)" }} title={ace.objectType}>obj: {ace.objectType}</div>
+        <div className="text-[10px] mt-1 truncate text-ink-3 font-mono" title={ace.objectType}>obj: {ace.objectType}</div>
       )}
     </div>
   );

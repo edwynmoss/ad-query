@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Download, ArrowUp, ArrowDown } from "lucide-react";
 import type { ldap } from "../../wailsjs/go/models";
@@ -6,8 +6,8 @@ import { formatValue, decodeUAC } from "../lib/format";
 import { combineLastSeen, isStale, DEFAULT_STALE_DAYS } from "../lib/lastseen";
 import { ExportDialog } from "./ExportDialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 
 interface Props {
   result: ldap.SearchResult | null;
@@ -18,23 +18,10 @@ interface Props {
 
 const ROW_H = 33;
 
-type UacTone = "danger" | "warn" | "neutral";
-
-function uacStatusTone(flag: string): UacTone {
-  if (flag === "Disabled" || flag === "Locked out" || flag === "Password expired") return "danger";
-  if (flag === "Password never expires" || flag === "Trusted for delegation") return "warn";
+function uacStatusTone(flag: string): StatusTone {
+  if (flag === "Disabled" || flag === "Locked out" || flag === "Password expired") return "critical";
+  if (flag === "Password never expires" || flag === "Trusted for delegation") return "warning";
   return "neutral";
-}
-
-function StatusBadge({ tone, title, children }: { tone: UacTone; title?: string; children: ReactNode }) {
-  if (tone === "neutral") return <Badge variant="secondary" title={title}>{children}</Badge>;
-  const color = tone === "danger" ? "var(--color-danger)" : "var(--color-warn)";
-  const bg = tone === "danger" ? "var(--color-danger-weak)" : "var(--color-warn-weak)";
-  return (
-    <Badge variant="outline" className="border-transparent" style={{ background: bg, color }} title={title}>
-      {children}
-    </Badge>
-  );
 }
 
 export function ResultsGrid({ result, columns, selectedDN, onSelectRow }: Props) {
@@ -66,22 +53,22 @@ export function ResultsGrid({ result, columns, selectedDN, onSelectRow }: Props)
 
   if (!result) {
     return (
-      <div className="flex-1 grid place-items-center" style={{ background: "var(--color-paper)" }}>
+      <div className="flex-1 grid place-items-center bg-page">
         <div className="text-center">
-          <div className="display text-[19px]" style={{ color: "var(--color-ink-2)" }}>No record set</div>
-          <p className="text-[12.5px] mt-1" style={{ color: "var(--color-ink-3)" }}>Compose a query and run it to draw results into the ledger.</p>
+          <div className="display text-[19px] text-ink-2">No record set</div>
+          <p className="text-[12.5px] mt-1 text-ink-3">Compose a query and run it to draw results into the ledger.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0" style={{ background: "var(--color-paper)" }}>
+    <div className="flex-1 flex flex-col min-h-0 bg-page">
       {/* Ledger caption / toolbar */}
-      <div className="flex items-center justify-between px-4 h-10 shrink-0" style={{ borderTop: "1px solid var(--color-line)", borderBottom: "1px solid var(--color-line)" }}>
+      <div className="flex items-center justify-between px-4 h-10 shrink-0 border-y border-line">
         <div className="flex items-baseline gap-2">
           <span className="display text-[15px]">Results</span>
-          <span className="text-[12px]" style={{ color: "var(--color-ink-3)" }}>
+          <span className="text-[12px] text-ink-3">
             {result.count.toLocaleString()} records{checked.size > 0 ? ` · ${checked.size} marked` : ""}{result.truncated ? " · truncated" : ""}
           </span>
         </div>
@@ -92,11 +79,11 @@ export function ResultsGrid({ result, columns, selectedDN, onSelectRow }: Props)
 
       <div ref={scrollRef} className="flex-1 overflow-auto">
         {/* Header */}
-        <div className="sticky top-0 z-10" style={{ display: "grid", gridTemplateColumns: gridCols, background: "var(--color-paper)", borderBottom: "2px solid var(--color-line-strong)" }}>
+        <div className="grid sticky top-0 z-10 bg-page border-b-2 border-line-strong" style={{ gridTemplateColumns: gridCols }}>
           <div className="flex items-center justify-center"><Checkbox checked={checked.size === entries.length && entries.length > 0} onCheckedChange={toggleAll} aria-label="mark all" /></div>
-          <div className="flex items-center justify-end pr-2 eyebrow" style={{ paddingTop: 0 }}>#</div>
+          <div className="flex items-center justify-end pr-2 eyebrow">#</div>
           {columns.map((col) => (
-            <button key={col} onClick={() => toggleSort(col)} className="flex items-center gap-1 h-9 px-3 text-left eyebrow hover:text-[var(--color-ink)]" title={`Sort by ${col}`}>
+            <button key={col} onClick={() => toggleSort(col)} className="flex items-center gap-1 h-9 px-3 text-left eyebrow hover:text-ink" title={`Sort by ${col}`}>
               <span className="truncate">{col}</span>
               {sortCol === col && (sortAsc ? <ArrowUp size={11} /> : <ArrowDown size={11} />)}
             </button>
@@ -104,30 +91,25 @@ export function ResultsGrid({ result, columns, selectedDN, onSelectRow }: Props)
         </div>
 
         {/* Virtualized ledger body */}
-        <div style={{ height: rowVirt.getTotalSize(), position: "relative" }}>
+        <div className="relative" style={{ height: rowVirt.getTotalSize() }}>
           {rowVirt.getVirtualItems().map((vi) => {
             const e = sorted[vi.index];
             const isSel = selectedDN === e.dn;
             return (
-              <div key={e.dn} onClick={() => onSelectRow(e)} className="absolute left-0 w-full cursor-pointer group"
-                style={{
-                  top: vi.start, height: ROW_H, display: "grid", gridTemplateColumns: gridCols,
-                  background: isSel ? "var(--color-brand-weak)" : "transparent",
-                  borderBottom: "1px solid var(--color-line)",
-                  boxShadow: isSel ? "inset 2px 0 0 var(--color-brand)" : "inset 2px 0 0 transparent",
-                }}
-                onMouseEnter={(ev) => { if (!isSel) (ev.currentTarget as HTMLElement).style.background = "var(--color-sunken)"; }}
-                onMouseLeave={(ev) => { if (!isSel) (ev.currentTarget as HTMLElement).style.background = "transparent"; }}
+              <div key={e.dn} onClick={() => onSelectRow(e)}
+                className={"grid absolute left-0 w-full cursor-pointer border-b border-line border-l-2 " +
+                  (isSel ? "bg-brand-soft border-l-brand" : "border-l-transparent hover:bg-sunken")}
+                style={{ top: vi.start, height: ROW_H, gridTemplateColumns: gridCols }}
               >
                 <div className="flex items-center justify-center" onClick={(ev) => ev.stopPropagation()}>
                   <Checkbox checked={checked.has(e.dn)} onCheckedChange={() => toggleCheck(e.dn)} aria-label="mark row" />
                 </div>
-                <div className="flex items-center justify-end pr-2 text-[11px] tabular-nums" style={{ color: "var(--color-ink-3)", fontFamily: "var(--font-mono)" }}>{vi.index + 1}</div>
+                <div className="flex items-center justify-end pr-2 text-[11px] tabular-nums text-ink-3 font-mono">{vi.index + 1}</div>
                 {columns.map((col) => <Cell key={col} col={col} entry={e} />)}
               </div>
             );
           })}
-          {entries.length === 0 && <div className="px-4 py-12 text-center text-[13px]" style={{ color: "var(--color-ink-3)" }}>No entries matched this query.</div>}
+          {entries.length === 0 && <div className="px-4 py-12 text-center text-[13px] text-ink-3">No entries matched this query.</div>}
         </div>
       </div>
 
@@ -145,7 +127,7 @@ function Cell({ col, entry }: { col: string; entry: ldap.Entry }) {
     return (
       <div className="flex items-center gap-1.5 px-3 overflow-hidden" title={vals[0]}>
         {flags.length === 0
-          ? <span className="text-[11px]" style={{ color: "var(--color-ink-3)" }}>Enabled</span>
+          ? <span className="text-[11px] text-ink-3">Enabled</span>
           : flags.map((f) => <StatusBadge key={f} tone={uacStatusTone(f)}>{f}</StatusBadge>)}
       </div>
     );
@@ -156,8 +138,8 @@ function Cell({ col, entry }: { col: string; entry: ldap.Entry }) {
     const stale = isStale(combineLastSeen(vals[0]));
     return (
       <div className="flex items-center gap-1.5 px-3 overflow-hidden" title={text}>
-        <span className="truncate text-[12px]" style={{ fontFamily: "var(--font-mono)", color: text === "Never" ? "var(--color-ink-3)" : "var(--color-ink)" }}>{text}</span>
-        {stale && <StatusBadge tone="warn" title={`Not seen in >${DEFAULT_STALE_DAYS} days`}>stale</StatusBadge>}
+        <span className={"truncate text-[12px] font-mono " + (text === "Never" ? "text-ink-3" : "text-ink")}>{text}</span>
+        {stale && <StatusBadge tone="warning" title={`Not seen in >${DEFAULT_STALE_DAYS} days`}>stale</StatusBadge>}
       </div>
     );
   }
@@ -168,8 +150,7 @@ function Cell({ col, entry }: { col: string; entry: ldap.Entry }) {
   const mono = monoCols.has(lc);
   return (
     <div className="flex items-center px-3 overflow-hidden">
-      <span className="truncate selectable text-[13px]"
-        style={{ fontFamily: mono ? "var(--font-mono)" : "var(--font-ui)", fontSize: mono ? "12px" : "13px", color: text ? "var(--color-ink)" : "var(--color-ink-3)" }}
+      <span className={"truncate selectable " + (mono ? "font-mono text-[12px]" : "text-[13px]") + " " + (text ? "text-ink" : "text-ink-3")}
         title={text}>{text || "—"}</span>
     </div>
   );
