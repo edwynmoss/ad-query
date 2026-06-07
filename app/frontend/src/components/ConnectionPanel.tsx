@@ -138,10 +138,12 @@ export function ConnectionPanel({ onConnected }: Props) {
                   <ShieldCheck size={12} /> Dev: connect to local test directory
                 </Button>
               )}
-              {detected?.joined && (
+              {detected?.joined ? (
                 <Button variant="ghost" size="sm" className="text-brand" onClick={() => { setError(null); setMode("auto"); }}>
                   <ArrowLeft size={12} /> Use this computer's domain ({detected.domain.toUpperCase()})
                 </Button>
+              ) : (
+                <p className="text-[12px] text-ink-2">{detected ? "This PC isn't joined to a domain." : "Couldn't check this PC for a domain."} Enter the directory you want to connect to.</p>
               )}
 
               <div className="flex items-center gap-2 flex-wrap text-[12px]">
@@ -171,7 +173,11 @@ export function ConnectionPanel({ onConnected }: Props) {
               </div>
 
               {auth === "simple" && (<>
-                <div><Label>Username</Label><Input className="font-mono h-8" value={bindDN} onChange={(e) => setBindDN(e.target.value)} placeholder="you@contoso.com" /></div>
+                <div>
+                  <Label>Username</Label>
+                  <Input className="font-mono h-8" value={bindDN} onChange={(e) => setBindDN(e.target.value)} placeholder="you@contoso.com" />
+                  <p className="text-[11px] mt-1.5 text-ink-3">Sign-in name as <span className="mono">you@contoso.com</span>, <span className="mono">CONTOSO\you</span>, or a full DN.</p>
+                </div>
                 <div><Label>Password</Label><Input className="h-8" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" /></div>
               </>)}
               {auth === "sspi" && (
