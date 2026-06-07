@@ -73,8 +73,8 @@ export function ResultsGrid({ result, loading, columns, selectedDN, onSelectRow,
     return (
       <div className="flex-1 grid place-items-center bg-page">
         <div className="text-center">
-          <div className="display text-[19px] text-ink-2">No record set</div>
-          <p className="text-[12.5px] mt-1 text-ink-3">Compose a query and run it to draw results into the ledger.</p>
+          <div className="display text-[19px] text-ink-2">No results yet</div>
+          <p className="text-[12.5px] mt-1 text-ink-3 max-w-[320px]">Choose what to find, narrow it with filters and a location, then press <span className="font-medium text-ink-2">Run</span>.</p>
         </div>
       </div>
     );
@@ -88,7 +88,8 @@ export function ResultsGrid({ result, loading, columns, selectedDN, onSelectRow,
           <span className="display text-[15px]">Results</span>
           <span className="text-[12px] text-ink-3 flex items-center gap-1.5">
             {loading && <Loader2 size={12} className="animate-spin" />}
-            {result.count.toLocaleString()} records{checked.size > 0 ? ` · ${checked.size} marked` : ""}{result.truncated ? " · truncated" : ""}
+            {result.count.toLocaleString()} records{checked.size > 0 ? ` · ${checked.size} marked` : ""}
+            {result.truncated && <StatusBadge tone="warning" title="The directory returned only part of the matches (a server-side size limit was reached). Narrow your filter to see the rest.">partial</StatusBadge>}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -103,6 +104,14 @@ export function ResultsGrid({ result, loading, columns, selectedDN, onSelectRow,
         </div>
       </div>
 
+      {entries.length === 0 ? (
+        <div className="flex-1 grid place-items-center">
+          <div className="text-center">
+            <div className="display text-[18px] text-ink-2">No matches</div>
+            <p className="text-[12.5px] mt-1 text-ink-3 max-w-[360px]">Nothing in this location matched your filter. Try broadening the filter, switching the match to <span className="font-medium text-ink-2">any</span>, or widening the location and scope.</p>
+          </div>
+        </div>
+      ) : (
       <div ref={scrollRef} className="flex-1 overflow-auto">
         {/* Header */}
         <div className="grid sticky top-0 z-10 bg-page border-b-2 border-line-strong" style={{ gridTemplateColumns: gridCols }}>
@@ -135,9 +144,9 @@ export function ResultsGrid({ result, loading, columns, selectedDN, onSelectRow,
               </div>
             );
           })}
-          {entries.length === 0 && <div className="px-4 py-12 text-center text-[13px] text-ink-3">No entries matched this query.</div>}
         </div>
       </div>
+      )}
 
       {showExport && (
         <ExportDialog allEntries={entries} selectedEntries={entries.filter((e) => checked.has(e.dn))} columns={columns} meta={exportMeta} onClose={() => setShowExport(false)} />
