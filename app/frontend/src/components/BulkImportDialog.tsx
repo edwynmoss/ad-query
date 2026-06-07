@@ -9,6 +9,7 @@ import { csvValue } from "../lib/format";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { ErrorBanner } from "@/components/ui/error-banner";
@@ -22,6 +23,11 @@ interface Props {
 
 const CHUNK = 50;
 const STATUS_COL = "AD Status";
+// The original lookup key, stashed on each row for the "needs attention" list.
+// Not part of resultCols, so it never appears in the exported CSV. Needed
+// because the match column can collide with a selected output column (which is
+// blanked for not-found rows), clobbering the user's original input value.
+const KEY_FIELD = "__bulkKey";
 
 export function BulkImportDialog({ req, onClose }: Props) {
   const [sheet, setSheet] = useState<Sheet | null>(null);
@@ -98,6 +104,7 @@ export function BulkImportDialog({ req, onClose }: Props) {
       const out: Record<string, string> = { ...r };
       for (const a of outAttrs) out[a] = entry ? csvValue(a, entry.attributes?.[a]) : "";
       out[STATUS_COL] = status;
+      out[KEY_FIELD] = keyRaw;
       ids.push(entry?.attributes?.userPrincipalName?.[0] || entry?.attributes?.mail?.[0] || (keyRaw.includes("@") ? keyRaw : ""));
       return out;
     });
@@ -127,10 +134,17 @@ export function BulkImportDialog({ req, onClose }: Props) {
     setResultCols(cols); setResultRows(rows); setSummary({ found, notFound, multiple }); setPhase("done");
   }
 
+  function stampNow() { return new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-"); }
   function exportResults() {
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    downloadCsv(`adquery-bulk-${stamp}.csv`, rowsToCsv(resultCols, resultRows));
+    downloadCsv(`adquery-bulk-${stampNow()}.csv`, rowsToCsv(resultCols, resultRows));
   }
+  function exportUnmatched() {
+    downloadCsv(`adquery-bulk-unmatched-${stampNow()}.csv`, rowsToCsv(resultCols, unmatched));
+  }
+
+  // Rows that didn't resolve to exactly one directory object — surfaced inline
+  // so partial failures are visible, not buried in the exported CSV.
+  const unmatched = phase === "done" ? resultRows.filter((r) => r[STATUS_COL] !== "Found") : [];
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -198,7 +212,26 @@ export function BulkImportDialog({ req, onClose }: Props) {
             <div className="rounded-xl p-3.5 flex items-center gap-4 text-[12.5px] border border-line bg-sunken">
               <span className="flex items-center gap-1.5 text-success"><CheckCircle2 size={15} /> {summary.found} found</span>
               <span className="flex items-center gap-1.5 text-ink-2"><AlertCircle size={15} /> {summary.notFound} not found</span>
-              {summary.multiple > 0 && <span className="text-warning">{summary.multiple} ambiguous</span>}
+              {summary.multiple > 0 && <span className="flex items-center gap-1.5 text-warning"><AlertCircle size={15} /> {summary.multiple} ambiguous</span>}
+            </div>
+          )}
+
+          {phase === "done" && unmatched.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="eyebrow">Needs attention ({unmatched.length})</span>
+                <Button variant="outline" size="sm" onClick={exportUnmatched}><Download size={13} /> Export unmatched</Button>
+              </div>
+              <div className="rounded-lg border border-line divide-y divide-line max-h-[168px] overflow-auto">
+                {unmatched.slice(0, 100).map((r, i) => (
+                  <div key={i} className="flex items-center justify-between gap-2 px-3 py-1.5 text-[12px]">
+                    <span className="truncate font-mono">{r[KEY_FIELD] || "(blank)"}</span>
+                    <StatusBadge tone={r[STATUS_COL] === "Multiple matches" ? "warning" : "neutral"}>{r[STATUS_COL] === "Multiple matches" ? "ambiguous" : "not found"}</StatusBadge>
+                  </div>
+                ))}
+                {unmatched.length > 100 && <div className="px-3 py-1.5 text-[11px] text-ink-3">+{unmatched.length - 100} more — see the exported file.</div>}
+              </div>
+              <p className="text-[11px] text-ink-3">Correct these in your file (or change the match field) and import again. <span className="font-medium">Ambiguous</span> means more than one directory object matched — only the first was returned.</p>
             </div>
           )}
         </div>
