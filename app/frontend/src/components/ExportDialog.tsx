@@ -14,10 +14,11 @@ interface Props {
   allEntries: ldap.Entry[];
   selectedEntries: ldap.Entry[];
   columns: string[];
+  meta?: { directory?: string; scope?: string; filter?: string; tool?: string };
   onClose: () => void;
 }
 
-export function ExportDialog({ allEntries, selectedEntries, columns, onClose }: Props) {
+export function ExportDialog({ allEntries, selectedEntries, columns, meta, onClose }: Props) {
   const hasSelection = selectedEntries.length > 0;
   const [scope, setScope] = useState<"all" | "selected">(hasSelection ? "selected" : "all");
   const [cols, setCols] = useState<Set<string>>(new Set(columns));
@@ -30,7 +31,7 @@ export function ExportDialog({ allEntries, selectedEntries, columns, onClose }: 
     setCols((s) => { const n = new Set(s); n.has(c) ? n.delete(c) : n.add(c); return n; });
   }
   function doExport() {
-    const csv = buildCsv(rows, chosenCols, opts);
+    const csv = buildCsv(rows, chosenCols, opts, opts.evidenceHeader ? { ...meta, generatedAt: new Date().toISOString() } : undefined);
     const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
     downloadCsv(`adquery-export-${stamp}.csv`, csv);
     onClose();
@@ -100,6 +101,7 @@ export function ExportDialog({ allEntries, selectedEntries, columns, onClose }: 
             <label className="flex items-center gap-2 cursor-pointer"><Checkbox checked={opts.includeDN} onCheckedChange={(v) => setOpts({ ...opts, includeDN: !!v })} /> Include distinguished name (DN)</label>
             <label className="flex items-center gap-2 cursor-pointer"><Checkbox checked={opts.includeHeader} onCheckedChange={(v) => setOpts({ ...opts, includeHeader: !!v })} /> Include header row</label>
             <label className="flex items-center gap-2 cursor-pointer"><Checkbox checked={opts.bom} onCheckedChange={(v) => setOpts({ ...opts, bom: !!v })} /> UTF-8 BOM (Excel compatibility)</label>
+            <label className="flex items-center gap-2 cursor-pointer"><Checkbox checked={opts.evidenceHeader} onCheckedChange={(v) => setOpts({ ...opts, evidenceHeader: !!v })} /> Evidence header (who/when/directory/filter)</label>
           </div>
         </div>
 

@@ -18,6 +18,7 @@ interface Props {
   onSelectRow: (e: ldap.Entry) => void;
   signedIn365?: boolean;
   onCheck365?: () => void;
+  exportMeta?: { directory?: string; scope?: string; filter?: string; tool?: string };
 }
 
 const ROW_H = 33;
@@ -32,7 +33,7 @@ function uacStatusTone(flag: string): StatusTone {
   return "neutral";
 }
 
-export function ResultsGrid({ result, loading, columns, selectedDN, onSelectRow, signedIn365, onCheck365 }: Props) {
+export function ResultsGrid({ result, loading, columns, selectedDN, onSelectRow, signedIn365, onCheck365, exportMeta }: Props) {
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
   const [checked, setChecked] = useState<Set<string>>(new Set());
@@ -139,7 +140,7 @@ export function ResultsGrid({ result, loading, columns, selectedDN, onSelectRow,
       </div>
 
       {showExport && (
-        <ExportDialog allEntries={entries} selectedEntries={entries.filter((e) => checked.has(e.dn))} columns={columns} onClose={() => setShowExport(false)} />
+        <ExportDialog allEntries={entries} selectedEntries={entries.filter((e) => checked.has(e.dn))} columns={columns} meta={exportMeta} onClose={() => setShowExport(false)} />
       )}
     </div>
   );

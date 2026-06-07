@@ -8,6 +8,7 @@ export interface CsvOptions {
   bom: boolean; // Excel-friendly UTF-8 BOM
   multiValueJoin: string;
   dateFormat: DateFormat;
+  evidenceHeader: boolean; // prepend an audit-evidence metadata block
 }
 
 export const DEFAULT_CSV_OPTIONS: CsvOptions = {
@@ -17,7 +18,18 @@ export const DEFAULT_CSV_OPTIONS: CsvOptions = {
   bom: true,
   multiValueJoin: "; ",
   dateFormat: "iso",
+  evidenceHeader: true,
 };
+
+// Provenance for the export's evidence header — who/what/when, so a CSV handed
+// to Governance is self-describing.
+export interface EvidenceMeta {
+  generatedAt: string;  // ISO timestamp (caller supplies, keeps buildCsv pure)
+  directory?: string;   // server · base DN
+  scope?: string;       // e.g. "Subtree"
+  filter?: string;      // effective LDAP filter
+  tool?: string;        // e.g. "AD Query 0.1.0"
+}
 
 function escapeCell(value: string, delimiter: string): string {
   if (value.includes('"') || value.includes(delimiter) || value.includes("\n") || value.includes("\r")) {
@@ -30,10 +42,25 @@ function escapeCell(value: string, delimiter: string): string {
 export function buildCsv(
   entries: ldap.Entry[],
   columns: string[],
-  opts: CsvOptions
+  opts: CsvOptions,
+  meta?: EvidenceMeta
 ): string {
   const cols = opts.includeDN ? ["dn", ...columns] : columns;
   const lines: string[] = [];
+
+  if (opts.evidenceHeader && meta) {
+    const d = opts.delimiter;
+    const kv = (k: string, v: string) => escapeCell(k, d) + d + escapeCell(v, d);
+    lines.push(escapeCell("AD Query — export evidence", d));
+    lines.push(kv("Generated", meta.generatedAt));
+    if (meta.tool) lines.push(kv("Tool", meta.tool));
+    if (meta.directory) lines.push(kv("Directory", meta.directory));
+    if (meta.scope) lines.push(kv("Scope", meta.scope));
+    if (meta.filter) lines.push(kv("Filter", meta.filter));
+    lines.push(kv("Rows", String(entries.length)));
+    lines.push(kv("Columns", cols.join(", ")));
+    lines.push(""); // blank separator before the table
+  }
 
   if (opts.includeHeader) {
     lines.push(cols.map((c) => escapeCell(c, opts.delimiter)).join(opts.delimiter));
