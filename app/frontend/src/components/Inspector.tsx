@@ -13,15 +13,16 @@ import { labelFor } from "@/lib/attrLabels";
 
 interface Props {
   entry: ldap.Entry | null;
+  isAD?: boolean;
   onClose: () => void;
 }
 
-export function Inspector({ entry, onClose }: Props) {
+export function Inspector({ entry, isAD, onClose }: Props) {
   if (!entry) return null;
-  return <InspectorBody key={entry.dn} entry={entry} onClose={onClose} />;
+  return <InspectorBody key={entry.dn} entry={entry} isAD={isAD} onClose={onClose} />;
 }
 
-function InspectorBody({ entry, onClose }: { entry: ldap.Entry; onClose: () => void }) {
+function InspectorBody({ entry, isAD, onClose }: { entry: ldap.Entry; isAD?: boolean; onClose: () => void }) {
   const [tab, setTab] = useState<"attrs" | "login" | "risk" | "acl">("attrs");
   const attrs = Object.keys(entry.attributes ?? {}).sort();
 
@@ -56,7 +57,7 @@ function InspectorBody({ entry, onClose }: { entry: ldap.Entry; onClose: () => v
             {attrs.length === 0 && <div className="text-[12px] text-ink-3">No attributes returned.</div>}
           </dl>
         )}
-        {tab === "login" && <LoginTab entry={entry} />}
+        {tab === "login" && <LoginTab entry={entry} isAD={isAD} />}
         {tab === "risk" && <RiskTab dn={entry.dn} />}
         {tab === "acl" && <AclTab dn={entry.dn} />}
       </div>
@@ -66,10 +67,19 @@ function InspectorBody({ entry, onClose }: { entry: ldap.Entry; onClose: () => v
 
 // AD's lastLogon isn't replicated; lastLogonTimestamp is (but lags). "Fast" =
 // the replicated value; "Accurate" queries every DC for the newest lastLogon.
-function LoginTab({ entry }: { entry: ldap.Entry }) {
+function LoginTab({ entry, isAD }: { entry: ldap.Entry; isAD?: boolean }) {
   const [status, setStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [report, setReport] = useState<ldap.LastLogonReport | null>(null);
   const [error, setError] = useState("");
+
+  if (isAD === false) {
+    return (
+      <div className="space-y-2 text-[12px] text-ink-2">
+        <p>Last-login tracking (<span className="font-mono">lastLogon</span> / <span className="font-mono">lastLogonTimestamp</span>) is an <span className="font-medium text-ink">Active Directory</span> feature.</p>
+        <p className="text-ink-3">This directory doesn't record per-account logins, so there's nothing to show here.</p>
+      </div>
+    );
+  }
 
   const fast = entry.attributes?.lastLogonTimestamp?.[0] ?? "";
 

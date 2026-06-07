@@ -178,7 +178,7 @@ function App() {
         <div className="flex-1 flex min-h-0">
           <ResultsGrid result={result} loading={running} columns={[...req.attributes, ...extra365Cols]} selectedDN={selected?.dn ?? null} onSelectRow={setSelected} signedIn365={m365.signedIn} onCheck365={() => setShow365Filter(true)}
             exportMeta={{ directory: `${conn?.host ?? ""}${req.baseDN ? " · " + req.baseDN : ""}`, scope: scopeLabel, filter: effectiveFilter(req), tool: "AD Query 0.1.0" }} />
-          <Inspector entry={selected} onClose={() => setSelected(null)} />
+          <Inspector entry={selected} isAD={server.isActiveDirectory} onClose={() => setSelected(null)} />
         </div>
       </div>
 

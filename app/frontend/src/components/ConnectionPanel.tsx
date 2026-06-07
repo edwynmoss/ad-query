@@ -167,7 +167,7 @@ export function ConnectionPanel({ onConnected }: Props) {
 
               <div>
                 <Label>Sign in with</Label>
-                <ToggleGroup type="single" size="sm" value={auth} onValueChange={(v) => v && setAuth(v)} className="w-full">
+                <ToggleGroup type="single" size="sm" variant="outline" value={auth} onValueChange={(v) => v && setAuth(v)} className="w-full">
                   {AUTH.map(([v, l]) => <ToggleGroupItem key={v} value={v} className="flex-1">{l}</ToggleGroupItem>)}
                 </ToggleGroup>
               </div>
