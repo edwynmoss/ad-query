@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { memo, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Download, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
 import type { ldap } from "../../wailsjs/go/models";
@@ -18,6 +18,10 @@ interface Props {
 }
 
 const ROW_H = 33;
+
+// Identifier-ish columns read better monospaced (hoisted so it isn't rebuilt
+// per cell render).
+const MONO_COLS = new Set(["distinguishedname", "objectsid", "objectguid", "samaccountname", "userprincipalname", "uid", "mail", "telephonenumber", "mobile", "employeenumber"]);
 
 function uacStatusTone(flag: string): StatusTone {
   if (flag === "Disabled" || flag === "Locked out" || flag === "Password expired") return "critical";
@@ -131,7 +135,7 @@ export function ResultsGrid({ result, loading, columns, selectedDN, onSelectRow 
   );
 }
 
-function Cell({ col, entry }: { col: string; entry: ldap.Entry }) {
+const Cell = memo(function Cell({ col, entry }: { col: string; entry: ldap.Entry }) {
   const vals = entry.attributes?.[col];
   if (col.toLowerCase() === "useraccountcontrol" && vals && vals.length) {
     const flags = decodeUAC(vals[0]);
@@ -156,13 +160,11 @@ function Cell({ col, entry }: { col: string; entry: ldap.Entry }) {
   }
 
   const text = formatValue(col, vals);
-  // Identifier-ish columns read better monospaced; human text uses the UI font.
-  const monoCols = new Set(["distinguishedname", "objectsid", "objectguid", "samaccountname", "userprincipalname", "uid", "mail", "telephonenumber", "mobile", "employeenumber"]);
-  const mono = monoCols.has(lc);
+  const mono = MONO_COLS.has(lc);
   return (
     <div className="flex items-center px-3 overflow-hidden">
       <span className={"truncate selectable " + (mono ? "font-mono text-[12px]" : "text-[13px]") + " " + (text ? "text-ink" : "text-ink-3")}
         title={text}>{text || "—"}</span>
     </div>
   );
-}
+});

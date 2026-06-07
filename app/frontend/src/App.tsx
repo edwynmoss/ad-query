@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,9 +77,12 @@ function App() {
   function openReport(q: QueryState) { setReq(q); runQuery(q); }
 
   // Identities (UPN/mail) of the current result set, for the per-set 365 tally.
-  const resultIdentities = (result?.entries ?? [])
-    .map((e) => e.attributes?.userPrincipalName?.[0] || e.attributes?.mail?.[0] || "")
-    .filter(Boolean);
+  const resultIdentities = useMemo(
+    () => (result?.entries ?? [])
+      .map((e) => e.attributes?.userPrincipalName?.[0] || e.attributes?.mail?.[0] || "")
+      .filter(Boolean),
+    [result],
+  );
 
   if (!server) return <ConnectionPanel onConnected={onConnected} />;
 
