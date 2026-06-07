@@ -26,7 +26,7 @@ export function FilterBuilder({ conditions, matchOp, onChange, attributes }: Pro
     <div className="space-y-1.5">
       <div className="flex items-center gap-2 text-[11.5px] text-ink-2">
         <span>Match</span>
-        <ToggleGroup type="single" variant="outline" value={matchOp} onValueChange={(val) => val && onChange(conditions, val as MatchOp)}>
+        <ToggleGroup type="single" size="sm" variant="outline" value={matchOp} onValueChange={(val) => val && onChange(conditions, val as MatchOp)}>
           <ToggleGroupItem value="and">All</ToggleGroupItem>
           <ToggleGroupItem value="or">Any</ToggleGroupItem>
         </ToggleGroup>

@@ -190,7 +190,7 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
             <div className="border-t border-line px-3 py-2.5 space-y-2.5">
               <div>
                 <div className="eyebrow text-ink-3 mb-1.5">Depth</div>
-                <ToggleGroup type="single" variant="outline" value={String(req.scope)} onValueChange={(v) => v && setReq({ ...req, scope: Number(v) })} className="w-full">
+                <ToggleGroup type="single" size="sm" variant="outline" value={String(req.scope)} onValueChange={(v) => v && setReq({ ...req, scope: Number(v) })} className="w-full">
                   <ToggleGroupItem value="2" className="flex-1">Everything below</ToggleGroupItem>
                   <ToggleGroupItem value="1" className="flex-1">One level down</ToggleGroupItem>
                 </ToggleGroup>

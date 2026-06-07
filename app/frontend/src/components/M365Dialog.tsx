@@ -88,8 +88,8 @@ export function M365Dialog({ onClose, onChange }: Props) {
               <details className="rounded-lg border border-line px-3 py-2">
                 <summary className="eyebrow cursor-pointer select-none text-ink-3">Advanced · use your own tenant / app</summary>
                 <div className="space-y-3 mt-3">
-                  <div><span className="eyebrow block mb-1.5">Tenant ID <span className="text-ink-3">(or "organizations")</span></span><Input className="font-mono" value={tenant} onChange={(e) => setTenant(e.target.value)} placeholder="organizations (default)" /></div>
-                  <div><span className="eyebrow block mb-1.5">Client (application) ID</span><Input className="font-mono" value={client} onChange={(e) => setClient(e.target.value)} placeholder="Microsoft Graph sign-in app (default)" /></div>
+                  <div><span className="eyebrow block mb-1.5">Tenant ID <span className="text-ink-3">(or "organizations")</span></span><Input className="font-mono h-8" value={tenant} onChange={(e) => setTenant(e.target.value)} placeholder="organizations (default)" /></div>
+                  <div><span className="eyebrow block mb-1.5">Client (application) ID</span><Input className="font-mono h-8" value={client} onChange={(e) => setClient(e.target.value)} placeholder="Microsoft Graph sign-in app (default)" /></div>
                   <p className="text-[11px] text-ink-3">Only needed if your organization requires its own app registration. See docs/M365.md.</p>
                 </div>
               </details>

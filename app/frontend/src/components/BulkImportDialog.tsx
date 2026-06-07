@@ -157,7 +157,7 @@ export function BulkImportDialog({ req, onClose }: Props) {
                 <div>
                   <label className="eyebrow block mb-1.5">Match column</label>
                   <Select value={keyCol} onValueChange={(val) => setKeyCol(val)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {sheet.headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                     </SelectContent>
@@ -166,7 +166,7 @@ export function BulkImportDialog({ req, onClose }: Props) {
                 <div>
                   <label className="eyebrow block mb-1.5">Match on attribute</label>
                   <Select value={matchAttr} onValueChange={(val) => setMatchAttr(val as MatchAttr)}>
-                    <SelectTrigger className="font-mono"><SelectValue /></SelectTrigger>
+                    <SelectTrigger size="sm" className="font-mono"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {MATCH_ATTRS.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
                     </SelectContent>

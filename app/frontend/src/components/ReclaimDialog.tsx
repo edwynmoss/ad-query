@@ -135,7 +135,7 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
           <label className="flex items-center gap-2 text-[12.5px] cursor-pointer">
             <Checkbox checked={dormantOnly} onCheckedChange={(v) => setDormantOnly(!!v)} disabled={phase !== "ready"} />
             Only dormant — idle more than
-            <Input type="number" min={1} className="w-16 h-7 text-center" value={days} onChange={(e) => setDays(Math.max(1, Number(e.target.value) || 90))} disabled={!dormantOnly || phase !== "ready"} />
+            <Input type="number" min={1} className="w-16 h-8 text-center" value={days} onChange={(e) => setDays(Math.max(1, Number(e.target.value) || 90))} disabled={!dormantOnly || phase !== "ready"} />
             days
           </label>
         </div>

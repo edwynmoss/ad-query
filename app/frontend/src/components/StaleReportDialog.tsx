@@ -97,7 +97,7 @@ export function StaleReportDialog({ isAD, baseDN, onOpen, onClose }: Props) {
         <div className="overflow-auto px-5 py-4 space-y-4">
           <div className="flex items-center gap-2 text-[13px]">
             <span>Not seen in the last</span>
-            <Input type="number" min={1} className="w-20 text-center" value={days} onChange={(e) => setDays(Math.max(1, Number(e.target.value) || 90))} />
+            <Input type="number" min={1} className="w-20 h-8 text-center" value={days} onChange={(e) => setDays(Math.max(1, Number(e.target.value) || 90))} />
             <span>days</span>
           </div>
           <label className="flex items-center gap-2 text-[12.5px] cursor-pointer text-ink-2">

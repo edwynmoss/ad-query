@@ -144,7 +144,7 @@ export function ConnectionPanel({ onConnected }: Props) {
                 </Button>
               )}
 
-              <div className="flex items-center gap-1.5 flex-wrap text-[12px]">
+              <div className="flex items-center gap-2 flex-wrap text-[12px]">
                 <span className="eyebrow">Saved</span>
                 {profiles.map((p) => (
                   <span key={p.name} className="inline-flex items-center gap-1 h-[26px] pl-2.5 pr-1.5 rounded-md border border-border bg-card text-[11.5px] font-mono cursor-pointer hover:bg-muted" onClick={() => loadProfile(p)} title={`${p.bindDN}@${p.host}:${p.port}`}>
@@ -153,26 +153,26 @@ export function ConnectionPanel({ onConnected }: Props) {
                 ))}
                 {profiles.length === 0 && !naming && <span className="text-ink-3">none</span>}
                 {naming
-                  ? <Input autoFocus className="font-mono h-7 w-32" value={profileName} placeholder="name…" onChange={(e) => setProfileName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveCurrentProfile(); if (e.key === "Escape") setNaming(false); }} onBlur={saveCurrentProfile} />
+                  ? <Input autoFocus className="font-mono h-8 w-32 min-w-0" value={profileName} placeholder="name…" onChange={(e) => setProfileName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveCurrentProfile(); if (e.key === "Escape") setNaming(false); }} onBlur={saveCurrentProfile} />
                   : <Button variant="ghost" size="sm" onClick={() => setNaming(true)}>Save current</Button>}
               </div>
 
               <div>
                 <Label>Server address</Label>
-                <Input className="font-mono" value={server} onChange={(e) => setServer(e.target.value)} placeholder="dc01.contoso.com" />
+                <Input className="font-mono h-8" value={server} onChange={(e) => setServer(e.target.value)} placeholder="dc01.contoso.com" />
                 <p className="text-[11px] mt-1.5 text-ink-3">Your domain controller or directory host. Add <span className="mono">ldaps://</span> for a secure connection.</p>
               </div>
 
               <div>
                 <Label>Sign in with</Label>
-                <ToggleGroup type="single" value={auth} onValueChange={(v) => v && setAuth(v)} className="w-full">
+                <ToggleGroup type="single" size="sm" value={auth} onValueChange={(v) => v && setAuth(v)} className="w-full">
                   {AUTH.map(([v, l]) => <ToggleGroupItem key={v} value={v} className="flex-1">{l}</ToggleGroupItem>)}
                 </ToggleGroup>
               </div>
 
               {auth === "simple" && (<>
-                <div><Label>Username</Label><Input className="font-mono" value={bindDN} onChange={(e) => setBindDN(e.target.value)} placeholder="you@contoso.com" /></div>
-                <div><Label>Password</Label><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" /></div>
+                <div><Label>Username</Label><Input className="font-mono h-8" value={bindDN} onChange={(e) => setBindDN(e.target.value)} placeholder="you@contoso.com" /></div>
+                <div><Label>Password</Label><Input className="h-8" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" /></div>
               </>)}
               {auth === "sspi" && (
                 <p className="text-[12px] leading-relaxed px-4 py-3 rounded-lg bg-sunken text-ink-2">

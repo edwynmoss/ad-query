@@ -29,7 +29,7 @@ function InspectorBody({ entry, onClose }: { entry: ldap.Entry; onClose: () => v
           <div className="text-[11px] font-semibold tracking-wide text-ink-3">DISTINGUISHED NAME</div>
           <div className="text-[12px] break-all selectable font-mono">{entry.dn}</div>
         </div>
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={onClose} aria-label="close"><X size={15} /></Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onClose} aria-label="close"><X size={15} /></Button>
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="px-3 border-b border-line">

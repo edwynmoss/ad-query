@@ -46,7 +46,7 @@ export function ExportDialog({ allEntries, selectedEntries, columns, onClose }: 
         <div className="overflow-auto px-4 py-3.5 space-y-4">
           <div>
             <label className="eyebrow block mb-1">Rows</label>
-            <ToggleGroup type="single" variant="outline" value={scope} onValueChange={(v) => v && setScope(v as typeof scope)} className="w-full">
+            <ToggleGroup type="single" size="sm" variant="outline" value={scope} onValueChange={(v) => v && setScope(v as typeof scope)} className="w-full">
               <ToggleGroupItem value="all" className="flex-1">All ({allEntries.length.toLocaleString()})</ToggleGroupItem>
               <ToggleGroupItem value="selected" disabled={!hasSelection} className="flex-1">Selected ({selectedEntries.length})</ToggleGroupItem>
             </ToggleGroup>
@@ -75,7 +75,7 @@ export function ExportDialog({ allEntries, selectedEntries, columns, onClose }: 
             <div>
               <label className="eyebrow block mb-1">Delimiter</label>
               <Select value={opts.delimiter} onValueChange={(val) => setOpts({ ...opts, delimiter: val })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value=",">Comma</SelectItem><SelectItem value=";">Semicolon</SelectItem><SelectItem value={"\t"}>Tab</SelectItem>
                 </SelectContent>
@@ -84,7 +84,7 @@ export function ExportDialog({ allEntries, selectedEntries, columns, onClose }: 
             <div>
               <label className="eyebrow block mb-1">Date format</label>
               <Select value={opts.dateFormat} onValueChange={(val) => setOpts({ ...opts, dateFormat: val as DateFormat })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="iso">ISO-8601 (UTC)</SelectItem><SelectItem value="local">Local</SelectItem><SelectItem value="raw">Raw FILETIME</SelectItem>
                 </SelectContent>
@@ -92,7 +92,7 @@ export function ExportDialog({ allEntries, selectedEntries, columns, onClose }: 
             </div>
             <div className="col-span-2">
               <label className="eyebrow block mb-1">Multi-value join</label>
-              <Input className="font-mono" value={opts.multiValueJoin} onChange={(e) => setOpts({ ...opts, multiValueJoin: e.target.value })} />
+              <Input className="h-8 font-mono" value={opts.multiValueJoin} onChange={(e) => setOpts({ ...opts, multiValueJoin: e.target.value })} />
             </div>
           </div>
 
