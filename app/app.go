@@ -138,33 +138,60 @@ func (a *App) M365SignOut() {
 	a.m365dc = nil
 }
 
-// M365LicenseReport returns the tenant's per-SKU seat counts.
-func (a *App) M365LicenseReport() ([]m365.LicenseSku, error) {
+// accessToken returns a currently-valid Graph access token, silently refreshing
+// via the stored refresh token when the current one is expired/near-expiry.
+func (a *App) accessToken() (string, error) {
 	a.mu.Lock()
 	tok := a.m365tok
+	cfg := m365.Config{TenantID: a.m365cfg.TenantID, ClientID: a.m365cfg.ClientID}
 	doer := a.http
 	a.mu.Unlock()
-	if !tok.Valid() {
-		return nil, fmt.Errorf("not signed in to Microsoft 365")
+
+	if tok.AccessToken == "" {
+		return "", fmt.Errorf("not signed in to Microsoft 365")
 	}
-	return m365.LicenseReport(doer, tok.AccessToken)
+	if tok.Expiring() && tok.RefreshToken != "" {
+		fresh, err := m365.Refresh(doer, cfg, tok.RefreshToken, m365.DefaultScopes)
+		if err == nil && fresh != nil {
+			if fresh.RefreshToken == "" {
+				fresh.RefreshToken = tok.RefreshToken // reuse if the response didn't rotate it
+			}
+			a.mu.Lock()
+			a.m365tok = *fresh
+			a.m365account = m365.AccountName(fresh.AccessToken)
+			a.mu.Unlock()
+			return fresh.AccessToken, nil
+		}
+		// refresh failed — fall through to whatever we have (may still be valid)
+	}
+	if !tok.Valid() {
+		return "", fmt.Errorf("Microsoft 365 session expired — sign in again")
+	}
+	return tok.AccessToken, nil
+}
+
+// M365LicenseReport returns the tenant's per-SKU seat counts.
+func (a *App) M365LicenseReport() ([]m365.LicenseSku, error) {
+	token, err := a.accessToken()
+	if err != nil {
+		return nil, err
+	}
+	return m365.LicenseReport(a.http, token)
 }
 
 // M365Check resolves each identity (UPN/email) against Microsoft Graph.
 func (a *App) M365Check(identities []string) ([]m365.User, error) {
-	a.mu.Lock()
-	tok := a.m365tok
-	doer := a.http
-	a.mu.Unlock()
-	if !tok.Valid() {
-		return nil, fmt.Errorf("not signed in to Microsoft 365")
+	token, err := a.accessToken()
+	if err != nil {
+		return nil, err
 	}
+	doer := a.http
 	out := make([]m365.User, 0, len(identities))
 	for _, id := range identities {
 		if id == "" {
 			continue
 		}
-		out = append(out, m365.LookupUser(doer, tok.AccessToken, id))
+		out = append(out, m365.LookupUser(doer, token, id))
 	}
 	return out, nil
 }

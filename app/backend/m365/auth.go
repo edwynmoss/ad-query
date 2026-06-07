@@ -78,15 +78,46 @@ type DeviceCode struct {
 	Message         string `json:"message"`
 }
 
-// Token is an acquired access token.
+// Token is an acquired access token (+ refresh token for silent renewal).
 type Token struct {
-	AccessToken string    `json:"access_token"`
-	ExpiresIn   int       `json:"expires_in"`
-	Acquired    time.Time `json:"-"`
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"-"`
+	ExpiresIn    int       `json:"expires_in"`
+	Acquired     time.Time `json:"-"`
 }
 
 func (t Token) Valid() bool {
 	return t.AccessToken != "" && time.Now().Before(t.Acquired.Add(time.Duration(t.ExpiresIn)*time.Second))
+}
+
+// Expiring reports whether the token is gone or within 60s of expiry — the cue
+// to refresh it silently before the next Graph call.
+func (t Token) Expiring() bool {
+	return t.AccessToken == "" || time.Now().After(t.Acquired.Add(time.Duration(t.ExpiresIn-60)*time.Second))
+}
+
+// Refresh exchanges a refresh token for a fresh access token (silent renewal,
+// no user interaction). offline_access on the original grant is what yields the
+// refresh token.
+func Refresh(doer Doer, cfg Config, refreshToken string, scopes []string) (*Token, error) {
+	form := url.Values{
+		"grant_type":    {"refresh_token"},
+		"client_id":     {cfg.clientID()},
+		"refresh_token": {refreshToken},
+		"scope":         {strings.Join(scopes, " ")},
+	}
+	body, status, err := postForm(doer, cfg.authority()+"/oauth2/v2.0/token", form)
+	if err != nil {
+		return nil, err
+	}
+	tok, _, err := parseTokenResponse(status, body)
+	if err != nil {
+		return nil, err
+	}
+	if tok == nil {
+		return nil, fmt.Errorf("refresh returned no token (status %d)", status)
+	}
+	return tok, nil
 }
 
 // AccountName extracts a best-effort sign-in identity (UPN / email / name) from
@@ -163,16 +194,17 @@ func parseDeviceCode(body []byte) (*DeviceCode, error) {
 
 func parseTokenResponse(status int, body []byte) (*Token, bool, error) {
 	var r struct {
-		AccessToken string `json:"access_token"`
-		ExpiresIn   int    `json:"expires_in"`
-		Error       string `json:"error"`
-		ErrorDesc   string `json:"error_description"`
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+		ExpiresIn    int    `json:"expires_in"`
+		Error        string `json:"error"`
+		ErrorDesc    string `json:"error_description"`
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
 		return nil, false, fmt.Errorf("parse token response: %w", err)
 	}
 	if r.AccessToken != "" {
-		return &Token{AccessToken: r.AccessToken, ExpiresIn: r.ExpiresIn, Acquired: time.Now()}, false, nil
+		return &Token{AccessToken: r.AccessToken, RefreshToken: r.RefreshToken, ExpiresIn: r.ExpiresIn, Acquired: time.Now()}, false, nil
 	}
 	switch r.Error {
 	case "authorization_pending", "slow_down":

@@ -52,6 +52,34 @@ func TestNewPKCE(t *testing.T) {
 	}
 }
 
+func TestParseTokenResponseCapturesRefresh(t *testing.T) {
+	tok, pending, err := parseTokenResponse(http.StatusOK, []byte(`{"access_token":"at","refresh_token":"rt","expires_in":3600}`))
+	if err != nil || pending {
+		t.Fatalf("unexpected: pending=%v err=%v", pending, err)
+	}
+	if tok.AccessToken != "at" || tok.RefreshToken != "rt" {
+		t.Fatalf("expected at/rt, got %q/%q", tok.AccessToken, tok.RefreshToken)
+	}
+}
+
+func TestRefresh(t *testing.T) {
+	doer := stubDoer{fn: func(r *http.Request) (*http.Response, error) {
+		b, _ := io.ReadAll(r.Body)
+		form := string(b)
+		if !strings.Contains(form, "grant_type=refresh_token") || !strings.Contains(form, "refresh_token=OLD") {
+			t.Errorf("refresh request missing fields: %s", form)
+		}
+		return resp(http.StatusOK, `{"access_token":"new-at","refresh_token":"new-rt","expires_in":3600}`), nil
+	}}
+	tok, err := Refresh(doer, Config{}, "OLD", DefaultScopes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tok.AccessToken != "new-at" || tok.RefreshToken != "new-rt" {
+		t.Fatalf("expected renewed token, got %+v", tok)
+	}
+}
+
 func TestExchangeCode(t *testing.T) {
 	doer := stubDoer{fn: func(r *http.Request) (*http.Response, error) {
 		b, _ := io.ReadAll(r.Body)
