@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from "react";
-import { Play, X, Plus, Loader2, SlidersHorizontal, Columns3, Bookmark, ChevronDown, Upload, Cloud, FileBarChart, Search } from "lucide-react";
+import { Play, X, Plus, Loader2, SlidersHorizontal, Columns3, Bookmark, ChevronDown, Upload, FileBarChart, Search, Wrench } from "lucide-react";
 import { OBJECT_TYPES, filterFor, defaultAttributesFor, COMMON_ATTRIBUTES } from "../lib/objectTypes";
 import { FilterBuilder } from "./FilterBuilder";
 import { SavedQueriesBar } from "./SavedQueriesBar";
@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 export interface QueryState {
   baseDN: string;
@@ -48,13 +49,11 @@ interface Props {
   resultIdentities?: string[];
   schemaAttributes?: string[];
   locations?: DirLocation[];
-  signedIn365?: boolean;
-  onOpen365?: () => void;
 }
 
 type Panel = null | "filters" | "columns" | "saved";
 
-export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resultIdentities, schemaAttributes, locations, signedIn365, onOpen365 }: Props) {
+export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resultIdentities, schemaAttributes, locations }: Props) {
   const [panel, setPanel] = useState<Panel>(null);
   const [showImport, setShowImport] = useState(false);
   const [showReports, setShowReports] = useState(false);
@@ -97,20 +96,16 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
   return (
     <div className="relative px-4 py-2.5 bg-surface border-b border-line">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className={(panel === "saved" ? "bg-sunken" : "")} title="Saved queries" onClick={() => toggle("saved")}>
-          <Bookmark size={15} />
-        </Button>
-        <Button variant="ghost" size="icon" title="Bulk lookup from file (CSV / Excel)" onClick={() => { setPanel(null); setShowImport(true); }}>
-          <Upload size={15} />
-        </Button>
-        <Button variant="ghost" size="icon" className={signedIn365 ? "text-success" : ""}
-          title={signedIn365 ? "Microsoft 365 — signed in (manage)" : "Connect Microsoft 365"}
-          onClick={() => { setPanel(null); onOpen365?.(); }}>
-          <Cloud size={15} />
-        </Button>
-        <Button variant="ghost" size="icon" title="Reports" onClick={() => { setPanel(null); setShowReports(true); }}>
-          <FileBarChart size={15} />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className={panel === "saved" ? "bg-sunken" : ""}><Wrench size={14} /> Tools <ChevronDown size={12} /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onSelect={() => toggle("saved")}><Bookmark size={14} /> Saved queries</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => { setPanel(null); setShowImport(true); }}><Upload size={14} /> Bulk lookup (CSV / Excel)</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => { setPanel(null); setShowReports(true); }}><FileBarChart size={14} /> Reports</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <ToggleGroup type="single" variant="outline" value={activeType} onValueChange={(v) => v && applyType(v)}>
           {OBJECT_TYPES.map((t) => (
@@ -190,10 +185,10 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
             <code className="truncate selectable font-mono text-ink-2" title={effectiveFilter(req)}>{effectiveFilter(req) || "(objectClass=*)"}</code>
           </div>
 
-          {/* Advanced — for the rare power user who really wants a raw DN + scope. */}
-          <details className="mt-3 pt-2.5 border-t border-line">
-            <summary className="eyebrow cursor-pointer select-none text-ink-3">Advanced · base DN &amp; scope</summary>
-            <div className="grid grid-cols-3 gap-2 mt-2">
+          {/* Location & scope — the raw base DN + search depth (one level deep). */}
+          <div className="mt-3 pt-2.5 border-t border-line">
+            <div className="eyebrow text-ink-3 mb-2">Location &amp; scope</div>
+            <div className="grid grid-cols-3 gap-2">
               <Input className="font-mono col-span-2 h-8" value={req.baseDN} onChange={(e) => setReq({ ...req, baseDN: e.target.value })} placeholder="base dn" />
               <Select value={String(req.scope)} onValueChange={(val) => setReq({ ...req, scope: Number(val) })}>
                 <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
@@ -204,7 +199,7 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
                 </SelectContent>
               </Select>
             </div>
-          </details>
+          </div>
         </Pop>
       )}
 

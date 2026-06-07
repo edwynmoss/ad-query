@@ -75,15 +75,15 @@ async function main() {
     await ctx.addInitScript(`${MOCK}\ntry { localStorage.setItem('adquery.theme','${theme}'); } catch (e) {}\n${extraInit ?? ""}`);
     const page = await ctx.newPage();
     await page.goto(url, { waitUntil: "networkidle" });
-    // Kill enter/exit animations so dialogs are captured fully settled (opaque),
-    // not mid-fade. Also removes flaky overlap during open/close transitions.
-    await page.addStyleTag({ content: "*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important;}" });
     await run(page);
     await ctx.close();
   }
 
+  // Freeze animations to their end state for the capture only (so dialogs are
+  // opaque/settled) — without globally disabling them, which breaks Radix's
+  // open-state detection for menus/popovers at interaction time.
   const shot = async (page, name) => {
-    await page.screenshot({ path: path.join(OUT, name + ".png") });
+    await page.screenshot({ path: path.join(OUT, name + ".png"), animations: "disabled" });
     shots.push(name + ".png");
     console.log("  ✓", name);
   };
@@ -115,7 +115,8 @@ async function main() {
     await shot(page, "04-inspector");
     await page.getByRole("button", { name: "close" }).click();
 
-    await page.locator('button[title*="Bulk lookup"]').click();
+    await page.getByRole("button", { name: /Tools/ }).click();
+    await page.getByRole("menuitem", { name: /Bulk lookup/ }).click();
     await page.locator('input[type="file"]').setInputFiles(csvPath);
     await page.getByRole("button", { name: /Look up/ }).click();
     await page.getByText(/found/).first().waitFor();
@@ -129,7 +130,8 @@ async function main() {
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
 
     // Reports panel + license + stale.
-    await page.locator('button[title="Reports"]').click();
+    await page.getByRole("button", { name: /Tools/ }).click();
+    await page.getByRole("menuitem", { name: /Reports/ }).click();
     await page.getByText("Built-in").waitFor();
     await shot(page, "08-reports");
 
@@ -144,7 +146,8 @@ async function main() {
   // --- Stale report (own session; avoids nested-dialog churn) --------------
   await session("light", "", async (page) => {
     await page.getByRole("button", { name: /Connect to CORP/ }).click();
-    await page.locator('button[title="Reports"]').click();
+    await page.getByRole("button", { name: /Tools/ }).click();
+    await page.getByRole("menuitem", { name: /Reports/ }).click();
     await page.getByText("Built-in").waitFor();
     await page.getByRole("button", { name: "Open", exact: true }).nth(1).click(); // Stale accounts
     await page.getByText("Not seen in the last").waitFor();

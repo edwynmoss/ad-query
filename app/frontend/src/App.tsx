@@ -171,7 +171,7 @@ function App() {
       </header>
 
       <div className="flex-1 flex flex-col min-h-0">
-        <QueryBar req={req} setReq={setReq} isAD={server.isActiveDirectory} running={running} onRun={() => runQuery()} onOpenReport={openReport} resultIdentities={resultIdentities} schemaAttributes={schema} locations={locations} signedIn365={m365.signedIn} onOpen365={() => setShow365(true)} />
+        <QueryBar req={req} setReq={setReq} isAD={server.isActiveDirectory} running={running} onRun={() => runQuery()} onOpenReport={openReport} resultIdentities={resultIdentities} schemaAttributes={schema} locations={locations} />
 
         {error && <ErrorBanner error={error} className="mx-4 mt-3" />}
 
