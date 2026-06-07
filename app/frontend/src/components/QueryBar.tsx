@@ -203,91 +203,89 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
           </PopoverContent>
         </Popover>
 
-        <Button variant="outline" className={(panel === "filters" ? "bg-sunken" : "")} onClick={() => toggle("filters")}>
-          <SlidersHorizontal size={14} /> Filters{activeConditions > 0 ? <span className="ml-0.5 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-semibold bg-brand text-white">{activeConditions}</span> : null}
-        </Button>
+        <Popover open={panel === "filters"} onOpenChange={(o) => setPanel(o ? "filters" : null)}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={(panel === "filters" ? "bg-sunken" : "")}>
+              <SlidersHorizontal size={14} /> Filters{activeConditions > 0 ? <span className="ml-0.5 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-semibold bg-brand text-white">{activeConditions}</span> : null}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-[540px]">
+            <Tabs value={filterMode} onValueChange={(v) => setFilterMode(v as any)}>
+              <TabsList>
+                <TabsTrigger value="visual">Filter builder</TabsTrigger>
+                <TabsTrigger value="raw">Raw LDAP</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <div className="mt-3">
+              {filterMode === "raw" ? (
+                <>
+                  <Input className="font-mono" value={req.filter} onChange={(e) => setReq({ ...req, filter: e.target.value })} placeholder="(objectClass=*)" />
+                  <div className="flex items-center gap-2 text-[11.5px] mt-3 pt-2.5 border-t border-line">
+                    <span className="eyebrow">Effective</span>
+                    <code className="truncate selectable font-mono text-ink-2" title={effectiveFilter(req)}>{effectiveFilter(req) || "(objectClass=*)"}</code>
+                  </div>
+                </>
+              ) : (
+                <FilterBuilder conditions={req.conditions} matchOp={req.matchOp} attributes={attrSource} onChange={(conditions, matchOp) => setReq({ ...req, conditions, matchOp })} />
+              )}
+            </div>
+            <p className="text-[11px] mt-3 pt-2.5 border-t border-line text-ink-3">Conditions narrow <em>what</em> matches. Choose <em>where</em> to search with the location picker (<MapPin size={11} className="inline -mt-0.5" />) in the bar.</p>
+          </PopoverContent>
+        </Popover>
 
-        <Button variant="outline" className={(panel === "columns" ? "bg-sunken" : "")} onClick={() => toggle("columns")}>
-          <Columns3 size={14} /> Columns <span className="text-ink-3">{req.attributes.length}</span> <ChevronDown size={12} />
-        </Button>
+        <Popover open={panel === "columns"} onOpenChange={(o) => setPanel(o ? "columns" : null)}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={(panel === "columns" ? "bg-sunken" : "")}>
+              <Columns3 size={14} /> Columns <span className="text-ink-3">{req.attributes.length}</span> <ChevronDown size={12} />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-[340px]">
+            <div className="eyebrow mb-1.5">Showing {req.attributes.length} columns</div>
+            <div className="flex flex-wrap gap-1.5 mb-2.5 max-h-24 overflow-auto">
+              {req.attributes.length === 0 && <span className="text-[12px] text-ink-3">None — pick some below.</span>}
+              {req.attributes.map((a) => (
+                <Badge variant="secondary" key={a} className="font-normal" title={a}>{labelFor(a)}<button className="opacity-50 hover:opacity-100" onClick={() => removeAttr(a)} aria-label={`remove ${labelFor(a)}`}><X size={11} /></button></Badge>
+              ))}
+            </div>
+            <div className="relative mb-2">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
+              <Input className="pl-8 h-8" placeholder="Search columns (e.g. phone, last sign-in)…" value={newAttr} onChange={(e) => setNewAttr(e.target.value)} />
+            </div>
+            <div className="max-h-52 overflow-auto -mx-1 px-1">
+              <div className="eyebrow text-ink-3 px-1 mb-1">{newAttr.trim() ? "Matches" : "Common columns"}</div>
+              {(newAttr.trim() ? colMatches : commonAvailable).map((a) => (
+                <label key={a} className="flex items-center gap-2.5 py-1 px-1.5 rounded-md hover:bg-sunken cursor-pointer">
+                  <Checkbox checked={req.attributes.includes(a)} onCheckedChange={() => toggleAttr(a)} />
+                  <span className="flex-1 text-[12.5px]">{labelFor(a)}</span>
+                  <span className="text-[10.5px] text-ink-3 font-mono">{a}</span>
+                </label>
+              ))}
+              {newAttr.trim() && colMatches.length === 0 && (
+                <div className="text-[12px] text-ink-3 px-1 py-2">
+                  No columns match “{newAttr.trim()}”.{" "}
+                  <button className="text-brand hover:underline" onClick={() => addAttr(newAttr)}>Add “{newAttr.trim()}” anyway</button>
+                </div>
+              )}
+            </div>
+            <p className="text-[11px] mt-2 pt-2 border-t border-line text-ink-3">
+              {newAttr.trim()
+                ? `${colMatches.length} match${colMatches.length === 1 ? "" : "es"}`
+                : schemaAttributes && schemaAttributes.length > 0
+                  ? `${commonAvailable.length} common · ${schemaAttributes.length} total — type to search all`
+                  : "Type to search all attributes"}
+            </p>
+          </PopoverContent>
+        </Popover>
 
         <Button className="px-5" onClick={run} disabled={running || !req.baseDN}>
           {running ? <Loader2 size={14} className="animate-spin" /> : <Play size={13} />}{running ? "Running" : "Run"}
         </Button>
       </div>
 
-      {panel && <div className="fixed inset-0 z-20" onClick={() => setPanel(null)} />}
+      {panel === "saved" && <div className="fixed inset-0 z-20" onClick={() => setPanel(null)} />}
 
       {panel === "saved" && (
         <Pop className="left-4 w-[300px]"><SavedQueriesBar current={req} onLoad={(q) => { setReq(q); setPanel(null); }} /></Pop>
-      )}
-
-      {panel === "filters" && (
-        <Pop className="right-4 w-[540px]">
-          <Tabs value={filterMode} onValueChange={(v) => setFilterMode(v as any)}>
-            <TabsList>
-              <TabsTrigger value="visual">Filter builder</TabsTrigger>
-              <TabsTrigger value="raw">Raw LDAP</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          {filterMode === "raw" ? (
-            <>
-              <Input className="font-mono" value={req.filter} onChange={(e) => setReq({ ...req, filter: e.target.value })} placeholder="(objectClass=*)" />
-              {/* Raw LDAP that will actually run — only shown on this advanced tab. */}
-              <div className="flex items-center gap-2 text-[11.5px] mt-3 pt-2.5 border-t border-line">
-                <span className="eyebrow">Effective</span>
-                <code className="truncate selectable font-mono text-ink-2" title={effectiveFilter(req)}>{effectiveFilter(req) || "(objectClass=*)"}</code>
-              </div>
-            </>
-          ) : (
-            <FilterBuilder conditions={req.conditions} matchOp={req.matchOp} attributes={attrSource} onChange={(conditions, matchOp) => setReq({ ...req, conditions, matchOp })} />
-          )}
-          <p className="text-[11px] mt-3 pt-2.5 border-t border-line text-ink-3">Conditions narrow <em>what</em> matches. Choose <em>where</em> to search with the location picker (<MapPin size={11} className="inline -mt-0.5" />) in the bar.</p>
-        </Pop>
-      )}
-
-      {panel === "columns" && (
-        <Pop className="right-4 w-[340px]">
-          <div className="eyebrow mb-1.5">Showing {req.attributes.length} columns</div>
-          {/* What's currently shown — friendly names, click ✕ to remove. */}
-          <div className="flex flex-wrap gap-1.5 mb-2.5 max-h-24 overflow-auto">
-            {req.attributes.length === 0 && <span className="text-[12px] text-ink-3">None — pick some below.</span>}
-            {req.attributes.map((a) => (
-              <Badge variant="secondary" key={a} className="font-normal" title={a}>{labelFor(a)}<button className="opacity-50 hover:opacity-100" onClick={() => removeAttr(a)} aria-label={`remove ${labelFor(a)}`}><X size={11} /></button></Badge>
-            ))}
-          </div>
-
-          {/* One search across everything, by friendly name or raw attribute. */}
-          <div className="relative mb-2">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
-            <Input className="pl-8 h-8" placeholder="Search columns (e.g. phone, last sign-in)…" value={newAttr} onChange={(e) => setNewAttr(e.target.value)} />
-          </div>
-
-          <div className="max-h-52 overflow-auto -mx-1 px-1">
-            <div className="eyebrow text-ink-3 px-1 mb-1">{newAttr.trim() ? "Matches" : "Common columns"}</div>
-            {(newAttr.trim() ? colMatches : commonAvailable).map((a) => (
-              <label key={a} className="flex items-center gap-2.5 py-1 px-1.5 rounded-md hover:bg-sunken cursor-pointer">
-                <Checkbox checked={req.attributes.includes(a)} onCheckedChange={() => toggleAttr(a)} />
-                <span className="flex-1 text-[12.5px]">{labelFor(a)}</span>
-                <span className="text-[10.5px] text-ink-3 font-mono">{a}</span>
-              </label>
-            ))}
-            {newAttr.trim() && colMatches.length === 0 && (
-              <div className="text-[12px] text-ink-3 px-1 py-2">
-                No columns match “{newAttr.trim()}”.{" "}
-                <button className="text-brand hover:underline" onClick={() => addAttr(newAttr)}>Add “{newAttr.trim()}” anyway</button>
-              </div>
-            )}
-          </div>
-
-          <p className="text-[11px] mt-2 pt-2 border-t border-line text-ink-3">
-            {newAttr.trim()
-              ? `${colMatches.length} match${colMatches.length === 1 ? "" : "es"}`
-              : schemaAttributes && schemaAttributes.length > 0
-                ? `${commonAvailable.length} common · ${schemaAttributes.length} total — type to search all`
-                : "Type to search all attributes"}
-          </p>
-        </Pop>
       )}
 
       {showImport && <Suspense fallback={null}><BulkImportDialog req={req} onClose={() => setShowImport(false)} /></Suspense>}

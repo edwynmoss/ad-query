@@ -106,7 +106,7 @@ async function main() {
     await page.getByRole("button", { name: /Filters/ }).click();
     await page.getByRole("button", { name: "Add condition" }).click();
     await shot(page, "03-filters");
-    await page.locator("div.fixed.inset-0.z-20").click();
+    await page.keyboard.press("Escape"); // close the Filters popover
 
     await page.getByText("user2@adquery.test").click();
     await page.getByRole("tab", { name: "Security" }).click();
