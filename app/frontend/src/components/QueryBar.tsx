@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from "react";
-import { Play, X, Loader2, SlidersHorizontal, Columns3, Bookmark, ChevronDown, Upload, FileBarChart, Search, Wrench } from "lucide-react";
+import { Play, X, Loader2, SlidersHorizontal, Columns3, Bookmark, ChevronDown, Upload, FileBarChart, Search, Wrench, MapPin, Check } from "lucide-react";
 import { OBJECT_TYPES, filterFor, defaultAttributesFor, COMMON_ATTRIBUTES } from "../lib/objectTypes";
 import { labelFor, COMMON_COLUMNS } from "../lib/attrLabels";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,10 +14,10 @@ import { useDebouncedValue } from "../lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 
 export interface QueryState {
   baseDN: string;
@@ -122,6 +122,8 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
 
   function toggle(p: Panel) { setPanel((cur) => (cur === p ? null : p)); }
 
+  const locationLabel = locs.find((l) => l.dn === req.baseDN)?.label ?? (req.baseDN ? "Custom location" : "Location");
+
   return (
     <div className="relative px-4 py-2.5 bg-surface border-b border-line">
       <div className="flex items-center gap-2">
@@ -165,17 +167,41 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
           ) : null}
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="eyebrow shrink-0">in</span>
-          <Select value={req.baseDN} onValueChange={(val) => setReq({ ...req, baseDN: val, scope: 2 })}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="Location" /></SelectTrigger>
-            <SelectContent>
-            {locs.map((l) => (
-              <SelectItem key={l.dn} value={l.dn}>{" ".repeat(l.depth) + (l.depth > 0 ? "↳ " : "") + l.label}</SelectItem>
-            ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Where to search — one picker owns location + depth + custom path. */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="shrink-0 max-w-[220px]" title="Where to search">
+              <MapPin size={14} /> <span className="truncate">{locationLabel}</span> <ChevronDown size={12} />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-[320px] p-0">
+            <div className="eyebrow px-3 py-2 border-b border-line">Search in</div>
+            <div className="max-h-56 overflow-auto py-1">
+              {locs.map((l) => (
+                <button key={l.dn} onClick={() => setReq({ ...req, baseDN: l.dn, scope: 2 })}
+                  className={"flex items-center gap-1.5 w-full text-left py-1.5 pr-3 text-[12.5px] hover:bg-sunken " + (req.baseDN === l.dn ? "text-brand" : "")}
+                  style={{ paddingLeft: 12 + l.depth * 14 }}>
+                  {l.depth > 0 && <span className="text-ink-3">↳</span>}
+                  <span className="truncate">{l.label}</span>
+                  {req.baseDN === l.dn && <Check size={13} className="ml-auto shrink-0" />}
+                </button>
+              ))}
+            </div>
+            <div className="border-t border-line px-3 py-2.5 space-y-2.5">
+              <div>
+                <div className="eyebrow text-ink-3 mb-1.5">Depth</div>
+                <ToggleGroup type="single" variant="outline" value={String(req.scope)} onValueChange={(v) => v && setReq({ ...req, scope: Number(v) })} className="w-full">
+                  <ToggleGroupItem value="2" className="flex-1">Everything below</ToggleGroupItem>
+                  <ToggleGroupItem value="1" className="flex-1">One level down</ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+              <div>
+                <div className="eyebrow text-ink-3 mb-1.5">Exact path (DN)</div>
+                <Input className="font-mono h-8" value={req.baseDN} onChange={(e) => setReq({ ...req, baseDN: e.target.value })} placeholder="dc=example,dc=com" />
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
 
         <Button variant="outline" className={(panel === "filters" ? "bg-sunken" : "")} onClick={() => toggle("filters")}>
           <SlidersHorizontal size={14} /> Filters{activeConditions > 0 ? <span className="ml-0.5 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-semibold bg-brand text-white">{activeConditions}</span> : null}
@@ -216,22 +242,7 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
           ) : (
             <FilterBuilder conditions={req.conditions} matchOp={req.matchOp} attributes={attrSource} onChange={(conditions, matchOp) => setReq({ ...req, conditions, matchOp })} />
           )}
-
-          {/* Where to search — plain-language depth; the DN mirrors the bar's
-              location picker for power users who want to paste an exact path. */}
-          <div className="mt-3 pt-2.5 border-t border-line">
-            <div className="eyebrow text-ink-3 mb-2">Where to search</div>
-            <Select value={String(req.scope)} onValueChange={(val) => setReq({ ...req, scope: Number(val) })}>
-              <SelectTrigger className="h-8 w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="2">Everything under this location</SelectItem>
-                <SelectItem value="1">Direct contents only (one level down)</SelectItem>
-                <SelectItem value="0">Just this location itself</SelectItem>
-              </SelectContent>
-            </Select>
-            <label className="block text-[11px] text-ink-3 mt-2 mb-1">Exact location (path / DN)</label>
-            <Input className="font-mono h-8" value={req.baseDN} onChange={(e) => setReq({ ...req, baseDN: e.target.value })} placeholder="dc=example,dc=com" />
-          </div>
+          <p className="text-[11px] mt-3 pt-2.5 border-t border-line text-ink-3">Conditions narrow <em>what</em> matches. Choose <em>where</em> to search with the location picker (<MapPin size={11} className="inline -mt-0.5" />) in the bar.</p>
         </Pop>
       )}
 
