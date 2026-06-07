@@ -63,5 +63,7 @@ export const COMMON_COLUMNS: string[] = [
   "givenName", "sn", "title", "department", "departmentNumber", "company",
   "manager", "telephoneNumber", "mobile", "physicalDeliveryOfficeName",
   "userAccountControl", "lastLogonTimestamp", "whenCreated", "memberOf",
-  "description", "employeeNumber", "operatingSystem",
+  // employeeID is the AD-standard field; employeeNumber is the inetOrgPerson/
+  // OpenLDAP one. The picker shows whichever the connected schema actually has.
+  "description", "employeeID", "employeeNumber", "operatingSystem",
 ];
