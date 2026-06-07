@@ -55,7 +55,7 @@ export function M365Dialog({ onClose, onChange }: Props) {
     <div className="fixed inset-0 z-50 grid place-items-center" style={{ background: "rgba(0,0,0,0.40)" }} onClick={onClose}>
       <div className="card w-[460px]" style={{ boxShadow: "0 16px 50px rgba(20,18,12,0.28)" }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: "1px solid var(--color-line)" }}>
-          <div className="flex items-center gap-2"><Cloud size={16} style={{ color: "var(--color-accent)" }} /><span className="display text-[16px]" style={{ fontWeight: 600 }}>Microsoft 365</span></div>
+          <div className="flex items-center gap-2"><Cloud size={16} style={{ color: "var(--color-brand)" }} /><span className="display text-[16px]" style={{ fontWeight: 600 }}>Microsoft 365</span></div>
           <button className="btn btn-quiet btn-icon" onClick={onClose}><X size={15} /></button>
         </div>
 

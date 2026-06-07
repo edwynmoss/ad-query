@@ -1,6 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { Play, X, Plus, Loader2, SlidersHorizontal, Columns3, Bookmark, ChevronDown, Upload, Cloud, FileBarChart } from "lucide-react";
-import { OBJECT_TYPES, filterFor, COMMON_ATTRIBUTES } from "../lib/objectTypes";
+import { OBJECT_TYPES, filterFor, defaultAttributesFor, COMMON_ATTRIBUTES } from "../lib/objectTypes";
 import { FilterBuilder } from "./FilterBuilder";
 import { SavedQueriesBar } from "./SavedQueriesBar";
 
@@ -69,7 +69,7 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
 
   function applyType(key: string) {
     const t = OBJECT_TYPES.find((x) => x.key === key);
-    if (t) setReq({ ...req, filter: filterFor(t, isAD), attributes: [...t.defaultAttributes] });
+    if (t) setReq({ ...req, filter: filterFor(t, isAD), attributes: defaultAttributesFor(t, isAD) });
   }
   function addAttr(name: string) {
     const a = name.trim();
@@ -88,7 +88,7 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
   function toggle(p: Panel) { setPanel((cur) => (cur === p ? null : p)); }
 
   return (
-    <div className="relative px-4 py-2.5" style={{ background: "var(--color-card)", borderBottom: "1px solid var(--color-line)" }}>
+    <div className="relative px-4 py-2.5" style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-line)" }}>
       <div className="flex items-center gap-2">
         <button className={"btn btn-quiet btn-icon " + (panel === "saved" ? "bg-[var(--color-sunken)]" : "")} title="Saved queries" onClick={() => toggle("saved")}>
           <Bookmark size={15} />
@@ -119,7 +119,7 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
         </div>
 
         <button className={"btn " + (panel === "filters" ? "bg-[var(--color-sunken)]" : "")} onClick={() => toggle("filters")}>
-          <SlidersHorizontal size={14} /> Filters{activeConditions > 0 ? <span className="ml-0.5 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-semibold" style={{ background: "var(--color-accent)", color: "#fff" }}>{activeConditions}</span> : null}
+          <SlidersHorizontal size={14} /> Filters{activeConditions > 0 ? <span className="ml-0.5 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-semibold" style={{ background: "var(--color-brand)", color: "#fff" }}>{activeConditions}</span> : null}
         </button>
 
         <button className={"btn " + (panel === "columns" ? "bg-[var(--color-sunken)]" : "")} onClick={() => toggle("columns")}>

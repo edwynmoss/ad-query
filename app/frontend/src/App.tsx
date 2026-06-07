@@ -85,10 +85,10 @@ function App() {
   return (
     <div className="h-full flex flex-col">
       {/* Masthead */}
-      <header className="flex items-center justify-between pl-4 pr-3 h-12 shrink-0" style={{ background: "var(--color-card)", borderBottom: "1px solid var(--color-line)" }}>
+      <header className="flex items-center justify-between pl-4 pr-3 h-12 shrink-0" style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-line)" }}>
         <div className="flex items-baseline gap-3">
           <span className="display text-[17px]" style={{ fontWeight: 600 }}>AD&nbsp;Query</span>
-          <span className="eyebrow" style={{ color: "var(--color-accent)" }}>Directory Ledger</span>
+          <span className="eyebrow" style={{ color: "var(--color-brand)" }}>Directory Ledger</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-2 text-[12px]" style={{ color: "var(--color-ink-2)" }}>
@@ -115,7 +115,7 @@ function App() {
       </div>
 
       {/* Document footer */}
-      <footer className="flex items-center justify-between px-4 h-7 shrink-0 text-[11px]" style={{ background: "var(--color-card)", borderTop: "1px solid var(--color-line)", color: "var(--color-ink-3)" }}>
+      <footer className="flex items-center justify-between px-4 h-7 shrink-0 text-[11px]" style={{ background: "var(--color-surface)", borderTop: "1px solid var(--color-line)", color: "var(--color-ink-3)" }}>
         <div className="flex items-center gap-2.5">
           <span className="eyebrow" style={{ color: "var(--color-ok)" }}>● Connected</span>
           <span className="mono">{req.baseDN}</span>

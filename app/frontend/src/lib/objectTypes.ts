@@ -11,6 +11,10 @@ export interface ObjectType {
   // Filter for generic LDAP (OpenLDAP test dir).
   ldapFilter: string;
   defaultAttributes: string[];
+  // Default columns for generic LDAP, where AD-only attributes (sAMAccountName,
+  // userAccountControl, lastLogonTimestamp…) don't exist. Falls back to
+  // defaultAttributes when omitted.
+  ldapAttributes?: string[];
 }
 
 export const OBJECT_TYPES: ObjectType[] = [
@@ -27,6 +31,7 @@ export const OBJECT_TYPES: ObjectType[] = [
       "userAccountControl",
       "lastLogonTimestamp",
     ],
+    ldapAttributes: ["displayName", "uid", "mail", "title", "departmentNumber", "telephoneNumber"],
   },
   {
     key: "groups",
@@ -41,6 +46,7 @@ export const OBJECT_TYPES: ObjectType[] = [
     adFilter: "(objectClass=computer)",
     ldapFilter: "(objectClass=device)",
     defaultAttributes: ["cn", "operatingSystem", "description", "lastLogonTimestamp"],
+    ldapAttributes: ["cn", "serialNumber", "description"],
   },
   {
     key: "ous",
@@ -60,6 +66,12 @@ export const OBJECT_TYPES: ObjectType[] = [
 
 export function filterFor(t: ObjectType, isAD: boolean): string {
   return isAD ? t.adFilter : t.ldapFilter;
+}
+
+// Default columns for a type against the connected directory. AD gets the
+// AD-centric set; generic LDAP gets attributes that actually exist there.
+export function defaultAttributesFor(t: ObjectType, isAD: boolean): string[] {
+  return !isAD && t.ldapAttributes ? [...t.ldapAttributes] : [...t.defaultAttributes];
 }
 
 // Fallback common attributes for the picker when no schema is loaded yet.

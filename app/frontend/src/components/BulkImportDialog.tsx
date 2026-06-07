@@ -138,7 +138,7 @@ export function BulkImportDialog({ req, onClose }: Props) {
         <div className="overflow-auto px-5 py-4 space-y-4">
           {/* File picker */}
           <label className="flex items-center gap-3 px-4 py-4 rounded-2xl cursor-pointer" style={{ border: "1px dashed var(--color-line-strong)", background: "var(--color-sunken)" }}>
-            <Upload size={18} style={{ color: "var(--color-accent)" }} />
+            <Upload size={18} style={{ color: "var(--color-brand)" }} />
             <div className="flex-1">
               <div className="text-[12.5px] font-medium">{fileName || "Choose a .csv or .xlsx file"}</div>
               <div className="text-[11px]" style={{ color: "var(--color-ink-3)" }}>{sheet ? `${sheet.rows.length} rows · ${sheet.headers.length} columns` : "Identities to look up (one per row)"}</div>
@@ -179,7 +179,7 @@ export function BulkImportDialog({ req, onClose }: Props) {
           {phase === "running" && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-[12.5px]" style={{ color: "var(--color-ink-2)" }}><Loader2 size={14} className="animate-spin" /> Looking up… {Math.round(progress * 100)}%</div>
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--color-sunken)" }}><div style={{ width: `${progress * 100}%`, height: "100%", background: "var(--color-accent)" }} /></div>
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--color-sunken)" }}><div style={{ width: `${progress * 100}%`, height: "100%", background: "var(--color-brand)" }} /></div>
             </div>
           )}
 
@@ -192,7 +192,7 @@ export function BulkImportDialog({ req, onClose }: Props) {
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-5 py-3.5" style={{ borderTop: "1px solid var(--color-line)", background: "var(--color-card)" }}>
+        <div className="flex items-center justify-end gap-2 px-5 py-3.5" style={{ borderTop: "1px solid var(--color-line)", background: "var(--color-surface)" }}>
           <button className="btn" onClick={onClose}>Close</button>
           {phase === "done"
             ? <button className="btn btn-primary px-5" onClick={exportResults}><Download size={14} /> Export results ({resultRows.length})</button>

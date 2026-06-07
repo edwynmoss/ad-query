@@ -96,9 +96,9 @@ export function ResultsGrid({ result, columns, selectedDN, onSelectRow }: Props)
               <div key={e.dn} onClick={() => onSelectRow(e)} className="absolute left-0 w-full cursor-pointer group"
                 style={{
                   top: vi.start, height: ROW_H, display: "grid", gridTemplateColumns: gridCols,
-                  background: isSel ? "var(--color-accent-weak)" : "transparent",
+                  background: isSel ? "var(--color-brand-weak)" : "transparent",
                   borderBottom: "1px solid var(--color-line)",
-                  boxShadow: isSel ? "inset 2px 0 0 var(--color-accent)" : "inset 2px 0 0 transparent",
+                  boxShadow: isSel ? "inset 2px 0 0 var(--color-brand)" : "inset 2px 0 0 transparent",
                 }}
                 onMouseEnter={(ev) => { if (!isSel) (ev.currentTarget as HTMLElement).style.background = "var(--color-sunken)"; }}
                 onMouseLeave={(ev) => { if (!isSel) (ev.currentTarget as HTMLElement).style.background = "transparent"; }}
@@ -147,9 +147,14 @@ function Cell({ col, entry }: { col: string; entry: ldap.Entry }) {
   }
 
   const text = formatValue(col, vals);
+  // Identifier-ish columns read better monospaced; human text uses the UI font.
+  const monoCols = new Set(["distinguishedname", "objectsid", "objectguid", "samaccountname", "userprincipalname", "uid", "mail", "telephonenumber", "mobile", "employeenumber"]);
+  const mono = monoCols.has(lc);
   return (
     <div className="flex items-center px-3 overflow-hidden">
-      <span className="truncate selectable text-[12px]" style={{ fontFamily: "var(--font-mono)", color: text ? "var(--color-ink)" : "var(--color-ink-3)" }} title={text}>{text || "—"}</span>
+      <span className="truncate selectable text-[13px]"
+        style={{ fontFamily: mono ? "var(--font-mono)" : "var(--font-ui)", fontSize: mono ? "12px" : "13px", color: text ? "var(--color-ink)" : "var(--color-ink-3)" }}
+        title={text}>{text || "—"}</span>
     </div>
   );
 }

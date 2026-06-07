@@ -51,14 +51,14 @@ export function ExportDialog({ allEntries, selectedEntries, columns, onClose }: 
             <div className="flex items-center justify-between mb-1.5">
               <label className="eyebrow">Columns ({chosenCols.length}/{columns.length})</label>
               <div className="flex gap-2 text-[11px]">
-                <button className="hover:underline" style={{ color: "var(--color-accent)" }} onClick={() => setCols(new Set(columns))}>All</button>
-                <button className="hover:underline" style={{ color: "var(--color-accent)" }} onClick={() => setCols(new Set())}>None</button>
+                <button className="hover:underline" style={{ color: "var(--color-brand)" }} onClick={() => setCols(new Set(columns))}>All</button>
+                <button className="hover:underline" style={{ color: "var(--color-brand)" }} onClick={() => setCols(new Set())}>None</button>
               </div>
             </div>
             <div className="flex flex-wrap gap-1.5 max-h-32 overflow-auto">
               {columns.map((c) => (
                 <button key={c} onClick={() => toggleCol(c)} className="token cursor-pointer"
-                  style={cols.has(c) ? { background: "var(--color-accent-weak)", color: "var(--color-accent)", borderColor: "var(--color-accent)" } : { opacity: 0.55 }}>
+                  style={cols.has(c) ? { background: "var(--color-brand-weak)", color: "var(--color-brand)", borderColor: "var(--color-brand)" } : { opacity: 0.55 }}>
                   {c}
                 </button>
               ))}

@@ -9,20 +9,17 @@ interface Props {
   onConnected: (info: ldap.ServerInfo, opts: ldap.ConnectOptions) => void;
 }
 
-const AUTH: [string, string][] = [["simple", "Password"], ["sspi", "Windows SSO"], ["kerberos", "Kerberos"]];
+const AUTH: [string, string][] = [["simple", "Username & password"], ["sspi", "Windows sign-in"]];
 
 function Label({ children }: { children: React.ReactNode }) {
   return <span className="eyebrow block mb-1.5">{children}</span>;
 }
 
 export function ConnectionPanel({ onConnected }: Props) {
-  const [server, setServer] = useState("localhost:3389");
-  const [bindDN, setBindDN] = useState("cn=admin,dc=adquery,dc=test");
-  const [password, setPassword] = useState("AdminPass123!");
+  const [server, setServer] = useState("");
+  const [bindDN, setBindDN] = useState("");
+  const [password, setPassword] = useState("");
   const [auth, setAuth] = useState("simple");
-  const [realm, setRealm] = useState("");
-  const [kdc, setKdc] = useState("");
-  const [spn, setSpn] = useState("");
   const [acceptSelfSigned, setAcceptSelfSigned] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +60,18 @@ export function ConnectionPanel({ onConnected }: Props) {
     open(ldap.ConnectOptions.createFrom({
       host: parsed.host, port: parsed.port, encryption: parsed.encryption,
       bindDN, password, insecureSkipVerify: isLdaps ? acceptSelfSigned : true,
-      timeoutSeconds: 30, auth, realm, kdc, servicePrincipal: spn,
+      timeoutSeconds: 30, auth,
+    }));
+  }
+
+  // Dev-only: one-click connect to the local test directory. Compiled out of
+  // production builds (import.meta.env.DEV is false), so no test creds ship.
+  function connectDev() {
+    setServer("localhost:3389"); setBindDN("cn=admin,dc=adquery,dc=test"); setPassword("AdminPass123!"); setAuth("simple");
+    open(ldap.ConnectOptions.createFrom({
+      host: "localhost", port: 3389, encryption: "none",
+      bindDN: "cn=admin,dc=adquery,dc=test", password: "AdminPass123!",
+      insecureSkipVerify: true, timeoutSeconds: 30, auth: "simple",
     }));
   }
 
@@ -85,9 +93,9 @@ export function ConnectionPanel({ onConnected }: Props) {
     <div className="h-full grid place-items-center px-6" style={{ background: "var(--color-paper)" }}>
       <div className="card w-[460px]" style={{ boxShadow: "0 12px 48px rgba(20,18,12,0.12)" }}>
         <div className="px-7 pt-7 pb-5" style={{ borderBottom: "1px solid var(--color-line)" }}>
-          <div className="eyebrow" style={{ color: "var(--color-accent)" }}>Directory Ledger</div>
+          <div className="eyebrow" style={{ color: "var(--color-brand)" }}>Directory Ledger</div>
           <h1 className="display text-[27px] leading-none mt-2" style={{ fontWeight: 600 }}>AD Query</h1>
-          <p className="text-[12.5px] mt-2.5" style={{ color: "var(--color-ink-2)" }}>Open a connection to interrogate a directory.</p>
+          <p className="text-[12.5px] mt-2.5" style={{ color: "var(--color-ink-2)" }}>Connect to your directory to search users, groups, and more.</p>
         </div>
 
         {mode === "detecting" && (
@@ -100,7 +108,7 @@ export function ConnectionPanel({ onConnected }: Props) {
         {mode === "auto" && detected && (
           <div className="px-7 py-6 space-y-5">
             <div className="rounded-2xl p-4" style={{ border: "1px solid var(--color-line)", background: "var(--color-sunken)" }}>
-              <div className="flex items-center gap-2 eyebrow" style={{ color: "var(--color-accent)" }}><ShieldCheck size={13} /> This computer's domain</div>
+              <div className="flex items-center gap-2 eyebrow" style={{ color: "var(--color-brand)" }}><ShieldCheck size={13} /> This computer's domain</div>
               <div className="display text-[19px] mt-1.5" style={{ fontWeight: 600 }}>{detected.domain.toUpperCase()}</div>
               <div className="text-[12.5px] mt-1" style={{ color: "var(--color-ink-2)" }}>
                 Sign in as <span className="mono" style={{ color: "var(--color-ink)" }}>{detected.user || "the current user"}</span> — no password.
@@ -119,8 +127,15 @@ export function ConnectionPanel({ onConnected }: Props) {
         {mode === "manual" && (
           <>
             <div className="px-7 py-6 space-y-5">
+              {import.meta.env.DEV && (
+                <button onClick={connectDev} disabled={busy}
+                  className="flex items-center gap-1.5 text-[11px] btn-quiet h-7 px-3 rounded-full"
+                  style={{ color: "var(--color-brand)", border: "1px dashed var(--color-brand)" }}>
+                  <ShieldCheck size={12} /> Dev: connect to local test directory
+                </button>
+              )}
               {detected?.joined && (
-                <button className="flex items-center gap-1 text-[12px] btn-quiet h-7 px-3 rounded-full" onClick={() => { setError(null); setMode("auto"); }} style={{ color: "var(--color-accent)" }}>
+                <button className="flex items-center gap-1 text-[12px] btn-quiet h-7 px-3 rounded-full" onClick={() => { setError(null); setMode("auto"); }} style={{ color: "var(--color-brand)" }}>
                   <ArrowLeft size={12} /> Use this computer's domain ({detected.domain.toUpperCase()})
                 </button>
               )}
@@ -139,27 +154,22 @@ export function ConnectionPanel({ onConnected }: Props) {
               </div>
 
               <div>
-                <Label>Server</Label>
+                <Label>Server address</Label>
                 <input className="input mono" value={server} onChange={(e) => setServer(e.target.value)} placeholder="dc01.contoso.com" />
-                <p className="text-[11px] mt-1.5" style={{ color: "var(--color-ink-3)" }}>Plain LDAP unless the port is 636 or you prefix <span className="mono">ldaps://</span>.</p>
+                <p className="text-[11px] mt-1.5" style={{ color: "var(--color-ink-3)" }}>Your domain controller or directory host. Add <span className="mono">ldaps://</span> for a secure connection.</p>
               </div>
 
-              <div><Label>Authentication</Label><div className="seg w-full">{AUTH.map(([v, l]) => <button key={v} className="flex-1" data-active={auth === v} onClick={() => setAuth(v)}>{l}</button>)}</div></div>
+              <div><Label>Sign in with</Label><div className="seg w-full">{AUTH.map(([v, l]) => <button key={v} className="flex-1" data-active={auth === v} onClick={() => setAuth(v)}>{l}</button>)}</div></div>
 
               {auth === "simple" && (<>
-                <div><Label>Bind DN / UPN</Label><input className="input mono" value={bindDN} onChange={(e) => setBindDN(e.target.value)} placeholder="user@contoso.com — blank for anonymous" /></div>
-                <div><Label>Password</Label><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+                <div><Label>Username</Label><input className="input mono" value={bindDN} onChange={(e) => setBindDN(e.target.value)} placeholder="you@contoso.com" /></div>
+                <div><Label>Password</Label><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" /></div>
               </>)}
               {auth === "sspi" && (
                 <p className="text-[12px] leading-relaxed px-4 py-3 rounded-2xl" style={{ background: "var(--color-sunken)", color: "var(--color-ink-2)" }}>
-                  Authenticates as the current Windows user — no password. Set the <b style={{ color: "var(--color-ink)" }}>Server</b> to the DC's FQDN.
+                  Signs in as you — the Windows account you're logged in with. No username or password needed.
                 </p>
               )}
-              {auth === "kerberos" && (<>
-                <div className="grid grid-cols-2 gap-3"><div><Label>Username</Label><input className="input mono" value={bindDN} onChange={(e) => setBindDN(e.target.value)} placeholder="administrator" /></div><div><Label>Realm</Label><input className="input mono" value={realm} onChange={(e) => setRealm(e.target.value)} placeholder="CONTOSO.COM" /></div></div>
-                <div><Label>Password</Label><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
-                <div className="grid grid-cols-2 gap-3"><div><Label>KDC</Label><input className="input mono" value={kdc} onChange={(e) => setKdc(e.target.value)} placeholder="dc01.contoso.com:88" /></div><div><Label>Service principal</Label><input className="input mono" value={spn} onChange={(e) => setSpn(e.target.value)} placeholder="ldap/dc01.contoso.com" /></div></div>
-              </>)}
 
               {isLdaps && (
                 <label className="flex items-center gap-2 text-[12px] cursor-pointer" style={{ color: "var(--color-ink-2)" }}>
@@ -171,7 +181,7 @@ export function ConnectionPanel({ onConnected }: Props) {
             </div>
 
             <div className="px-7 py-5 flex justify-end" style={{ borderTop: "1px solid var(--color-line)" }}>
-              <button className="btn btn-primary px-7" onClick={connectManual} disabled={busy || !parsed.host}>
+              <button className="btn btn-primary px-7" onClick={connectManual} disabled={busy || !server.trim()}>
                 {busy && <Loader2 size={14} className="animate-spin" />}{busy ? "Connecting…" : "Open connection"}
               </button>
             </div>
