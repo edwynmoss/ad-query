@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from "react";
-import { Play, X, Plus, Loader2, SlidersHorizontal, Columns3, Bookmark, ChevronDown, Upload, Cloud, FileBarChart } from "lucide-react";
+import { Play, X, Plus, Loader2, SlidersHorizontal, Columns3, Bookmark, ChevronDown, Upload, Cloud, FileBarChart, Search } from "lucide-react";
 import { OBJECT_TYPES, filterFor, defaultAttributesFor, COMMON_ATTRIBUTES } from "../lib/objectTypes";
 import { FilterBuilder } from "./FilterBuilder";
 import { SavedQueriesBar } from "./SavedQueriesBar";
@@ -8,7 +8,7 @@ import { SavedQueriesBar } from "./SavedQueriesBar";
 const BulkImportDialog = lazy(() => import("./BulkImportDialog").then((m) => ({ default: m.BulkImportDialog })));
 const M365Dialog = lazy(() => import("./M365Dialog").then((m) => ({ default: m.M365Dialog })));
 const ReportsPanel = lazy(() => import("./ReportsPanel").then((m) => ({ default: m.ReportsPanel })));
-import { Condition, MatchOp, compileConditions, combineAnd, isConditionValid } from "../lib/filterBuilder";
+import { Condition, MatchOp, compileConditions, combineAnd, quickSearchFilter, isConditionValid } from "../lib/filterBuilder";
 import { useDebouncedValue } from "../lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,10 +24,11 @@ export interface QueryState {
   attributes: string[];
   conditions: Condition[];
   matchOp: MatchOp;
+  search?: string;   // plain-language quick search across identity fields
 }
 
 export function effectiveFilter(req: QueryState): string {
-  return combineAnd(req.filter, compileConditions(req.conditions, req.matchOp));
+  return combineAnd(combineAnd(req.filter, quickSearchFilter(req.search ?? "")), compileConditions(req.conditions, req.matchOp));
 }
 
 // A directory location the user can pick by name (mapped to a base DN behind
@@ -115,10 +116,21 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
           ))}
         </ToggleGroup>
 
-        <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
-          <span className="eyebrow shrink-0">Search in</span>
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
+          <Input
+            className="pl-8"
+            placeholder="Search name, email, or username…"
+            value={req.search ?? ""}
+            onChange={(e) => setReq({ ...req, search: e.target.value })}
+            onKeyDown={(e) => { if (e.key === "Enter") run(); }}
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="eyebrow shrink-0">in</span>
           <Select value={req.baseDN} onValueChange={(val) => setReq({ ...req, baseDN: val, scope: 2 })}>
-            <SelectTrigger className="flex-1"><SelectValue placeholder="Location" /></SelectTrigger>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Location" /></SelectTrigger>
             <SelectContent>
             {locs.map((l) => (
               <SelectItem key={l.dn} value={l.dn}>{" ".repeat(l.depth) + (l.depth > 0 ? "↳ " : "") + l.label}</SelectItem>

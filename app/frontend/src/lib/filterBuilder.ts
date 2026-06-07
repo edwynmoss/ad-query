@@ -94,6 +94,23 @@ export function compileConditions(conditions: Condition[], match: MatchOp): stri
   return `(${match === "and" ? "&" : "|"}${parts.join("")})`;
 }
 
+// Identity-ish fields a plain-language quick search spans.
+export const QUICK_SEARCH_FIELDS = ["cn", "displayName", "sAMAccountName", "userPrincipalName", "mail", "name"];
+
+// Turn a free-text term ("jane doe", "j.doe@corp") into a filter that matches
+// it as a substring across the common identity fields. Multiple words are
+// ANDed (each must appear somewhere) so "jane doe" matches displayName "Jane
+// Doe". Returns "" for an empty term.
+export function quickSearchFilter(term: string, fields: string[] = QUICK_SEARCH_FIELDS): string {
+  const words = term.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "";
+  const perWord = words.map((w) => {
+    const v = escapeLdapValue(w);
+    return `(|${fields.map((f) => `(${f}=*${v}*)`).join("")})`;
+  });
+  return perWord.length === 1 ? perWord[0] : `(&${perWord.join("")})`;
+}
+
 // Combine a base filter (from the object-type preset) with extra conditions.
 export function combineAnd(base: string, extra: string): string {
   const b = base.trim();

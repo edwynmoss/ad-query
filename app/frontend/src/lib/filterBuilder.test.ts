@@ -1,7 +1,23 @@
 import { describe, it, expect } from "vitest";
-import { escapeLdapValue, compileCondition, compileConditions, combineAnd, isConditionValid, Condition } from "./filterBuilder";
+import { escapeLdapValue, compileCondition, compileConditions, combineAnd, quickSearchFilter, isConditionValid, Condition } from "./filterBuilder";
 
 const c = (over: Partial<Condition>): Condition => ({ id: "x", attribute: "cn", operator: "eq", value: "v", ...over });
+
+describe("quickSearchFilter", () => {
+  it("returns empty for blank input", () => {
+    expect(quickSearchFilter("")).toBe("");
+    expect(quickSearchFilter("   ")).toBe("");
+  });
+  it("ORs a single term across identity fields as a substring", () => {
+    expect(quickSearchFilter("doe", ["cn", "mail"])).toBe("(|(cn=*doe*)(mail=*doe*))");
+  });
+  it("ANDs multiple words, each spanning the fields", () => {
+    expect(quickSearchFilter("jane doe", ["cn"])).toBe("(&(|(cn=*jane*))(|(cn=*doe*)))");
+  });
+  it("escapes LDAP special characters in the term", () => {
+    expect(quickSearchFilter("a*b", ["cn"])).toBe("(|(cn=*a\\2ab*))");
+  });
+});
 
 describe("escapeLdapValue (RFC 4515)", () => {
   it("escapes the special characters", () => {

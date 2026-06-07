@@ -10,6 +10,7 @@ import { ReclaimDialog } from "./ReclaimDialog";
 import { StaleReportDialog } from "./StaleReportDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface Props {
   req: QueryState;
@@ -36,8 +37,10 @@ export function ReportsPanel({ req, isAD, onOpen, onClose }: Props) {
         attributes: q.attributes, pageSize: 1000, sizeLimit: 0,
       }));
       const stamp = new Date().toISOString().slice(0, 10);
-      downloadCsv(`adquery-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${stamp}.csv`, buildCsv(res.entries ?? [], q.attributes, DEFAULT_CSV_OPTIONS));
-    } catch (e: any) { alert("Report failed: " + String(e?.message ?? e)); } finally { setBusy(null); }
+      const rows = res.entries ?? [];
+      downloadCsv(`adquery-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${stamp}.csv`, buildCsv(rows, q.attributes, DEFAULT_CSV_OPTIONS));
+      toast.success(`${name} — ${rows.length.toLocaleString()} rows exported`);
+    } catch (e: any) { toast.error("Report failed", { description: String(e?.message ?? e) }); } finally { setBusy(null); }
   }
 
   // Only one dialog at a time: hide Reports while a sub-report (Reclaim/Stale)

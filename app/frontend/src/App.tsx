@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Toaster } from "@/components/ui/sonner";
 import { Disconnect, Search, SchemaAttributes } from "../wailsjs/go/main/App";
 import { ldap } from "../wailsjs/go/models";
 import { ConnectionPanel } from "./components/ConnectionPanel";
@@ -13,7 +14,7 @@ import { getTheme, applyTheme, Theme } from "./lib/theme";
 function App() {
   const [server, setServer] = useState<ldap.ServerInfo | null>(null);
   const [conn, setConn] = useState<ldap.ConnectOptions | null>(null);
-  const [req, setReq] = useState<QueryState>({ baseDN: "", scope: 2, filter: "(objectClass=*)", attributes: ["cn", "objectClass"], conditions: [], matchOp: "and" });
+  const [req, setReq] = useState<QueryState>({ baseDN: "", scope: 2, filter: "(objectClass=*)", attributes: ["cn", "objectClass"], conditions: [], matchOp: "and", search: "" });
   const [result, setResult] = useState<ldap.SearchResult | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +112,7 @@ function App() {
         )}
 
         <div className="flex-1 flex min-h-0">
-          <ResultsGrid result={result} columns={req.attributes} selectedDN={selected?.dn ?? null} onSelectRow={setSelected} />
+          <ResultsGrid result={result} loading={running} columns={req.attributes} selectedDN={selected?.dn ?? null} onSelectRow={setSelected} />
           <Inspector entry={selected} onClose={() => setSelected(null)} />
         </div>
       </div>
@@ -128,6 +129,8 @@ function App() {
           {elapsed !== null && <span>{elapsed} ms</span>}
         </div>
       </footer>
+
+      <Toaster position="bottom-right" />
     </div>
   );
 }

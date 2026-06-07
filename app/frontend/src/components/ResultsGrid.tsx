@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Download, ArrowUp, ArrowDown } from "lucide-react";
+import { Download, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
 import type { ldap } from "../../wailsjs/go/models";
 import { formatValue, decodeUAC } from "../lib/format";
 import { combineLastSeen, isStale, DEFAULT_STALE_DAYS } from "../lib/lastseen";
@@ -11,6 +11,7 @@ import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 
 interface Props {
   result: ldap.SearchResult | null;
+  loading?: boolean;
   columns: string[];
   selectedDN: string | null;
   onSelectRow: (e: ldap.Entry) => void;
@@ -24,7 +25,7 @@ function uacStatusTone(flag: string): StatusTone {
   return "neutral";
 }
 
-export function ResultsGrid({ result, columns, selectedDN, onSelectRow }: Props) {
+export function ResultsGrid({ result, loading, columns, selectedDN, onSelectRow }: Props) {
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
   const [checked, setChecked] = useState<Set<string>>(new Set());
@@ -52,6 +53,15 @@ export function ResultsGrid({ result, columns, selectedDN, onSelectRow }: Props)
   function toggleAll() { setChecked((s) => (s.size === entries.length ? new Set() : new Set(entries.map((e) => e.dn)))); }
 
   if (!result) {
+    if (loading) {
+      return (
+        <div className="flex-1 grid place-items-center bg-page">
+          <div className="flex items-center gap-2.5 text-[13px] text-ink-2">
+            <Loader2 size={16} className="animate-spin" /> Searching the directory…
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="flex-1 grid place-items-center bg-page">
         <div className="text-center">
@@ -68,7 +78,8 @@ export function ResultsGrid({ result, columns, selectedDN, onSelectRow }: Props)
       <div className="flex items-center justify-between px-4 h-10 shrink-0 border-y border-line">
         <div className="flex items-baseline gap-2">
           <span className="display text-[15px]">Results</span>
-          <span className="text-[12px] text-ink-3">
+          <span className="text-[12px] text-ink-3 flex items-center gap-1.5">
+            {loading && <Loader2 size={12} className="animate-spin" />}
             {result.count.toLocaleString()} records{checked.size > 0 ? ` · ${checked.size} marked` : ""}{result.truncated ? " · truncated" : ""}
           </span>
         </div>
