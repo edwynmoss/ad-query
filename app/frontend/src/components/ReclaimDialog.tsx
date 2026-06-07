@@ -39,6 +39,7 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
   const [skus, setSkus] = useState<m365.LicenseSku[]>([]);
   const [selected, setSelected] = useState<string[]>([]); // product names; [] = all licenses
   const [all, setAll] = useState<Holder[]>([]);           // every licensed user in scope
+  const [prov, setProv] = useState({ scanned: 0, matched: 0 }); // join provenance
   const [dormantOnly, setDormantOnly] = useState(false);
   const [days, setDays] = useState(90);
   const [error, setError] = useState("");
@@ -65,15 +66,19 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
       setSkus(report ?? []);
 
       const entries = res.entries ?? [];
-      const ids = Array.from(new Set(entries.map((e) => first(e, "userPrincipalName") || first(e, "mail")).filter(Boolean)));
+      const withId = entries.filter((e) => first(e, "userPrincipalName") || first(e, "mail"));
+      const ids = Array.from(new Set(withId.map((e) => first(e, "userPrincipalName") || first(e, "mail"))));
       const byId = new Map<string, m365.User>();
       if (ids.length) for (const u of await M365Check(ids)) byId.set((u.identity || "").toLowerCase(), u);
 
       const out: Holder[] = [];
+      let matched = 0;
       for (const e of entries) {
         const upn = first(e, "userPrincipalName") || first(e, "mail");
         const u = upn ? byId.get(upn.toLowerCase()) : undefined;
-        if (!u || !u.exists || !u.licenses || u.licenses.length === 0) continue; // licensed users only
+        if (!u || !u.exists) continue;
+        matched++; // AD account that resolved to a real 365 user
+        if (!u.licenses || u.licenses.length === 0) continue; // licensed users only
         const adFt = first(e, "lastLogonTimestamp");
         out.push({
           displayName: first(e, "displayName"), sAMAccountName: first(e, "sAMAccountName"), upn,
@@ -81,6 +86,7 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
           seen: combineLastSeen(adFt, u.lastSignIn),
         });
       }
+      setProv({ scanned: withId.length, matched });
       setAll(out); setPhase("ready");
     } catch (e: any) { setError(String(e?.message ?? e)); setPhase("error"); }
   }
@@ -144,6 +150,12 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
           {phase === "needsSignin" && <div className="text-[12.5px] text-ink-2">Sign in to Microsoft 365 first (the ☁ button) — licences and cloud sign-ins come from Entra.</div>}
           {phase === "scanning" && <div className="flex items-center gap-2 text-[12.5px] text-ink-2"><Loader2 size={14} className="animate-spin" /> Joining licensed users with last-login…</div>}
           {phase === "error" && <ErrorBanner error={error} />}
+
+          {phase === "ready" && (
+            <p className="text-[11px] text-ink-3 mb-3">
+              Joined <span className="text-ink-2">{prov.scanned.toLocaleString()}</span> AD accounts → <span className="text-ink-2">{prov.matched.toLocaleString()}</span> matched a 365 user (by UPN/email) → <span className="text-ink-2">{all.length.toLocaleString()}</span> licensed.
+            </p>
+          )}
 
           {phase === "ready" && all.length === 0 && (
             <div className="text-[12.5px] text-ink-2 space-y-2">

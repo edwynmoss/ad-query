@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { labelFor } from "@/lib/attrLabels";
 
 interface Props {
   entry: ldap.Entry | null;
@@ -44,7 +45,7 @@ function InspectorBody({ entry, onClose }: { entry: ldap.Entry; onClose: () => v
           <dl className="space-y-2">
             {attrs.map((a) => (
               <div key={a}>
-                <dt className="text-[11px] font-semibold text-ink-3 font-mono">{a}</dt>
+                <dt className="text-[11px] font-semibold text-ink-2">{labelFor(a)} <span className="font-mono font-normal text-ink-3">{a}</span></dt>
                 <dd className="text-[12px] break-words selectable font-mono">{formatValue(a, entry.attributes[a], "\n")}</dd>
               </div>
             ))}
