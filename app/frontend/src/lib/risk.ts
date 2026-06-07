@@ -8,13 +8,15 @@ import type { StatusTone } from "@/components/ui/status-badge";
 
 export type RiskLevel = "Low" | "Medium" | "High" | "Critical";
 export interface RiskFlag { label: string; level: RiskLevel; reason: string }
-export interface RiskAssessment { level: RiskLevel; flags: RiskFlag[] }
+// notApplicable: the object isn't an AD security principal, so the AD-posture
+// rules below don't apply — surfaced so the UI says so instead of pretending.
+export interface RiskAssessment { level: RiskLevel; flags: RiskFlag[]; notApplicable?: boolean }
 
 // Attributes the assessment reads — fetch these for the user being assessed.
 export const RISK_ATTRS = [
   "userAccountControl", "lastLogonTimestamp", "lastLogon", "pwdLastSet",
   "accountExpires", "adminCount", "servicePrincipalName", "memberOf",
-  "manager", "department",
+  "manager", "department", "departmentNumber",
 ];
 
 // Default privileged groups (matched against memberOf DNs / used by the
@@ -45,6 +47,13 @@ function expired(raw: string): boolean {
 export function assessRisk(attrs: Record<string, string[]>): RiskAssessment {
   const flags: RiskFlag[] = [];
   const add = (label: string, level: RiskLevel, reason: string) => flags.push({ label, level, reason });
+
+  // Every rule below keys off Active Directory posture attributes
+  // (userAccountControl, accountExpires, SPNs, …). A generic LDAP directory
+  // doesn't expose userAccountControl, so account status / password policy /
+  // delegation are unknowable here — return "not applicable" rather than emit
+  // hygiene-only flags (e.g. "never logged in") that read as a real verdict.
+  if (!("userAccountControl" in attrs)) return { level: "Low", flags: [], notApplicable: true };
 
   const uac = decodeUAC(val(attrs, "userAccountControl"));
   const disabled = uac.includes("Disabled");
@@ -80,7 +89,7 @@ export function assessRisk(attrs: Record<string, string[]>): RiskAssessment {
 
   // --- Hygiene ---
   if (!(attrs.manager ?? []).length) add("No manager", "Low", "No manager is set — ownership is unclear for access reviews.");
-  if (!(attrs.department ?? []).length) add("No department", "Low", "No department is set.");
+  if (!(attrs.department ?? []).length && !(attrs.departmentNumber ?? []).length) add("No department", "Low", "No department is set.");
 
   const level = flags.reduce<RiskLevel>((acc, f) => higher(acc, f.level), "Low");
   return { level, flags };

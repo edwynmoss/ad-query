@@ -129,18 +129,22 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
       <div className="flex items-center gap-2">
         {/* Tools menu; the Saved-queries panel opens as a Popover anchored here. */}
         <Popover open={panel === "saved"} onOpenChange={(o) => { if (!o) setPanel(null); }}>
-          <PopoverAnchor asChild>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+          {/* One Button is both the dropdown trigger and the popover anchor:
+              both asChild Slots compose their props + ref onto it (Button is
+              forwardRef). Anchoring to a real element — not the DropdownMenu
+              root — avoids "function components cannot be given refs". */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <PopoverAnchor asChild>
                 <Button variant="outline" className={panel === "saved" ? "bg-sunken" : ""}><Wrench size={14} /> Tools <ChevronDown size={12} /></Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onSelect={() => toggle("saved")}><Bookmark size={14} /> Saved queries</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => { setPanel(null); setShowImport(true); }}><Upload size={14} /> Bulk lookup (CSV / Excel)</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => { setPanel(null); setShowReports(true); }}><FileBarChart size={14} /> Reports</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </PopoverAnchor>
+              </PopoverAnchor>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onSelect={() => toggle("saved")}><Bookmark size={14} /> Saved queries</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => { setPanel(null); setShowImport(true); }}><Upload size={14} /> Bulk lookup (CSV / Excel)</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => { setPanel(null); setShowReports(true); }}><FileBarChart size={14} /> Reports</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <PopoverContent align="start" className="w-[300px]">
             <SavedQueriesBar current={req} onLoad={(q) => { setReq(q); setPanel(null); }} />
           </PopoverContent>

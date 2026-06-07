@@ -142,6 +142,15 @@ function RiskTab({ dn }: { dn: string }) {
   if (status === "error") return <ErrorBanner error={error} />;
   if (!assessment) return null;
 
+  if (assessment.notApplicable) {
+    return (
+      <div className="space-y-2 text-[12px] text-ink-2">
+        <p>Risk flags are derived from <span className="font-medium text-ink">Active Directory</span> posture — account status, password policy, delegation, service accounts.</p>
+        <p className="text-ink-3">This directory doesn't expose those attributes, so there's nothing to assess here.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-baseline gap-2">

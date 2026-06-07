@@ -35,4 +35,17 @@ describe("assessRisk", () => {
     expect(r.flags.some((f) => /delegation/i.test(f.label))).toBe(true);
     expect(r.level).toBe("High");
   });
+
+  it("is not-applicable on a non-AD object (no userAccountControl), not a false verdict", () => {
+    // Generic LDAP person (no userAccountControl) — must not emit hygiene flags
+    // like "never logged in" / "no department" that read as a real assessment.
+    const r = assessRisk({ uid: ["oldacct"], mail: ["x@y.test"], displayName: ["Former Employee"] });
+    expect(r.notApplicable).toBe(true);
+    expect(r.flags).toHaveLength(0);
+  });
+
+  it("does not flag 'no department' when only departmentNumber is set", () => {
+    const r = assessRisk({ userAccountControl: ["512"], lastLogonTimestamp: [recent], manager: ["x"], departmentNumber: ["Sales"] });
+    expect(r.flags.some((f) => /no department/i.test(f.label))).toBe(false);
+  });
 });

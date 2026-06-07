@@ -81,7 +81,7 @@ export function ResultsGrid({ result, loading, columns, selectedDN, onSelectRow,
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-page">
+    <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-page">
       {/* Ledger caption / toolbar */}
       <div className="flex items-center justify-between px-4 h-10 shrink-0 border-y border-line">
         <div className="flex items-baseline gap-2">

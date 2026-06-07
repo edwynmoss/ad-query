@@ -39,11 +39,16 @@ function PopoverContent({
   )
 }
 
-function PopoverAnchor({
-  ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Anchor>) {
-  return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />
-}
+// forwardRef so it can sit between two asChild Slots (e.g. a DropdownMenuTrigger
+// anchoring a Popover to the same Button) under React 18, where a plain function
+// component can't receive the composed ref.
+const PopoverAnchor = React.forwardRef<
+  React.ElementRef<typeof PopoverPrimitive.Anchor>,
+  React.ComponentProps<typeof PopoverPrimitive.Anchor>
+>((props, ref) => (
+  <PopoverPrimitive.Anchor ref={ref} data-slot="popover-anchor" {...props} />
+))
+PopoverAnchor.displayName = "PopoverAnchor"
 
 function PopoverHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
