@@ -14,6 +14,7 @@ import { combineLastSeen, daysSince, isStale, fileTimeDaysAgo } from "../lib/las
 import { csvValue, decodeUAC } from "../lib/format";
 import { rowsToCsv } from "../lib/bulk";
 import { downloadCsv } from "../lib/csv";
+import { toast } from "sonner";
 
 interface Props {
   isAD: boolean;
@@ -82,7 +83,12 @@ export function StaleReportDialog({ isAD, baseDN, onOpen, onClose }: Props) {
           [staleCol]: "Yes",
         });
       }
+      if (rows.length === 0) {
+        toast.info(`No accounts stale beyond ${days} days${signedIn365 ? "" : " (AD only — sign in to 365 to fold in cloud sign-ins)"}.`);
+        onClose(); return;
+      }
       downloadCsv(`adquery-stale-${days}d-${new Date().toISOString().slice(0, 10)}.csv`, rowsToCsv(cols, rows));
+      toast.success(`Stale report — ${rows.length.toLocaleString()} ${rows.length === 1 ? "account" : "accounts"} exported`);
       onClose();
     } catch (e: any) { setError(String(e?.message ?? e)); } finally { setBusy(false); }
   }

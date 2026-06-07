@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Cloud, CheckCircle2, ExternalLink } from "lucide-react";
-import { M365SignInInteractive, M365StartSignIn, M365PollSignIn, M365SignedIn, M365SignOut } from "../../wailsjs/go/main/App";
+import { M365SignInInteractive, M365StartSignIn, M365PollSignIn, M365SignedIn, M365SignOut, M365Account } from "../../wailsjs/go/main/App";
 import type { m365 } from "../../wailsjs/go/models";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -19,10 +19,13 @@ export function M365Dialog({ onClose, onChange }: Props) {
   const [dc, setDc] = useState<m365.DeviceCode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [account, setAccount] = useState("");
   const poll = useRef<number | null>(null);
 
+  function loadAccount() { M365Account().then(setAccount).catch(() => {}); }
+
   useEffect(() => {
-    M365SignedIn().then((s) => { if (s) setPhase("done"); }).catch(() => {});
+    M365SignedIn().then((s) => { if (s) { setPhase("done"); loadAccount(); } }).catch(() => {});
     return () => { if (poll.current) clearInterval(poll.current); };
   }, []);
 
@@ -32,7 +35,7 @@ export function M365Dialog({ onClose, onChange }: Props) {
   }
   function finish(signedIn: boolean) {
     if (poll.current) { clearInterval(poll.current); poll.current = null; }
-    if (signedIn) { setPhase("done"); onChange?.(true); }
+    if (signedIn) { setPhase("done"); loadAccount(); onChange?.(true); }
   }
 
   // Primary: seamless browser sign-in (auth-code + PKCE). Opens the default
@@ -116,7 +119,7 @@ export function M365Dialog({ onClose, onChange }: Props) {
 
           {phase === "done" && (
             <div className="flex items-center gap-2 text-[13px] text-success">
-              <CheckCircle2 size={16} /> Signed in to Microsoft 365.
+              <CheckCircle2 size={16} /> Signed in to Microsoft 365{account ? <> as <span className="font-medium text-ink">{account}</span></> : ""}.
             </div>
           )}
 
