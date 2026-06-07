@@ -119,12 +119,24 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
         <div className="relative flex-1 min-w-[200px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
           <Input
-            className="pl-8"
+            className="pl-8 pr-8"
             placeholder="Search name, email, or username…"
             value={req.search ?? ""}
             onChange={(e) => setReq({ ...req, search: e.target.value })}
-            onKeyDown={(e) => { if (e.key === "Enter") run(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") run();
+              if (e.key === "Escape" && req.search) { setReq({ ...req, search: "" }); }
+            }}
           />
+          {req.search ? (
+            <button
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink"
+              onClick={() => setReq({ ...req, search: "" })}
+              aria-label="clear search"
+            >
+              <X size={14} />
+            </button>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
