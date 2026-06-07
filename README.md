@@ -24,9 +24,9 @@ Connect (auto-detects your domain → sign in as you, no password) and the resul
 
 Reports — one-click run/download recipes, **unused-license reclamation** (licensed users dormant in AD *and* 365), stale-account review, and Microsoft 365 sign-in:
 
-| Reports | Licenses & sign-in | Stale accounts | 365 sign-in |
-|---|---|---|---|
-| ![Reports](docs/screenshots/08-reports.png) | ![Licenses](docs/screenshots/09-reclaim.png) | ![Stale](docs/screenshots/10-stale.png) | ![365](docs/screenshots/11-m365-signin.png) |
+| Reports | Privileged access | Licenses & sign-in | Stale accounts | 365 sign-in |
+|---|---|---|---|---|
+| ![Reports](docs/screenshots/08-reports.png) | ![Privileged](docs/screenshots/14-privileged.png) | ![Licenses](docs/screenshots/09-reclaim.png) | ![Stale](docs/screenshots/10-stale.png) | ![365](docs/screenshots/11-m365-signin.png) |
 
 > Regenerate with `cd app/frontend && npm run shots` (builds the app, serves it, and drives the journey via Playwright into `docs/screenshots/`).
 

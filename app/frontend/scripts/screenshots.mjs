@@ -50,6 +50,16 @@ const MOCK = `
       if (req && req.scope === 0) { // base-scope = the Risk tab fetching one user's posture
         return Promise.resolve({ count:1, truncated:false, entries:[{ dn: req.baseDN, attributes:{ userAccountControl:['66048'], memberOf:['CN=Domain Admins,CN=Users,DC=adquery,DC=test'], lastLogonTimestamp:[oldFt], servicePrincipalName:[], manager:[], department:[] } }] });
       }
+      if (req && req.filter && req.filter.indexOf('objectClass=group') >= 0) { // privileged-group lookup
+        const g = ['Domain Admins','Backup Operators'].find((n) => req.filter.indexOf(n) >= 0);
+        if (!g) return Promise.resolve({ count:0, truncated:false, entries:[] });
+        return Promise.resolve({ count:1, truncated:false, entries:[{ dn:'CN=' + g + ',CN=Users,DC=adquery,DC=test', attributes:{ member:['CN=jsmith,OU=IT,DC=adquery,DC=test'] } }] });
+      }
+      if (req && req.filter && req.filter.indexOf('1.2.840.113556.1.4.1941') >= 0) { // nested members of a group
+        if (req.filter.indexOf('CN=Domain Admins') >= 0) return Promise.resolve({ count:1, truncated:false, entries:[{ dn:'CN=jsmith,OU=IT,DC=adquery,DC=test', attributes:{ displayName:['Jane Smith'], sAMAccountName:['jsmith'], userAccountControl:['66048'], lastLogonTimestamp:[recentFt], memberOf:['CN=Domain Admins,CN=Users,DC=adquery,DC=test'] } }] });
+        if (req.filter.indexOf('CN=Backup Operators') >= 0) return Promise.resolve({ count:1, truncated:false, entries:[{ dn:'CN=oldadmin,OU=IT,DC=adquery,DC=test', attributes:{ displayName:['Old Admin'], sAMAccountName:['oldadmin'], userAccountControl:['514'], lastLogonTimestamp:[oldFt], memberOf:['CN=Backup Operators,CN=Users,DC=adquery,DC=test'] } }] });
+        return Promise.resolve({ count:0, truncated:false, entries:[] });
+      }
       if (req && req.filter && req.filter.indexOf('organizationalUnit') >= 0) {
         const ous=[['People','OU=People'],['Sales','OU=Sales,OU=People'],['IT','OU=IT,OU=People'],['Engineering','OU=Engineering,OU=People'],['Finance','OU=Finance,OU=People'],['HR','OU=HR,OU=People']];
         return Promise.resolve({ count:ous.length, truncated:false, entries: ous.map(([ou,dn]) => ({ dn: dn+',DC=adquery,DC=test', attributes:{ ou:[ou] } })) });
@@ -163,6 +173,17 @@ async function main() {
     await page.getByRole("button", { name: "Open", exact: true }).nth(1).click(); // Stale accounts
     await page.getByText("Not seen in the last").waitFor();
     await shot(page, "10-stale");
+  });
+
+  // --- Privileged access review (own session) ------------------------------
+  await session("light", "", async (page) => {
+    await page.getByRole("button", { name: /Connect to CORP/ }).click();
+    await page.getByRole("button", { name: /Tools/ }).click();
+    await page.getByRole("menuitem", { name: /Reports/ }).click();
+    await page.getByText("Built-in").waitFor();
+    await page.getByRole("button", { name: "Open", exact: true }).nth(3).click(); // Privileged access
+    await page.getByText(/privileged users/).waitFor();
+    await shot(page, "14-privileged");
   });
 
   // --- 365 device-code sign-in (signed out) --------------------------------

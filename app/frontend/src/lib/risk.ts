@@ -1,5 +1,6 @@
 import { decodeUAC } from "./format";
 import { combineLastSeen, daysSince } from "./lastseen";
+import type { StatusTone } from "@/components/ui/status-badge";
 
 // Turns raw AD attributes into plain-language risk flags + an overall rating.
 // Pure (no I/O) so it's easy to unit-test and reuse anywhere a user's
@@ -16,15 +17,21 @@ export const RISK_ATTRS = [
   "manager", "department",
 ];
 
-// Default privileged groups (matched against memberOf DNs).
-const PRIVILEGED = [
+// Default privileged groups (matched against memberOf DNs / used by the
+// privileged-access review).
+export const PRIVILEGED_GROUPS = [
   "Domain Admins", "Enterprise Admins", "Schema Admins", "Administrators",
   "Account Operators", "Server Operators", "Backup Operators", "Print Operators",
   "Group Policy Creator Owners", "DnsAdmins",
 ];
+const PRIVILEGED = PRIVILEGED_GROUPS;
 
 const ORDER: RiskLevel[] = ["Low", "Medium", "High", "Critical"];
 const higher = (a: RiskLevel, b: RiskLevel): RiskLevel => (ORDER.indexOf(a) >= ORDER.indexOf(b) ? a : b);
+
+// Map a risk level to a status-badge tone (shared by the inspector + reviews).
+export const riskTone = (l: RiskLevel): StatusTone => (l === "Low" ? "neutral" : l === "Medium" ? "warning" : "critical");
+export const riskRank = (l: RiskLevel): number => ORDER.indexOf(l);
 
 const val = (attrs: Record<string, string[]>, k: string) => attrs[k]?.[0] ?? "";
 

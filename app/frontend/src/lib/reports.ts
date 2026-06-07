@@ -4,7 +4,7 @@ import { OBJECT_TYPES, filterFor } from "./objectTypes";
 // A report is a named, repeatable recipe you run with one click to download a
 // CSV. Built-ins cover the common asks; your saved queries also appear as
 // downloadable reports.
-export type ReportKind = "query" | "stale" | "license";
+export type ReportKind = "query" | "stale" | "license" | "privileged";
 
 export interface Report {
   id: string;
@@ -29,6 +29,10 @@ export const BUILTIN_REPORTS: Report[] = [
   {
     id: "licenses", name: "Licenses & sign-in", kind: "license",
     description: "Microsoft 365 licensed users with last sign-in. Filter by licence; optionally show only dormant seats to reclaim.",
+  },
+  {
+    id: "privileged", name: "Privileged access", kind: "privileged",
+    description: "Members of high-privilege groups (Domain Admins, etc.), including nested, with risk flags.",
   },
 ];
 

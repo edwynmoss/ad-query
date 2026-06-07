@@ -8,6 +8,7 @@ import { loadSavedQueries } from "../lib/savedQueries";
 import { buildCsv, downloadCsv, DEFAULT_CSV_OPTIONS } from "../lib/csv";
 import { ReclaimDialog } from "./ReclaimDialog";
 import { StaleReportDialog } from "./StaleReportDialog";
+import { PrivilegedDialog } from "./PrivilegedDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -24,6 +25,7 @@ export function ReportsPanel({ req, isAD, onOpen, onClose }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [showReclaim, setShowReclaim] = useState(false);
   const [showStale, setShowStale] = useState(false);
+  const [showPriv, setShowPriv] = useState(false);
   const [signedIn365, setSignedIn365] = useState(false);
   const saved = loadSavedQueries();
 
@@ -46,7 +48,7 @@ export function ReportsPanel({ req, isAD, onOpen, onClose }: Props) {
   // Only one dialog at a time: hide Reports while a sub-report (Reclaim/Stale)
   // is open so the two Radix dialogs don't stack. ReportsPanel stays mounted, so
   // closing the sub-report returns the user to the Reports list.
-  const subOpen = showReclaim || showStale;
+  const subOpen = showReclaim || showStale || showPriv;
 
   return (
     <>
@@ -63,6 +65,8 @@ export function ReportsPanel({ req, isAD, onOpen, onClose }: Props) {
                 return <ReportRow key={r.id} name={r.name} description={r.description} actions={<Button variant="outline" size="sm" onClick={() => setShowReclaim(true)}>Open <ArrowUpRight size={13} /></Button>} />;
               if (r.kind === "stale")
                 return <ReportRow key={r.id} name={r.name} description={r.description} actions={<Button variant="outline" size="sm" onClick={() => setShowStale(true)}>Open <ArrowUpRight size={13} /></Button>} />;
+              if (r.kind === "privileged")
+                return <ReportRow key={r.id} name={r.name} description={r.description} actions={<Button variant="outline" size="sm" onClick={() => setShowPriv(true)}>Open <ArrowUpRight size={13} /></Button>} />;
               const q = resolveQuery(r, isAD, req.baseDN);
               return <ReportRow key={r.id} name={r.name} description={r.description} actions={<>
                 <Button variant="ghost" size="sm" onClick={() => onOpen(q)}>Open</Button>
@@ -92,6 +96,7 @@ export function ReportsPanel({ req, isAD, onOpen, onClose }: Props) {
 
       {showReclaim && <ReclaimDialog isAD={isAD} baseDN={req.baseDN} onClose={() => setShowReclaim(false)} />}
       {showStale && <StaleReportDialog isAD={isAD} baseDN={req.baseDN} onOpen={onOpen} onClose={() => setShowStale(false)} />}
+      {showPriv && <PrivilegedDialog baseDN={req.baseDN} onClose={() => setShowPriv(false)} />}
     </>
   );
 }

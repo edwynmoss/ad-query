@@ -3,15 +3,13 @@ import { X, Loader2, RefreshCw } from "lucide-react";
 import { ldap, type adtypes } from "../../wailsjs/go/models";
 import { GetACL, AccurateLastLogon, Search } from "../../wailsjs/go/main/App";
 import { formatValue } from "../lib/format";
-import { assessRisk, RISK_ATTRS, type RiskLevel } from "../lib/risk";
+import { assessRisk, RISK_ATTRS, riskTone } from "../lib/risk";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { labelFor } from "@/lib/attrLabels";
-
-const riskTone = (l: RiskLevel): StatusTone => (l === "Low" ? "neutral" : l === "Medium" ? "warning" : "critical");
 
 interface Props {
   entry: ldap.Entry | null;
