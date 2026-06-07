@@ -88,8 +88,9 @@ function FieldCombobox({ value, attributes, onChange }: { value: string; attribu
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setQ(""); }}>
       <PopoverTrigger asChild>
+        {/* Class string mirrors SelectTrigger (size sm) so field + operator are identical. */}
         <button type="button"
-          className="flex h-8 flex-1 min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 text-[12px] shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30">
+          className="flex h-8 flex-1 min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50">
           <span className={"truncate " + (value ? "" : "text-muted-foreground")}>{value ? labelFor(value) : "Field…"}</span>
           <ChevronDown className="size-4 shrink-0 opacity-50" />
         </button>
