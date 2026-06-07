@@ -27,8 +27,8 @@ export const BUILTIN_REPORTS: Report[] = [
     columns: ["displayName", "sAMAccountName", "userPrincipalName", "userAccountControl", "lastLogonTimestamp"],
   },
   {
-    id: "licenses", name: "License report (365)", kind: "license",
-    description: "Tenant license seats — purchased, assigned and free per product.",
+    id: "reclaim", name: "Unused licenses (reclaim)", kind: "license",
+    description: "Licensed users dormant in AD and Microsoft 365 — whose seats you can reclaim.",
   },
 ];
 

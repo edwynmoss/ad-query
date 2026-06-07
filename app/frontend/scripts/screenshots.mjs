@@ -127,10 +127,10 @@ async function main() {
     await shot(page, "08-reports");
 
     const opens = page.locator('button.btn.h-8:not(.btn-quiet)', { hasText: "Open" });
-    await opens.nth(1).click(); // License report
-    await page.getByText("Tenant totals").waitFor();
-    await shot(page, "09-license");
-    await page.locator("button", { hasText: "Close" }).first().click();
+    await opens.nth(1).click(); // Unused licenses (reclaim)
+    await page.getByText("dormant licensed users").first().waitFor();
+    await shot(page, "09-reclaim");
+    await page.getByRole("button", { name: "Close", exact: true }).click();
 
     await opens.nth(0).click(); // Stale accounts
     await page.getByText("Not seen in the last").waitFor();

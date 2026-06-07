@@ -6,7 +6,7 @@ import { QueryState, effectiveFilter } from "./QueryBar";
 import { BUILTIN_REPORTS, resolveQuery } from "../lib/reports";
 import { loadSavedQueries } from "../lib/savedQueries";
 import { buildCsv, downloadCsv, DEFAULT_CSV_OPTIONS } from "../lib/csv";
-import { LicenseReportDialog } from "./LicenseReportDialog";
+import { ReclaimDialog } from "./ReclaimDialog";
 import { StaleReportDialog } from "./StaleReportDialog";
 
 interface Props {
@@ -17,9 +17,9 @@ interface Props {
   onClose: () => void;
 }
 
-export function ReportsPanel({ req, isAD, onOpen, resultIdentities, onClose }: Props) {
+export function ReportsPanel({ req, isAD, onOpen, onClose }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
-  const [showLicense, setShowLicense] = useState(false);
+  const [showReclaim, setShowReclaim] = useState(false);
   const [showStale, setShowStale] = useState(false);
   const [signedIn365, setSignedIn365] = useState(false);
   const saved = loadSavedQueries();
@@ -62,7 +62,7 @@ export function ReportsPanel({ req, isAD, onOpen, resultIdentities, onClose }: P
           <div className="eyebrow pt-2 pb-1">Built-in</div>
           {BUILTIN_REPORTS.map((r) => {
             if (r.kind === "license")
-              return row(r.id, r.name, r.description, <button className="btn h-8" onClick={() => setShowLicense(true)}>Open <ArrowUpRight size={13} /></button>);
+              return row(r.id, r.name, r.description, <button className="btn h-8" onClick={() => setShowReclaim(true)}>Open <ArrowUpRight size={13} /></button>);
             if (r.kind === "stale")
               return row(r.id, r.name, r.description, <button className="btn h-8" onClick={() => setShowStale(true)}>Open <ArrowUpRight size={13} /></button>);
             const q = resolveQuery(r, isAD, req.baseDN);
@@ -91,7 +91,7 @@ export function ReportsPanel({ req, isAD, onOpen, resultIdentities, onClose }: P
         </div>
       </div>
 
-      {showLicense && <LicenseReportDialog setIdentities={resultIdentities} onClose={() => setShowLicense(false)} />}
+      {showReclaim && <ReclaimDialog isAD={isAD} baseDN={req.baseDN} onClose={() => setShowReclaim(false)} />}
       {showStale && <StaleReportDialog isAD={isAD} baseDN={req.baseDN} onOpen={onOpen} onClose={() => setShowStale(false)} />}
     </div>
   );
