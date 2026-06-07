@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Loader2, RefreshCw } from "lucide-react";
-import type { ldap, adtypes } from "../../wailsjs/go/models";
-import { GetACL, AccurateLastLogon } from "../../wailsjs/go/main/App";
+import { ldap, type adtypes } from "../../wailsjs/go/models";
+import { GetACL, AccurateLastLogon, Search } from "../../wailsjs/go/main/App";
 import { formatValue } from "../lib/format";
+import { assessRisk, RISK_ATTRS, type RiskLevel } from "../lib/risk";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { labelFor } from "@/lib/attrLabels";
+
+const riskTone = (l: RiskLevel): StatusTone => (l === "Low" ? "neutral" : l === "Medium" ? "warning" : "critical");
 
 interface Props {
   entry: ldap.Entry | null;
@@ -21,7 +24,7 @@ export function Inspector({ entry, onClose }: Props) {
 }
 
 function InspectorBody({ entry, onClose }: { entry: ldap.Entry; onClose: () => void }) {
-  const [tab, setTab] = useState<"attrs" | "login" | "acl">("attrs");
+  const [tab, setTab] = useState<"attrs" | "login" | "risk" | "acl">("attrs");
   const attrs = Object.keys(entry.attributes ?? {}).sort();
 
   return (
@@ -38,6 +41,7 @@ function InspectorBody({ entry, onClose }: { entry: ldap.Entry; onClose: () => v
         <TabsList>
           <TabsTrigger value="attrs">Attributes</TabsTrigger>
           <TabsTrigger value="login">Login</TabsTrigger>
+          <TabsTrigger value="risk">Risk</TabsTrigger>
           <TabsTrigger value="acl">Security</TabsTrigger>
         </TabsList>
       </Tabs>
@@ -55,6 +59,7 @@ function InspectorBody({ entry, onClose }: { entry: ldap.Entry; onClose: () => v
           </dl>
         )}
         {tab === "login" && <LoginTab entry={entry} />}
+        {tab === "risk" && <RiskTab dn={entry.dn} />}
         {tab === "acl" && <AclTab dn={entry.dn} />}
       </div>
     </div>
@@ -114,6 +119,52 @@ function LoginTab({ entry }: { entry: ldap.Entry }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Risk flags derived from the user's posture attributes (fetched fresh so the
+// assessment is complete regardless of which columns the query returned).
+function RiskTab({ dn }: { dn: string }) {
+  const [status, setStatus] = useState<"loading" | "ok" | "error">("loading");
+  const [assessment, setAssessment] = useState<ReturnType<typeof assessRisk> | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await Search(ldap.SearchRequest.createFrom({ baseDN: dn, scope: 0, filter: "(objectClass=*)", attributes: RISK_ATTRS, pageSize: 1, sizeLimit: 0 }));
+        setAssessment(assessRisk(res.entries?.[0]?.attributes ?? {}));
+        setStatus("ok");
+      } catch (e: any) { setError(String(e?.message ?? e)); setStatus("error"); }
+    })();
+  }, [dn]);
+
+  if (status === "loading") return <div className="flex items-center gap-2 text-[12px] text-ink-2"><Loader2 size={14} className="animate-spin" /> Assessing risk…</div>;
+  if (status === "error") return <ErrorBanner error={error} />;
+  if (!assessment) return null;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-baseline gap-2">
+        <span className="eyebrow text-ink-3">Overall</span>
+        <StatusBadge tone={riskTone(assessment.level)}>{assessment.level}</StatusBadge>
+      </div>
+      {assessment.flags.length === 0 ? (
+        <p className="text-[12px] text-ink-2">No risk indicators — account looks healthy.</p>
+      ) : (
+        <ul className="space-y-2">
+          {assessment.flags.map((f, i) => (
+            <li key={i} className="border border-line rounded-md p-2">
+              <div className="flex items-center gap-2">
+                <StatusBadge tone={riskTone(f.level)}>{f.level}</StatusBadge>
+                <span className="text-[12px] font-medium">{f.label}</span>
+              </div>
+              <p className="text-[11.5px] text-ink-2 mt-1">{f.reason}</p>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

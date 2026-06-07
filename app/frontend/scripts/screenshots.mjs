@@ -47,6 +47,9 @@ const MOCK = `
     M365Check: (ids) => Promise.resolve((ids||[]).map((id,i) => ({ identity:id, exists:true, enabled:true, displayName:id, upn:id, licenses: i%3===0?['Microsoft 365 E5']:(i%2===0?['Microsoft 365 E3']:[]), lastSignIn: i%4===0?'2026-06-01T09:00:00Z':'', error:'' }))),
     StoreSecret: () => Promise.resolve(), GetSecret: () => Promise.resolve(''), HasSecret: () => Promise.resolve(false), DeleteSecret: () => Promise.resolve(),
     Search: (req) => {
+      if (req && req.scope === 0) { // base-scope = the Risk tab fetching one user's posture
+        return Promise.resolve({ count:1, truncated:false, entries:[{ dn: req.baseDN, attributes:{ userAccountControl:['66048'], memberOf:['CN=Domain Admins,CN=Users,DC=adquery,DC=test'], lastLogonTimestamp:[oldFt], servicePrincipalName:[], manager:[], department:[] } }] });
+      }
       if (req && req.filter && req.filter.indexOf('organizationalUnit') >= 0) {
         const ous=[['People','OU=People'],['Sales','OU=Sales,OU=People'],['IT','OU=IT,OU=People'],['Engineering','OU=Engineering,OU=People'],['Finance','OU=Finance,OU=People'],['HR','OU=HR,OU=People']];
         return Promise.resolve({ count:ous.length, truncated:false, entries: ous.map(([ou,dn]) => ({ dn: dn+',DC=adquery,DC=test', attributes:{ ou:[ou] } })) });
@@ -114,6 +117,9 @@ async function main() {
     await page.getByRole("button", { name: "Check", exact: true }).click();
     await page.getByText(/responded/).waitFor();
     await shot(page, "12-login");
+    await page.getByRole("tab", { name: "Risk" }).click();
+    await page.getByText(/Overall/).waitFor();
+    await shot(page, "13-risk");
     await page.getByRole("tab", { name: "Security" }).click();
     await page.getByRole("button", { name: /Load security descriptor/ }).click();
     await page.getByText("DACL").waitFor();
