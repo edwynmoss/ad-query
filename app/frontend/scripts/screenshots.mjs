@@ -31,6 +31,7 @@ const MOCK = `
       {type:'Deny',allow:false,flags:0,mask:131072,rights:['Read control'],sid:'S-1-5-11',trustee:'Authenticated Users',objectType:''},
       {type:'Allow (object)',allow:true,flags:0,mask:256,rights:['Reset password'],sid:'S-1-5-21-x',trustee:'Help Desk',objectType:'00299570-246d-11d0-a768-00aa006e0529'}
     ]}),
+    AccurateLastLogon: () => Promise.resolve({ dn:'CN=User2,OU=Engineering,OU=People,DC=adquery,DC=test', accurateLastLogon:recentFt, sourceDC:'DC02.corp.example.com', lastLogonTimestamp:oldFt, queriedDCs:4, reachedDCs:4, confidence:'High', note:'Queried all 4 domain controllers.', perDC:[{dc:'DC01',reachable:true,lastLogon:oldFt},{dc:'DC02',reachable:true,lastLogon:recentFt},{dc:'DC03',reachable:true,lastLogon:'0'},{dc:'DC04',reachable:true,lastLogon:oldFt}] }),
     M365SignedIn: () => Promise.resolve(true),
     M365Account: () => Promise.resolve('alice@corp.example.com'),
     M365SignInInteractive: () => new Promise(() => {}), // never resolves (simulates browser wait)
@@ -109,6 +110,10 @@ async function main() {
     await page.keyboard.press("Escape"); // close the Filters popover
 
     await page.getByText("user2@adquery.test").click();
+    await page.getByRole("tab", { name: "Login" }).click();
+    await page.getByRole("button", { name: "Check", exact: true }).click();
+    await page.getByText(/responded/).waitFor();
+    await shot(page, "12-login");
     await page.getByRole("tab", { name: "Security" }).click();
     await page.getByRole("button", { name: /Load security descriptor/ }).click();
     await page.getByText("DACL").waitFor();

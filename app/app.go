@@ -24,6 +24,7 @@ type App struct {
 	mu     sync.Mutex
 	conn   *ldap.Conn
 	server *ldap.ServerInfo
+	opts   ldap.ConnectOptions // retained (in-memory) so we can re-dial other DCs
 
 	// Microsoft 365 / Entra (Graph) session.
 	m365cfg     Config365
@@ -244,7 +245,26 @@ func (a *App) Connect(opts ldap.ConnectOptions) (*ldap.ServerInfo, error) {
 
 	a.conn = conn
 	a.server = info
+	a.opts = opts
 	return info, nil
+}
+
+// AccurateLastLogon queries every domain controller for the user's (non-
+// replicated) lastLogon and returns the newest — the reliable "last login".
+// Falls back to the connected host if DC enumeration isn't possible.
+func (a *App) AccurateLastLogon(dn string) (*ldap.LastLogonReport, error) {
+	a.mu.Lock()
+	conn := a.conn
+	opts := a.opts
+	a.mu.Unlock()
+	if conn == nil {
+		return nil, fmt.Errorf("not connected")
+	}
+	dcs, err := conn.DomainControllers()
+	if err != nil || len(dcs) == 0 {
+		dcs = []string{opts.Host} // not AD / can't enumerate — use the connected server
+	}
+	return ldap.AccurateLastLogon(opts, dcs, dn), nil
 }
 
 // Disconnect closes the active session.

@@ -14,9 +14,9 @@ Connect (auto-detects your domain → sign in as you, no password) and the resul
 |---|---|
 | ![Connect](docs/screenshots/01-connect.png) | ![Ledger](docs/screenshots/02-ledger.png) |
 
-| Filters | Inspect (attributes + ACL) |
-|---|---|
-| ![Filters](docs/screenshots/03-filters.png) | ![Inspector](docs/screenshots/04-inspector.png) |
+| Filters | Inspect (attributes + ACL) | Accurate last login (all DCs) |
+|---|---|---|
+| ![Filters](docs/screenshots/03-filters.png) | ![Inspector](docs/screenshots/04-inspector.png) | ![Login](docs/screenshots/12-login.png) |
 
 | Bulk lookup from CSV/Excel | Export | Dark theme |
 |---|---|---|
