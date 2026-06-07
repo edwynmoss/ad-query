@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Popover, PopoverTrigger, PopoverContent, PopoverAnchor } from "@/components/ui/popover";
 
 export interface QueryState {
   baseDN: string;
@@ -127,16 +127,24 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
   return (
     <div className="relative px-4 py-2.5 bg-surface border-b border-line">
       <div className="flex items-center gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className={panel === "saved" ? "bg-sunken" : ""}><Wrench size={14} /> Tools <ChevronDown size={12} /></Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onSelect={() => toggle("saved")}><Bookmark size={14} /> Saved queries</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => { setPanel(null); setShowImport(true); }}><Upload size={14} /> Bulk lookup (CSV / Excel)</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => { setPanel(null); setShowReports(true); }}><FileBarChart size={14} /> Reports</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Tools menu; the Saved-queries panel opens as a Popover anchored here. */}
+        <Popover open={panel === "saved"} onOpenChange={(o) => { if (!o) setPanel(null); }}>
+          <PopoverAnchor asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className={panel === "saved" ? "bg-sunken" : ""}><Wrench size={14} /> Tools <ChevronDown size={12} /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onSelect={() => toggle("saved")}><Bookmark size={14} /> Saved queries</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => { setPanel(null); setShowImport(true); }}><Upload size={14} /> Bulk lookup (CSV / Excel)</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => { setPanel(null); setShowReports(true); }}><FileBarChart size={14} /> Reports</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </PopoverAnchor>
+          <PopoverContent align="start" className="w-[300px]">
+            <SavedQueriesBar current={req} onLoad={(q) => { setReq(q); setPanel(null); }} />
+          </PopoverContent>
+        </Popover>
 
         <ToggleGroup type="single" variant="outline" value={activeType} onValueChange={(v) => v && applyType(v)}>
           {OBJECT_TYPES.map((t) => (
@@ -282,22 +290,8 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
         </Button>
       </div>
 
-      {panel === "saved" && <div className="fixed inset-0 z-20" onClick={() => setPanel(null)} />}
-
-      {panel === "saved" && (
-        <Pop className="left-4 w-[300px]"><SavedQueriesBar current={req} onLoad={(q) => { setReq(q); setPanel(null); }} /></Pop>
-      )}
-
       {showImport && <Suspense fallback={null}><BulkImportDialog req={req} onClose={() => setShowImport(false)} /></Suspense>}
       {showReports && <Suspense fallback={null}><ReportsPanel req={req} isAD={isAD} onOpen={(q) => { onOpenReport?.(q); setShowReports(false); }} resultIdentities={resultIdentities ?? []} onClose={() => setShowReports(false)} /></Suspense>}
-    </div>
-  );
-}
-
-function Pop({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={"absolute top-full z-30 mt-1 p-3 rounded-xl border border-line bg-surface shadow-xl " + (className ?? "")} onClick={(e) => e.stopPropagation()}>
-      {children}
     </div>
   );
 }
