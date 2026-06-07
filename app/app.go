@@ -26,10 +26,11 @@ type App struct {
 	server *ldap.ServerInfo
 
 	// Microsoft 365 / Entra (Graph) session.
-	m365cfg Config365
-	m365dc  *m365.DeviceCode
-	m365tok m365.Token
-	http    *http.Client
+	m365cfg     Config365
+	m365dc      *m365.DeviceCode
+	m365tok     m365.Token
+	m365account string // signed-in identity (UPN/email), for display
+	http        *http.Client
 }
 
 // Config365 is the tenant + public client app registration for the 365 check.
@@ -68,6 +69,7 @@ func (a *App) M365SignInInteractive(tenantID string, clientID string) error {
 
 	a.mu.Lock()
 	a.m365tok = *tok
+	a.m365account = m365.AccountName(tok.AccessToken)
 	a.m365dc = nil
 	a.mu.Unlock()
 	return nil
@@ -105,6 +107,7 @@ func (a *App) M365PollSignIn() (bool, error) {
 		return false, nil
 	}
 	a.m365tok = *tok
+	a.m365account = m365.AccountName(tok.AccessToken)
 	a.m365dc = nil
 	return true, nil
 }
@@ -116,11 +119,22 @@ func (a *App) M365SignedIn() bool {
 	return a.m365tok.Valid()
 }
 
+// M365Account returns the signed-in identity (UPN/email) for display, or "".
+func (a *App) M365Account() string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if !a.m365tok.Valid() {
+		return ""
+	}
+	return a.m365account
+}
+
 // M365SignOut clears the 365 session.
 func (a *App) M365SignOut() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.m365tok = m365.Token{}
+	a.m365account = ""
 	a.m365dc = nil
 }
 

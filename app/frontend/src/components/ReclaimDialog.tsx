@@ -116,11 +116,23 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
           {phase === "scanning" && <div className="flex items-center gap-2 text-[12.5px] text-ink-2"><Loader2 size={14} className="animate-spin" /> Joining licensed users with last-login…</div>}
           {phase === "error" && <div className="text-[12px] px-4 py-2.5 rounded-lg selectable bg-critical-soft text-critical">{error}</div>}
 
-          {phase === "ready" && (
+          {phase === "ready" && joined.length === 0 && (
+            <div className="text-[12.5px] text-ink-2 space-y-2">
+              <p className="font-medium text-ink">No licensed Microsoft 365 users matched.</p>
+              <p>None of the accounts in this location resolved to a 365 user with an assigned licence. Usually that means one of:</p>
+              <ul className="list-disc pl-5 space-y-1 text-ink-3">
+                <li>these directory accounts have no <span className="font-mono">userPrincipalName</span>/<span className="font-mono">mail</span> that matches 365 (common against a non-AD test directory),</li>
+                <li>none of them currently hold a licence, or</li>
+                <li>you're pointed at a location with no licensed users — widen "Search in".</li>
+              </ul>
+            </div>
+          )}
+
+          {phase === "ready" && joined.length > 0 && (
             <>
               <div className="flex items-baseline gap-2 mb-2.5">
                 <span className="display text-[20px] font-semibold">{dormant.length}</span>
-                <span className="text-[12.5px] text-ink-2">dormant licensed users of {joined.length} licensed</span>
+                <span className="text-[12.5px] text-ink-2">dormant of {joined.length} licensed users</span>
               </div>
               {reclaim.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-3">
@@ -141,7 +153,7 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
                       <td className="text-right py-1.5 font-mono text-warning">{daysSince(j.seen.date) ?? "∞"}</td>
                     </tr>
                   ))}
-                  {dormant.length === 0 && <tr><td colSpan={4} className="py-6 text-center text-ink-3">No dormant licensed users past {days} days. 🎉</td></tr>}
+                  {dormant.length === 0 && <tr><td colSpan={4} className="py-6 text-center text-ink-3">All {joined.length} licensed users have signed in within {days} days — nothing to reclaim. 🎉</td></tr>}
                 </tbody>
               </table>
               {dormant.length > 200 && <p className="text-[11px] mt-2 text-ink-3">Showing first 200 of {dormant.length} — export for the full list.</p>}

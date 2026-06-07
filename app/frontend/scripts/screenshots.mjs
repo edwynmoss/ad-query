@@ -32,6 +32,7 @@ const MOCK = `
       {type:'Allow (object)',allow:true,flags:0,mask:256,rights:['Reset password'],sid:'S-1-5-21-x',trustee:'Help Desk',objectType:'00299570-246d-11d0-a768-00aa006e0529'}
     ]}),
     M365SignedIn: () => Promise.resolve(true),
+    M365Account: () => Promise.resolve('alice@corp.example.com'),
     M365SignInInteractive: () => new Promise(() => {}), // never resolves (simulates browser wait)
     M365StartSignIn: () => Promise.resolve({ device_code:'DC', user_code:'F7K2-9QLM', verification_uri:'https://microsoft.com/devicelogin', expires_in:900, interval:5, message:'' }),
     M365PollSignIn: () => Promise.resolve(false),
@@ -136,7 +137,8 @@ async function main() {
     const opens = page.getByRole("button", { name: "Open", exact: true });
     await opens.nth(2).click(); // Unused licenses (reclaim)
     await page.getByText("Built-in").waitFor({ state: "hidden" }); // Reports closes as the sub-report opens
-    await page.getByText("dormant licensed users").first().waitFor();
+    await page.getByText("candidates to reclaim").waitFor();
+    await page.getByText(/licensed users/).first().waitFor();
     await shot(page, "09-reclaim");
   });
 
@@ -157,7 +159,7 @@ async function main() {
      window.go.main.App.M365SignedIn = () => Promise.resolve(false);`,
     async (page) => {
       await page.getByRole("button", { name: /Connect to CORP/ }).click();
-      await page.locator('button[title="Microsoft 365 / Entra sign-in"]').click();
+      await page.getByRole("button", { name: /Connect 365/ }).click(); // masthead 365 chip (signed out)
       // Primary sign-in opens the browser; for the gallery show the device-code
       // fallback (which renders the code) instead.
       await page.getByRole("button", { name: /Sign in with a code/ }).click();

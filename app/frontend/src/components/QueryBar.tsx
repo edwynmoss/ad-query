@@ -6,7 +6,6 @@ import { SavedQueriesBar } from "./SavedQueriesBar";
 
 // Lazy — pulls in SheetJS only when the user opens bulk lookup.
 const BulkImportDialog = lazy(() => import("./BulkImportDialog").then((m) => ({ default: m.BulkImportDialog })));
-const M365Dialog = lazy(() => import("./M365Dialog").then((m) => ({ default: m.M365Dialog })));
 const ReportsPanel = lazy(() => import("./ReportsPanel").then((m) => ({ default: m.ReportsPanel })));
 import { Condition, MatchOp, compileConditions, combineAnd, quickSearchFilter, isConditionValid } from "../lib/filterBuilder";
 import { useDebouncedValue } from "../lib/hooks";
@@ -49,14 +48,15 @@ interface Props {
   resultIdentities?: string[];
   schemaAttributes?: string[];
   locations?: DirLocation[];
+  signedIn365?: boolean;
+  onOpen365?: () => void;
 }
 
 type Panel = null | "filters" | "columns" | "saved";
 
-export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resultIdentities, schemaAttributes, locations }: Props) {
+export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resultIdentities, schemaAttributes, locations, signedIn365, onOpen365 }: Props) {
   const [panel, setPanel] = useState<Panel>(null);
   const [showImport, setShowImport] = useState(false);
-  const [show365, setShow365] = useState(false);
   const [showReports, setShowReports] = useState(false);
   const [filterMode, setFilterMode] = useState<"visual" | "raw">("visual");
   const [newAttr, setNewAttr] = useState("");
@@ -103,7 +103,9 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
         <Button variant="ghost" size="icon" title="Bulk lookup from file (CSV / Excel)" onClick={() => { setPanel(null); setShowImport(true); }}>
           <Upload size={15} />
         </Button>
-        <Button variant="ghost" size="icon" title="Microsoft 365 / Entra sign-in" onClick={() => { setPanel(null); setShow365(true); }}>
+        <Button variant="ghost" size="icon" className={signedIn365 ? "text-success" : ""}
+          title={signedIn365 ? "Microsoft 365 — signed in (manage)" : "Connect Microsoft 365"}
+          onClick={() => { setPanel(null); onOpen365?.(); }}>
           <Cloud size={15} />
         </Button>
         <Button variant="ghost" size="icon" title="Reports" onClick={() => { setPanel(null); setShowReports(true); }}>
@@ -232,7 +234,6 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
       )}
 
       {showImport && <Suspense fallback={null}><BulkImportDialog req={req} onClose={() => setShowImport(false)} /></Suspense>}
-      {show365 && <Suspense fallback={null}><M365Dialog onClose={() => setShow365(false)} /></Suspense>}
       {showReports && <Suspense fallback={null}><ReportsPanel req={req} isAD={isAD} onOpen={(q) => { onOpenReport?.(q); setShowReports(false); }} resultIdentities={resultIdentities ?? []} onClose={() => setShowReports(false)} /></Suspense>}
     </div>
   );

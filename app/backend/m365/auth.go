@@ -12,6 +12,7 @@
 package m365
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -86,6 +87,35 @@ type Token struct {
 
 func (t Token) Valid() bool {
 	return t.AccessToken != "" && time.Now().Before(t.Acquired.Add(time.Duration(t.ExpiresIn)*time.Second))
+}
+
+// AccountName extracts a best-effort sign-in identity (UPN / email / name) from
+// the access token's JWT claims, for showing *who* is connected. Display-only
+// (not validated); returns "" if it can't be read.
+func AccountName(accessToken string) string {
+	parts := strings.Split(accessToken, ".")
+	if len(parts) < 2 {
+		return ""
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return ""
+	}
+	var c struct {
+		UPN               string `json:"upn"`
+		PreferredUsername string `json:"preferred_username"`
+		Email             string `json:"email"`
+		Name              string `json:"name"`
+	}
+	if json.Unmarshal(payload, &c) != nil {
+		return ""
+	}
+	for _, v := range []string{c.UPN, c.PreferredUsername, c.Email, c.Name} {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 // StartDeviceCode kicks off the device-code flow.

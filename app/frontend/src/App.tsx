@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
-import { Sun, Moon } from "lucide-react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { Sun, Moon, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Toaster } from "@/components/ui/sonner";
-import { Disconnect, Search, SchemaAttributes } from "../wailsjs/go/main/App";
+import { Disconnect, Search, SchemaAttributes, M365SignedIn, M365Account } from "../wailsjs/go/main/App";
+
+const M365Dialog = lazy(() => import("./components/M365Dialog").then((m) => ({ default: m.M365Dialog })));
 import { ldap } from "../wailsjs/go/models";
 import { ConnectionPanel } from "./components/ConnectionPanel";
 import { QueryBar, QueryState, effectiveFilter, DirLocation } from "./components/QueryBar";
@@ -23,8 +25,19 @@ function App() {
   const [locations, setLocations] = useState<DirLocation[]>([]);
   const [elapsed, setElapsed] = useState<number | null>(null);
   const [theme, setTheme] = useState<Theme>(getTheme());
+  const [show365, setShow365] = useState(false);
+  const [m365, setM365] = useState<{ signedIn: boolean; account: string }>({ signedIn: false, account: "" });
 
   function toggleTheme() { const t = theme === "light" ? "dark" : "light"; applyTheme(t); setTheme(t); }
+
+  async function refreshM365() {
+    try {
+      const signedIn = await M365SignedIn();
+      const account = signedIn ? await M365Account() : "";
+      setM365({ signedIn, account });
+    } catch { setM365({ signedIn: false, account: "" }); }
+  }
+  useEffect(() => { if (server) refreshM365(); }, [server]);
 
   function onConnected(info: ldap.ServerInfo, opts: ldap.ConnectOptions) {
     setServer(info); setConn(opts);
@@ -101,6 +114,20 @@ function App() {
             <span className="mono">{conn?.host}:{conn?.port}</span>
             <Badge variant="secondary">{server.isActiveDirectory ? "Active Directory" : "LDAP"}</Badge>
           </span>
+
+          {/* Microsoft 365 connection state — persistent, click to manage. */}
+          <button
+            onClick={() => setShow365(true)}
+            title={m365.signedIn ? `Microsoft 365 — signed in${m365.account ? " as " + m365.account : ""}` : "Connect Microsoft 365"}
+            className={"flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[12px] transition-colors " +
+              (m365.signedIn ? "bg-success-soft text-success hover:brightness-95" : "text-ink-3 hover:bg-sunken hover:text-ink")}
+          >
+            <Cloud size={13} />
+            {m365.signedIn
+              ? <span className="max-w-[180px] truncate">365 · {m365.account || "signed in"}</span>
+              : <span>Connect 365</span>}
+          </button>
+
           <span className="h-5 w-px bg-line" />
           <Button variant="ghost" size="icon" onClick={toggleTheme} title="Toggle theme" aria-label="toggle theme">{theme === "light" ? <Moon size={15} /> : <Sun size={15} />}</Button>
           <Button variant="outline" size="sm" onClick={disconnect}>Disconnect</Button>
@@ -108,7 +135,7 @@ function App() {
       </header>
 
       <div className="flex-1 flex flex-col min-h-0">
-        <QueryBar req={req} setReq={setReq} isAD={server.isActiveDirectory} running={running} onRun={() => runQuery()} onOpenReport={openReport} resultIdentities={resultIdentities} schemaAttributes={schema} locations={locations} />
+        <QueryBar req={req} setReq={setReq} isAD={server.isActiveDirectory} running={running} onRun={() => runQuery()} onOpenReport={openReport} resultIdentities={resultIdentities} schemaAttributes={schema} locations={locations} signedIn365={m365.signedIn} onOpen365={() => setShow365(true)} />
 
         {error && (
           <div className="mx-4 mt-3 px-3 py-2 text-[12px] rounded-md selectable bg-critical-soft text-critical border border-line">{error}</div>
@@ -132,6 +159,12 @@ function App() {
           {elapsed !== null && <span>{elapsed} ms</span>}
         </div>
       </footer>
+
+      {show365 && (
+        <Suspense fallback={null}>
+          <M365Dialog onClose={() => setShow365(false)} onChange={refreshM365} />
+        </Suspense>
+      )}
 
       <Toaster position="bottom-right" />
     </div>
