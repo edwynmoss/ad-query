@@ -187,29 +187,32 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
             </TabsList>
           </Tabs>
           {filterMode === "raw" ? (
-            <Input className="font-mono" value={req.filter} onChange={(e) => setReq({ ...req, filter: e.target.value })} placeholder="(objectClass=*)" />
+            <>
+              <Input className="font-mono" value={req.filter} onChange={(e) => setReq({ ...req, filter: e.target.value })} placeholder="(objectClass=*)" />
+              {/* Raw LDAP that will actually run — only shown on this advanced tab. */}
+              <div className="flex items-center gap-2 text-[11.5px] mt-3 pt-2.5 border-t border-line">
+                <span className="eyebrow">Effective</span>
+                <code className="truncate selectable font-mono text-ink-2" title={effectiveFilter(req)}>{effectiveFilter(req) || "(objectClass=*)"}</code>
+              </div>
+            </>
           ) : (
             <FilterBuilder conditions={req.conditions} matchOp={req.matchOp} attributes={attrSource} onChange={(conditions, matchOp) => setReq({ ...req, conditions, matchOp })} />
           )}
-          <div className="flex items-center gap-2 text-[11.5px] mt-3 pt-2.5 border-t border-line">
-            <span className="eyebrow">Effective</span>
-            <code className="truncate selectable font-mono text-ink-2" title={effectiveFilter(req)}>{effectiveFilter(req) || "(objectClass=*)"}</code>
-          </div>
 
-          {/* Location & scope — the raw base DN + search depth (one level deep). */}
+          {/* Where to search — plain-language depth; the DN mirrors the bar's
+              location picker for power users who want to paste an exact path. */}
           <div className="mt-3 pt-2.5 border-t border-line">
-            <div className="eyebrow text-ink-3 mb-2">Location &amp; scope</div>
-            <div className="grid grid-cols-3 gap-2">
-              <Input className="font-mono col-span-2 h-8" value={req.baseDN} onChange={(e) => setReq({ ...req, baseDN: e.target.value })} placeholder="base dn" />
-              <Select value={String(req.scope)} onValueChange={(val) => setReq({ ...req, scope: Number(val) })}>
-                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">Base</SelectItem>
-                  <SelectItem value="1">One level</SelectItem>
-                  <SelectItem value="2">Subtree</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="eyebrow text-ink-3 mb-2">Where to search</div>
+            <Select value={String(req.scope)} onValueChange={(val) => setReq({ ...req, scope: Number(val) })}>
+              <SelectTrigger className="h-8 w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="2">Everything under this location</SelectItem>
+                <SelectItem value="1">Direct contents only (one level down)</SelectItem>
+                <SelectItem value="0">Just this location itself</SelectItem>
+              </SelectContent>
+            </Select>
+            <label className="block text-[11px] text-ink-3 mt-2 mb-1">Exact location (path / DN)</label>
+            <Input className="font-mono h-8" value={req.baseDN} onChange={(e) => setReq({ ...req, baseDN: e.target.value })} placeholder="dc=example,dc=com" />
           </div>
         </Pop>
       )}

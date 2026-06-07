@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { labelFor, COMMON_COLUMNS } from "../lib/attrLabels";
 
 interface Props {
   conditions: Condition[];
@@ -38,7 +39,7 @@ export function FilterBuilder({ conditions, matchOp, onChange, attributes }: Pro
         const needsValue = OPERATORS.find((o) => o.key === c.operator)?.needsValue ?? true;
         return (
           <div key={c.id} className="flex items-center gap-1.5">
-            <Input className="font-mono h-7 flex-1" list="adq-attr-list" placeholder="attribute"
+            <Input className="font-mono h-7 flex-1" list="adq-attr-list" placeholder="field (e.g. Department)"
               value={c.attribute} onChange={(e) => update(c.id, { attribute: e.target.value })} />
             <Select value={c.operator} onValueChange={(val) => update(c.id, { operator: val as OperatorKey })}>
               <SelectTrigger className="h-7 w-36"><SelectValue /></SelectTrigger>
@@ -55,7 +56,11 @@ export function FilterBuilder({ conditions, matchOp, onChange, attributes }: Pro
 
       <Button variant="ghost" size="sm" className="px-2" onClick={add}><Plus size={13} /> Add condition</Button>
 
-      <datalist id="adq-attr-list">{attributes.map((a) => <option key={a} value={a} />)}</datalist>
+      {/* Common fields first (with plain-language labels), then the full set. */}
+      <datalist id="adq-attr-list">
+        {COMMON_COLUMNS.filter((a) => attributes.some((x) => x.toLowerCase() === a.toLowerCase())).map((a) => <option key={"c-" + a} value={a} label={labelFor(a)} />)}
+        {attributes.map((a) => <option key={a} value={a} label={labelFor(a)} />)}
+      </datalist>
     </div>
   );
 }
