@@ -65,7 +65,11 @@ func AcquireInteractive(ctx context.Context, doer Doer, openURL func(string) err
 		return nil, fmt.Errorf("start loopback listener: %w", err)
 	}
 	defer ln.Close()
-	redirect := fmt.Sprintf("http://localhost:%d/callback", ln.Addr().(*net.TCPAddr).Port)
+	// Entra allows a dynamic port for a loopback redirect, but the registered
+	// URI on the built-in client is "http://localhost" (no path) — so the
+	// redirect must be exactly host:port with no path segment. This mirrors the
+	// MSAL system-browser form the client is registered for.
+	redirect := fmt.Sprintf("http://localhost:%d", ln.Addr().(*net.TCPAddr).Port)
 
 	verifier, challenge, err := newPKCE()
 	if err != nil {
@@ -82,8 +86,13 @@ func AcquireInteractive(ctx context.Context, doer Doer, openURL func(string) err
 	}
 	resCh := make(chan result, 1)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
+		// Ignore incidental requests (e.g. favicon) that aren't the redirect.
+		if q.Get("code") == "" && q.Get("error") == "" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		if e := q.Get("error"); e != "" {
 			writeClose(w, "Sign-in failed — you can close this window.")
 			resCh <- result{err: fmt.Errorf("sign-in failed: %s", firstLine(q.Get("error_description")))}
