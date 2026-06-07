@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from "react";
-import { Play, X, Plus, Loader2, SlidersHorizontal, Columns3, Bookmark, ChevronDown, Upload, FileBarChart, Search, Wrench } from "lucide-react";
+import { Play, X, Loader2, SlidersHorizontal, Columns3, Bookmark, ChevronDown, Upload, FileBarChart, Search, Wrench } from "lucide-react";
 import { OBJECT_TYPES, filterFor, defaultAttributesFor, COMMON_ATTRIBUTES } from "../lib/objectTypes";
 import { labelFor, COMMON_COLUMNS } from "../lib/attrLabels";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -86,7 +86,12 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
     setNewAttr("");
   }
   function removeAttr(name: string) { setReq({ ...req, attributes: req.attributes.filter((x) => x !== name) }); }
-  function toggleAttr(name: string) { req.attributes.includes(name) ? removeAttr(name) : addAttr(name); }
+  // Self-contained so toggling from the checklist doesn't clear the search box.
+  function toggleAttr(name: string) {
+    setReq(req.attributes.includes(name)
+      ? { ...req, attributes: req.attributes.filter((x) => x !== name) }
+      : { ...req, attributes: [...req.attributes, name] });
+  }
   function run() { setPanel(null); onRun(); }
 
   // Common columns the connected directory actually has (case-insensitive
@@ -97,10 +102,23 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
     [schemaLower],
   );
 
-  const suggestions = useMemo(
-    () => attrSource.filter((a) => !req.attributes.includes(a) && a.toLowerCase().includes(debouncedAttr.toLowerCase())).slice(0, 8),
-    [attrSource, req.attributes, debouncedAttr]
-  );
+  // Column search: matches on the friendly label OR the raw attribute name,
+  // ranking common columns first, across everything the directory has.
+  const colMatches = useMemo(() => {
+    const q = debouncedAttr.trim().toLowerCase();
+    if (!q) return [];
+    const ranked = [...commonAvailable, ...attrSource];
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const a of ranked) {
+      const lc = a.toLowerCase();
+      if (seen.has(lc)) continue;
+      seen.add(lc);
+      if (lc.includes(q) || labelFor(a).toLowerCase().includes(q)) out.push(a);
+      if (out.length >= 60) break;
+    }
+    return out;
+  }, [debouncedAttr, attrSource, commonAvailable]);
 
   function toggle(p: Panel) { setPanel((cur) => (cur === p ? null : p)); }
 
@@ -221,44 +239,43 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
         <Pop className="right-4 w-[340px]">
           <div className="eyebrow mb-1.5">Showing {req.attributes.length} columns</div>
           {/* What's currently shown — friendly names, click ✕ to remove. */}
-          <div className="flex flex-wrap gap-1.5 mb-3 max-h-24 overflow-auto">
+          <div className="flex flex-wrap gap-1.5 mb-2.5 max-h-24 overflow-auto">
             {req.attributes.length === 0 && <span className="text-[12px] text-ink-3">None — pick some below.</span>}
             {req.attributes.map((a) => (
               <Badge variant="secondary" key={a} className="font-normal" title={a}>{labelFor(a)}<button className="opacity-50 hover:opacity-100" onClick={() => removeAttr(a)} aria-label={`remove ${labelFor(a)}`}><X size={11} /></button></Badge>
             ))}
           </div>
 
-          {/* Pick from common columns — no need to know attribute names. */}
-          <div className="eyebrow text-ink-3 mb-1">Common columns</div>
+          {/* One search across everything, by friendly name or raw attribute. */}
+          <div className="relative mb-2">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
+            <Input className="pl-8 h-8" placeholder="Search columns (e.g. phone, last sign-in)…" value={newAttr} onChange={(e) => setNewAttr(e.target.value)} />
+          </div>
+
           <div className="max-h-52 overflow-auto -mx-1 px-1">
-            {commonAvailable.map((a) => (
+            <div className="eyebrow text-ink-3 px-1 mb-1">{newAttr.trim() ? "Matches" : "Common columns"}</div>
+            {(newAttr.trim() ? colMatches : commonAvailable).map((a) => (
               <label key={a} className="flex items-center gap-2.5 py-1 px-1.5 rounded-md hover:bg-sunken cursor-pointer">
                 <Checkbox checked={req.attributes.includes(a)} onCheckedChange={() => toggleAttr(a)} />
                 <span className="flex-1 text-[12.5px]">{labelFor(a)}</span>
                 <span className="text-[10.5px] text-ink-3 font-mono">{a}</span>
               </label>
             ))}
+            {newAttr.trim() && colMatches.length === 0 && (
+              <div className="text-[12px] text-ink-3 px-1 py-2">
+                No columns match “{newAttr.trim()}”.{" "}
+                <button className="text-brand hover:underline" onClick={() => addAttr(newAttr)}>Add “{newAttr.trim()}” anyway</button>
+              </div>
+            )}
           </div>
 
-          {/* Advanced — type any of the directory's attributes by name. */}
-          <details className="mt-3 pt-2.5 border-t border-line">
-            <summary className="eyebrow cursor-pointer select-none text-ink-3">Add any attribute{schemaAttributes && schemaAttributes.length > 0 ? ` · ${schemaAttributes.length} in schema` : ""}</summary>
-            <div className="relative mt-2">
-              <div className="flex items-center gap-1">
-                <Input className="font-mono h-8" value={newAttr} onChange={(e) => setNewAttr(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addAttr(newAttr)} placeholder="attribute name…" />
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => addAttr(newAttr)} aria-label="add"><Plus size={14} /></Button>
-              </div>
-              {newAttr && suggestions.length > 0 && (
-                <div className="mt-1 max-h-44 overflow-auto rounded-[10px] border border-line">
-                  {suggestions.map((s) => (
-                    <button key={s} className="flex w-full items-center justify-between gap-2 text-left px-2.5 py-1.5 text-[12px] hover:bg-sunken" onClick={() => addAttr(s)}>
-                      <span>{labelFor(s)}</span><span className="text-[10.5px] text-ink-3 font-mono">{s}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </details>
+          <p className="text-[11px] mt-2 pt-2 border-t border-line text-ink-3">
+            {newAttr.trim()
+              ? `${colMatches.length} match${colMatches.length === 1 ? "" : "es"}`
+              : schemaAttributes && schemaAttributes.length > 0
+                ? `${commonAvailable.length} common · ${schemaAttributes.length} total — type to search all`
+                : "Type to search all attributes"}
+          </p>
         </Pop>
       )}
 
