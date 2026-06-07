@@ -10,6 +10,12 @@ const M365Dialog = lazy(() => import("./M365Dialog").then((m) => ({ default: m.M
 const ReportsPanel = lazy(() => import("./ReportsPanel").then((m) => ({ default: m.ReportsPanel })));
 import { Condition, MatchOp, compileConditions, combineAnd, isConditionValid } from "../lib/filterBuilder";
 import { useDebouncedValue } from "../lib/hooks";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export interface QueryState {
   baseDN: string;
@@ -90,45 +96,48 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
   return (
     <div className="relative px-4 py-2.5" style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-line)" }}>
       <div className="flex items-center gap-2">
-        <button className={"btn btn-quiet btn-icon " + (panel === "saved" ? "bg-[var(--color-sunken)]" : "")} title="Saved queries" onClick={() => toggle("saved")}>
+        <Button variant="ghost" size="icon" className={(panel === "saved" ? "bg-[var(--color-sunken)]" : "")} title="Saved queries" onClick={() => toggle("saved")}>
           <Bookmark size={15} />
-        </button>
-        <button className="btn btn-quiet btn-icon" title="Bulk lookup from file (CSV / Excel)" onClick={() => { setPanel(null); setShowImport(true); }}>
+        </Button>
+        <Button variant="ghost" size="icon" title="Bulk lookup from file (CSV / Excel)" onClick={() => { setPanel(null); setShowImport(true); }}>
           <Upload size={15} />
-        </button>
-        <button className="btn btn-quiet btn-icon" title="Microsoft 365 / Entra sign-in" onClick={() => { setPanel(null); setShow365(true); }}>
+        </Button>
+        <Button variant="ghost" size="icon" title="Microsoft 365 / Entra sign-in" onClick={() => { setPanel(null); setShow365(true); }}>
           <Cloud size={15} />
-        </button>
-        <button className="btn btn-quiet btn-icon" title="Reports" onClick={() => { setPanel(null); setShowReports(true); }}>
+        </Button>
+        <Button variant="ghost" size="icon" title="Reports" onClick={() => { setPanel(null); setShowReports(true); }}>
           <FileBarChart size={15} />
-        </button>
+        </Button>
 
-        <div className="seg">
+        <ToggleGroup type="single" variant="outline" value={activeType} onValueChange={(v) => v && applyType(v)}>
           {OBJECT_TYPES.map((t) => (
-            <button key={t.key} data-active={activeType === t.key} onClick={() => applyType(t.key)}>{t.label}</button>
+            <ToggleGroupItem key={t.key} value={t.key}>{t.label}</ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
 
         <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
           <span className="eyebrow shrink-0">Search in</span>
-          <select className="input flex-1" value={req.baseDN} onChange={(e) => setReq({ ...req, baseDN: e.target.value, scope: 2 })} title="Location">
+          <Select value={req.baseDN} onValueChange={(val) => setReq({ ...req, baseDN: val, scope: 2 })}>
+            <SelectTrigger className="flex-1"><SelectValue placeholder="Location" /></SelectTrigger>
+            <SelectContent>
             {locs.map((l) => (
-              <option key={l.dn} value={l.dn}>{" ".repeat(l.depth) + (l.depth > 0 ? "↳ " : "") + l.label}</option>
+              <SelectItem key={l.dn} value={l.dn}>{" ".repeat(l.depth) + (l.depth > 0 ? "↳ " : "") + l.label}</SelectItem>
             ))}
-          </select>
+            </SelectContent>
+          </Select>
         </div>
 
-        <button className={"btn " + (panel === "filters" ? "bg-[var(--color-sunken)]" : "")} onClick={() => toggle("filters")}>
+        <Button variant="outline" className={(panel === "filters" ? "bg-[var(--color-sunken)]" : "")} onClick={() => toggle("filters")}>
           <SlidersHorizontal size={14} /> Filters{activeConditions > 0 ? <span className="ml-0.5 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-semibold" style={{ background: "var(--color-brand)", color: "#fff" }}>{activeConditions}</span> : null}
-        </button>
+        </Button>
 
-        <button className={"btn " + (panel === "columns" ? "bg-[var(--color-sunken)]" : "")} onClick={() => toggle("columns")}>
+        <Button variant="outline" className={(panel === "columns" ? "bg-[var(--color-sunken)]" : "")} onClick={() => toggle("columns")}>
           <Columns3 size={14} /> Columns <span style={{ color: "var(--color-ink-3)" }}>{req.attributes.length}</span> <ChevronDown size={12} />
-        </button>
+        </Button>
 
-        <button className="btn btn-primary px-5" onClick={run} disabled={running || !req.baseDN}>
+        <Button className="px-5" onClick={run} disabled={running || !req.baseDN}>
           {running ? <Loader2 size={14} className="animate-spin" /> : <Play size={13} />}{running ? "Running" : "Run"}
-        </button>
+        </Button>
       </div>
 
       {panel && <div className="fixed inset-0 z-20" onClick={() => setPanel(null)} />}
@@ -139,12 +148,14 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
 
       {panel === "filters" && (
         <Pop className="right-4 w-[540px]">
-          <div className="tabs gap-4 mb-3" style={{ borderBottom: "1px solid var(--color-line)" }}>
-            <button className="tab" data-active={filterMode === "visual"} onClick={() => setFilterMode("visual")}>Filter builder</button>
-            <button className="tab" data-active={filterMode === "raw"} onClick={() => setFilterMode("raw")}>Raw LDAP</button>
-          </div>
+          <Tabs value={filterMode} onValueChange={(v) => setFilterMode(v as any)}>
+            <TabsList>
+              <TabsTrigger value="visual">Filter builder</TabsTrigger>
+              <TabsTrigger value="raw">Raw LDAP</TabsTrigger>
+            </TabsList>
+          </Tabs>
           {filterMode === "raw" ? (
-            <input className="input mono" value={req.filter} onChange={(e) => setReq({ ...req, filter: e.target.value })} placeholder="(objectClass=*)" />
+            <Input className="font-mono" value={req.filter} onChange={(e) => setReq({ ...req, filter: e.target.value })} placeholder="(objectClass=*)" />
           ) : (
             <FilterBuilder conditions={req.conditions} matchOp={req.matchOp} attributes={attrSource} onChange={(conditions, matchOp) => setReq({ ...req, conditions, matchOp })} />
           )}
@@ -157,12 +168,15 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
           <details className="mt-3 pt-2.5" style={{ borderTop: "1px solid var(--color-line)" }}>
             <summary className="eyebrow cursor-pointer select-none" style={{ color: "var(--color-ink-3)" }}>Advanced · base DN &amp; scope</summary>
             <div className="grid grid-cols-3 gap-2 mt-2">
-              <input className="input mono col-span-2 h-8" value={req.baseDN} onChange={(e) => setReq({ ...req, baseDN: e.target.value })} placeholder="base dn" />
-              <select className="input h-8" value={req.scope} onChange={(e) => setReq({ ...req, scope: Number(e.target.value) })}>
-                <option value={0}>Base</option>
-                <option value={1}>One level</option>
-                <option value={2}>Subtree</option>
-              </select>
+              <Input className="font-mono col-span-2 h-8" value={req.baseDN} onChange={(e) => setReq({ ...req, baseDN: e.target.value })} placeholder="base dn" />
+              <Select value={String(req.scope)} onValueChange={(val) => setReq({ ...req, scope: Number(val) })}>
+                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Base</SelectItem>
+                  <SelectItem value="1">One level</SelectItem>
+                  <SelectItem value="2">Subtree</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </details>
         </Pop>
@@ -173,13 +187,13 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
           <div className="eyebrow mb-2">Columns · {req.attributes.length}</div>
           <div className="flex flex-wrap gap-1.5 mb-2.5 max-h-32 overflow-auto">
             {req.attributes.map((a) => (
-              <span key={a} className="token">{a}<button className="opacity-50 hover:opacity-100" onClick={() => removeAttr(a)} aria-label={`remove ${a}`}><X size={11} /></button></span>
+              <Badge variant="secondary" key={a} className="font-mono font-normal">{a}<button className="opacity-50 hover:opacity-100" onClick={() => removeAttr(a)} aria-label={`remove ${a}`}><X size={11} /></button></Badge>
             ))}
           </div>
           <div className="relative">
             <div className="flex items-center gap-1">
-              <input className="input mono h-8" value={newAttr} onChange={(e) => setNewAttr(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addAttr(newAttr)} placeholder="add attribute…" />
-              <button className="btn btn-quiet btn-icon h-8 w-8" onClick={() => addAttr(newAttr)} aria-label="add"><Plus size={14} /></button>
+              <Input className="font-mono h-8" value={newAttr} onChange={(e) => setNewAttr(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addAttr(newAttr)} placeholder="add attribute…" />
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => addAttr(newAttr)} aria-label="add"><Plus size={14} /></Button>
             </div>
             {newAttr && suggestions.length > 0 && (
               <div className="mt-1 max-h-44 overflow-auto" style={{ border: "1px solid var(--color-line)", borderRadius: 10 }}>

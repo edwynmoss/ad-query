@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
-import { X, Loader2, Upload, FileSpreadsheet, Download, CheckCircle2, AlertCircle, Cloud } from "lucide-react";
+import { Loader2, Upload, FileSpreadsheet, Download, CheckCircle2, AlertCircle, Cloud } from "lucide-react";
 import { Search, M365SignedIn, M365Check } from "../../wailsjs/go/main/App";
 import { ldap, m365 } from "../../wailsjs/go/models";
 import type { QueryState } from "./QueryBar";
 import { parseSpreadsheet, detectKey, chunk, chunkFilter, rowsToCsv, MATCH_ATTRS, MatchAttr, Sheet } from "../lib/bulk";
 import { downloadCsv } from "../lib/csv";
 import { csvValue } from "../lib/format";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 interface Props {
   req: QueryState;
@@ -125,15 +130,12 @@ export function BulkImportDialog({ req, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center" style={{ background: "rgba(0,0,0,0.40)" }} onClick={onClose}>
-      <div className="card w-[560px] max-h-[88vh] flex flex-col" style={{ boxShadow: "0 16px 50px rgba(20,18,12,0.28)" }} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: "1px solid var(--color-line)" }}>
-          <div>
-            <span className="display text-[16px]" style={{ fontWeight: 600 }}>Bulk lookup from file</span>
-            <p className="text-[12px]" style={{ color: "var(--color-ink-3)" }}>Import a CSV or Excel list and enrich it from the directory.</p>
-          </div>
-          <button className="btn btn-quiet btn-icon" onClick={onClose}><X size={15} /></button>
-        </div>
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-[560px] max-h-[88vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-5 py-3.5" style={{ borderBottom: "1px solid var(--color-line)" }}>
+          <DialogTitle className="display text-[16px]" style={{ fontWeight: 600 }}>Bulk lookup from file</DialogTitle>
+          <DialogDescription className="text-[12px]" style={{ color: "var(--color-ink-3)" }}>Import a CSV or Excel list and enrich it from the directory.</DialogDescription>
+        </DialogHeader>
 
         <div className="overflow-auto px-5 py-4 space-y-4">
           {/* File picker */}
@@ -144,7 +146,7 @@ export function BulkImportDialog({ req, onClose }: Props) {
               <div className="text-[11px]" style={{ color: "var(--color-ink-3)" }}>{sheet ? `${sheet.rows.length} rows · ${sheet.headers.length} columns` : "Identities to look up (one per row)"}</div>
             </div>
             <input type="file" accept=".csv,.xlsx,.xls,text/csv" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
-            <span className="btn h-8">Browse</span>
+            <span className="inline-flex items-center justify-center h-8 px-3.5 rounded-md border border-border bg-card text-[12.5px] font-medium">Browse</span>
           </label>
 
           {sheet && (
@@ -152,23 +154,29 @@ export function BulkImportDialog({ req, onClose }: Props) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="eyebrow block mb-1.5">Match column</label>
-                  <select className="input" value={keyCol} onChange={(e) => setKeyCol(e.target.value)}>
-                    {sheet.headers.map((h) => <option key={h} value={h}>{h}</option>)}
-                  </select>
+                  <Select value={keyCol} onValueChange={(val) => setKeyCol(val)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {sheet.headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="eyebrow block mb-1.5">Match on attribute</label>
-                  <select className="input mono" value={matchAttr} onChange={(e) => setMatchAttr(e.target.value as MatchAttr)}>
-                    {MATCH_ATTRS.map((a) => <option key={a} value={a}>{a}</option>)}
-                  </select>
+                  <Select value={matchAttr} onValueChange={(val) => setMatchAttr(val as MatchAttr)}>
+                    <SelectTrigger className="font-mono"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {MATCH_ATTRS.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div>
                 <label className="eyebrow block mb-1.5">Returns your selected columns</label>
-                <div className="flex flex-wrap gap-1.5">{outAttrs.map((a) => <span key={a} className="token">{a}</span>)}</div>
+                <div className="flex flex-wrap gap-1.5">{outAttrs.map((a) => <Badge key={a} variant="secondary" className="font-mono font-normal">{a}</Badge>)}</div>
               </div>
               <label className="flex items-center gap-2 text-[12px] cursor-pointer" style={{ color: signedIn365 ? "var(--color-ink-2)" : "var(--color-ink-3)" }}>
-                <input type="checkbox" checked={check365} disabled={!signedIn365} onChange={(e) => setCheck365(e.target.checked)} />
+                <Checkbox checked={check365} disabled={!signedIn365} onCheckedChange={(v) => setCheck365(!!v)} />
                 <Cloud size={13} /> Also check Microsoft 365 {signedIn365 ? "(enabled · licenses · last sign-in)" : "— sign in via the ☁ button first"}
               </label>
             </>
@@ -192,15 +200,15 @@ export function BulkImportDialog({ req, onClose }: Props) {
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-5 py-3.5" style={{ borderTop: "1px solid var(--color-line)", background: "var(--color-surface)" }}>
-          <button className="btn" onClick={onClose}>Close</button>
+        <DialogFooter className="px-5 py-3.5" style={{ borderTop: "1px solid var(--color-line)", background: "var(--color-surface)" }}>
+          <Button variant="outline" onClick={onClose}>Close</Button>
           {phase === "done"
-            ? <button className="btn btn-primary px-5" onClick={exportResults}><Download size={14} /> Export results ({resultRows.length})</button>
-            : <button className="btn btn-primary px-5" onClick={run} disabled={!sheet || !keyCol || phase === "running"}>
+            ? <Button className="px-5" onClick={exportResults}><Download size={14} /> Export results ({resultRows.length})</Button>
+            : <Button className="px-5" onClick={run} disabled={!sheet || !keyCol || phase === "running"}>
                 <FileSpreadsheet size={14} /> Look up {sheet ? sheet.rows.length : 0}
-              </button>}
-        </div>
-      </div>
-    </div>
+              </Button>}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

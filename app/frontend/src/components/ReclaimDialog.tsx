@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, Loader2, Download, RefreshCw } from "lucide-react";
+import { Loader2, Download, RefreshCw } from "lucide-react";
 import { Search, M365SignedIn, M365Check } from "../../wailsjs/go/main/App";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ldap, m365 } from "../../wailsjs/go/models";
 import { OBJECT_TYPES, filterFor } from "../lib/objectTypes";
 import { combineLastSeen, daysSince, isStale, LastSeen } from "../lib/lastseen";
@@ -91,23 +95,20 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center" style={{ background: "rgba(0,0,0,0.40)" }} onClick={onClose}>
-      <div className="card w-[680px] max-h-[88vh] flex flex-col" style={{ boxShadow: "0 16px 50px rgba(20,18,12,0.28)" }} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: "1px solid var(--color-line)" }}>
-          <div>
-            <span className="display text-[16px]" style={{ fontWeight: 600 }}>Unused licenses</span>
-            <p className="text-[12px]" style={{ color: "var(--color-ink-3)" }}>Licensed users dormant in both AD and Microsoft 365 — candidates to reclaim.</p>
-          </div>
-          <button className="btn btn-quiet btn-icon" onClick={onClose}><X size={15} /></button>
-        </div>
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-[680px] max-h-[88vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-5 py-3.5 text-left" style={{ borderBottom: "1px solid var(--color-line)" }}>
+          <DialogTitle className="display text-[16px]" style={{ fontWeight: 600 }}>Unused licenses</DialogTitle>
+          <DialogDescription className="text-[12px]" style={{ color: "var(--color-ink-3)" }}>Licensed users dormant in both AD and Microsoft 365 — candidates to reclaim.</DialogDescription>
+        </DialogHeader>
 
         <div className="flex items-center gap-3 px-5 py-3" style={{ borderBottom: "1px solid var(--color-line)" }}>
           <span className="text-[12.5px]">Idle more than</span>
-          <input type="number" min={1} className="input w-20 text-center" value={days} onChange={(e) => setDays(Math.max(1, Number(e.target.value) || 90))} disabled={phase !== "ready"} />
+          <Input type="number" min={1} className="w-20 text-center" value={days} onChange={(e) => setDays(Math.max(1, Number(e.target.value) || 90))} disabled={phase !== "ready"} />
           <span className="text-[12.5px]">days</span>
-          <button className="btn btn-quiet h-8 ml-auto" onClick={scan} disabled={phase === "scanning"}>
+          <Button variant="ghost" size="sm" className="ml-auto" onClick={scan} disabled={phase === "scanning"}>
             {phase === "scanning" ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Rescan
-          </button>
+          </Button>
         </div>
 
         <div className="overflow-auto px-5 py-4 min-h-[160px]">
@@ -124,7 +125,7 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
               {reclaim.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   <span className="eyebrow self-center">Reclaimable</span>
-                  {reclaim.map((r) => <span key={r.label} className="status status-ok">{r.count} × {r.label}</span>)}
+                  {reclaim.map((r) => <Badge key={r.label} variant="outline" className="border-transparent" style={{ background: "var(--color-ok-weak)", color: "var(--color-ok)" }}>{r.count} × {r.label}</Badge>)}
                 </div>
               )}
               <table className="w-full text-[12px]" style={{ fontVariantNumeric: "tabular-nums" }}>
@@ -148,14 +149,14 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
           )}
         </div>
 
-        <div className="flex items-center gap-2 px-5 py-3.5" style={{ borderTop: "1px solid var(--color-line)" }}>
-          <p className="text-[11px] flex-1 min-w-0" style={{ color: "var(--color-ink-3)" }}>
+        <DialogFooter className="px-5 py-3.5" style={{ borderTop: "1px solid var(--color-line)" }}>
+          <p className="text-[11px] flex-1 min-w-0 mr-auto text-left" style={{ color: "var(--color-ink-3)" }}>
             Scans accounts in your AD, then matches them to 365 licenses — cloud-only users (no AD account) aren't included.
           </p>
-          <button className="btn" onClick={onClose}>Close</button>
-          <button className="btn btn-primary px-5" onClick={exportCsv} disabled={phase !== "ready" || dormant.length === 0}><Download size={14} /> Export {dormant.length} users</button>
-        </div>
-      </div>
-    </div>
+          <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button className="px-5" onClick={exportCsv} disabled={phase !== "ready" || dormant.length === 0}><Download size={14} /> Export {dormant.length} users</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

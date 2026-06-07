@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, Download, ArrowUpRight, Loader2, FileBarChart, Cloud } from "lucide-react";
+import { Download, ArrowUpRight, Loader2, FileBarChart, Cloud } from "lucide-react";
 import { Search, M365SignedIn } from "../../wailsjs/go/main/App";
 import { ldap } from "../../wailsjs/go/models";
 import { QueryState, effectiveFilter } from "./QueryBar";
@@ -8,6 +8,8 @@ import { loadSavedQueries } from "../lib/savedQueries";
 import { buildCsv, downloadCsv, DEFAULT_CSV_OPTIONS } from "../lib/csv";
 import { ReclaimDialog } from "./ReclaimDialog";
 import { StaleReportDialog } from "./StaleReportDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   req: QueryState;
@@ -50,49 +52,55 @@ export function ReportsPanel({ req, isAD, onOpen, onClose }: Props) {
     );
   }
 
+  // Only one dialog at a time: hide Reports while a sub-report (Reclaim/Stale)
+  // is open so the two Radix dialogs don't stack. ReportsPanel stays mounted, so
+  // closing the sub-report returns the user to the Reports list.
+  const subOpen = showReclaim || showStale;
+
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center" style={{ background: "rgba(0,0,0,0.40)" }} onClick={onClose}>
-      <div className="card w-[600px] max-h-[86vh] flex flex-col" style={{ boxShadow: "0 16px 50px rgba(20,18,12,0.28)" }} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: "1px solid var(--color-line)" }}>
-          <div className="flex items-center gap-2"><FileBarChart size={16} style={{ color: "var(--color-brand)" }} /><span className="display text-[16px]" style={{ fontWeight: 600 }}>Reports</span></div>
-          <button className="btn btn-quiet btn-icon" onClick={onClose}><X size={15} /></button>
-        </div>
+    <>
+      <Dialog open={!subOpen} onOpenChange={(o) => { if (!o && !subOpen) onClose(); }}>
+        <DialogContent className="w-[600px] max-h-[86vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-5 py-3.5">
+            <DialogTitle><span className="flex items-center gap-2"><FileBarChart size={16} style={{ color: "var(--color-brand)" }} /><span className="display text-[16px]" style={{ fontWeight: 600 }}>Reports</span></span></DialogTitle>
+          </DialogHeader>
 
-        <div className="overflow-auto px-5 py-2">
-          <div className="eyebrow pt-2 pb-1">Built-in</div>
-          {BUILTIN_REPORTS.map((r) => {
-            if (r.kind === "license")
-              return row(r.id, r.name, r.description, <button className="btn h-8" onClick={() => setShowReclaim(true)}>Open <ArrowUpRight size={13} /></button>);
-            if (r.kind === "stale")
-              return row(r.id, r.name, r.description, <button className="btn h-8" onClick={() => setShowStale(true)}>Open <ArrowUpRight size={13} /></button>);
-            const q = resolveQuery(r, isAD, req.baseDN);
-            return row(r.id, r.name, r.description, <>
-              <button className="btn btn-quiet h-8" onClick={() => onOpen(q)}>Open</button>
-              <button className="btn h-8" disabled={busy === r.name} onClick={() => downloadQuery(r.name, q)}>
-                {busy === r.name ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} Download
-              </button>
-            </>);
-          })}
+          <div className="overflow-auto px-5 py-2">
+            <div className="eyebrow pt-2 pb-1">Built-in</div>
+            {BUILTIN_REPORTS.map((r) => {
+              if (r.kind === "license")
+                return row(r.id, r.name, r.description, <Button variant="outline" size="sm" onClick={() => setShowReclaim(true)}>Open <ArrowUpRight size={13} /></Button>);
+              if (r.kind === "stale")
+                return row(r.id, r.name, r.description, <Button variant="outline" size="sm" onClick={() => setShowStale(true)}>Open <ArrowUpRight size={13} /></Button>);
+              const q = resolveQuery(r, isAD, req.baseDN);
+              return row(r.id, r.name, r.description, <>
+                <Button variant="ghost" size="sm" onClick={() => onOpen(q)}>Open</Button>
+                <Button variant="outline" size="sm" disabled={busy === r.name} onClick={() => downloadQuery(r.name, q)}>
+                  {busy === r.name ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} Download
+                </Button>
+              </>);
+            })}
 
-          <div className="eyebrow pt-3 pb-1">Saved queries</div>
-          {saved.length === 0 && <div className="text-[12px] py-2" style={{ color: "var(--color-ink-3)" }}>None yet — save a query from the ⌘ Saved menu.</div>}
-          {saved.map((s) =>
-            row(s.id, s.name, `${s.query.attributes.length} columns · ${s.query.filter}`, <>
-              <button className="btn btn-quiet h-8" onClick={() => onOpen(s.query)}>Open</button>
-              <button className="btn h-8" disabled={busy === s.name} onClick={() => downloadQuery(s.name, s.query)}>
-                {busy === s.name ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} Download
-              </button>
-            </>)
-          )}
-        </div>
+            <div className="eyebrow pt-3 pb-1">Saved queries</div>
+            {saved.length === 0 && <div className="text-[12px] py-2" style={{ color: "var(--color-ink-3)" }}>None yet — save a query from the ⌘ Saved menu.</div>}
+            {saved.map((s) =>
+              row(s.id, s.name, `${s.query.attributes.length} columns · ${s.query.filter}`, <>
+                <Button variant="ghost" size="sm" onClick={() => onOpen(s.query)}>Open</Button>
+                <Button variant="outline" size="sm" disabled={busy === s.name} onClick={() => downloadQuery(s.name, s.query)}>
+                  {busy === s.name ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} Download
+                </Button>
+              </>)
+            )}
+          </div>
 
-        <div className="px-5 py-2.5 text-[11px] flex items-center gap-1.5" style={{ borderTop: "1px solid var(--color-line)", color: "var(--color-ink-3)" }}>
-          <Cloud size={12} /> {signedIn365 ? "Signed in to 365 — stale & license reports include cloud data." : "Sign in to 365 (☁) for cloud sign-ins and license seats."}
-        </div>
-      </div>
+          <div className="px-5 py-2.5 text-[11px] flex items-center gap-1.5" style={{ borderTop: "1px solid var(--color-line)", color: "var(--color-ink-3)" }}>
+            <Cloud size={12} /> {signedIn365 ? "Signed in to 365 — stale & license reports include cloud data." : "Sign in to 365 (☁) for cloud sign-ins and license seats."}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {showReclaim && <ReclaimDialog isAD={isAD} baseDN={req.baseDN} onClose={() => setShowReclaim(false)} />}
       {showStale && <StaleReportDialog isAD={isAD} baseDN={req.baseDN} onOpen={onOpen} onClose={() => setShowStale(false)} />}
-    </div>
+    </>
   );
 }

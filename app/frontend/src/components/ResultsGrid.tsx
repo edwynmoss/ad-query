@@ -1,10 +1,13 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Download, ArrowUp, ArrowDown } from "lucide-react";
 import type { ldap } from "../../wailsjs/go/models";
 import { formatValue, decodeUAC } from "../lib/format";
 import { combineLastSeen, isStale, DEFAULT_STALE_DAYS } from "../lib/lastseen";
 import { ExportDialog } from "./ExportDialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Props {
   result: ldap.SearchResult | null;
@@ -15,10 +18,23 @@ interface Props {
 
 const ROW_H = 33;
 
-function uacStatusClass(flag: string): string {
-  if (flag === "Disabled" || flag === "Locked out" || flag === "Password expired") return "status-danger";
-  if (flag === "Password never expires" || flag === "Trusted for delegation") return "status-warn";
-  return "status-neutral";
+type UacTone = "danger" | "warn" | "neutral";
+
+function uacStatusTone(flag: string): UacTone {
+  if (flag === "Disabled" || flag === "Locked out" || flag === "Password expired") return "danger";
+  if (flag === "Password never expires" || flag === "Trusted for delegation") return "warn";
+  return "neutral";
+}
+
+function StatusBadge({ tone, title, children }: { tone: UacTone; title?: string; children: ReactNode }) {
+  if (tone === "neutral") return <Badge variant="secondary" title={title}>{children}</Badge>;
+  const color = tone === "danger" ? "var(--color-danger)" : "var(--color-warn)";
+  const bg = tone === "danger" ? "var(--color-danger-weak)" : "var(--color-warn-weak)";
+  return (
+    <Badge variant="outline" className="border-transparent" style={{ background: bg, color }} title={title}>
+      {children}
+    </Badge>
+  );
 }
 
 export function ResultsGrid({ result, columns, selectedDN, onSelectRow }: Props) {
@@ -69,15 +85,15 @@ export function ResultsGrid({ result, columns, selectedDN, onSelectRow }: Props)
             {result.count.toLocaleString()} records{checked.size > 0 ? ` · ${checked.size} marked` : ""}{result.truncated ? " · truncated" : ""}
           </span>
         </div>
-        <button className="btn h-8" onClick={() => setShowExport(true)} disabled={entries.length === 0}>
+        <Button variant="outline" size="sm" onClick={() => setShowExport(true)} disabled={entries.length === 0}>
           <Download size={13} /> Export CSV{checked.size > 0 ? ` (${checked.size})` : ""}
-        </button>
+        </Button>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-auto">
         {/* Header */}
         <div className="sticky top-0 z-10" style={{ display: "grid", gridTemplateColumns: gridCols, background: "var(--color-paper)", borderBottom: "2px solid var(--color-line-strong)" }}>
-          <div className="flex items-center justify-center"><input type="checkbox" checked={checked.size === entries.length && entries.length > 0} onChange={toggleAll} aria-label="mark all" /></div>
+          <div className="flex items-center justify-center"><Checkbox checked={checked.size === entries.length && entries.length > 0} onCheckedChange={toggleAll} aria-label="mark all" /></div>
           <div className="flex items-center justify-end pr-2 eyebrow" style={{ paddingTop: 0 }}>#</div>
           {columns.map((col) => (
             <button key={col} onClick={() => toggleSort(col)} className="flex items-center gap-1 h-9 px-3 text-left eyebrow hover:text-[var(--color-ink)]" title={`Sort by ${col}`}>
@@ -104,7 +120,7 @@ export function ResultsGrid({ result, columns, selectedDN, onSelectRow }: Props)
                 onMouseLeave={(ev) => { if (!isSel) (ev.currentTarget as HTMLElement).style.background = "transparent"; }}
               >
                 <div className="flex items-center justify-center" onClick={(ev) => ev.stopPropagation()}>
-                  <input type="checkbox" checked={checked.has(e.dn)} onChange={() => toggleCheck(e.dn)} aria-label="mark row" />
+                  <Checkbox checked={checked.has(e.dn)} onCheckedChange={() => toggleCheck(e.dn)} aria-label="mark row" />
                 </div>
                 <div className="flex items-center justify-end pr-2 text-[11px] tabular-nums" style={{ color: "var(--color-ink-3)", fontFamily: "var(--font-mono)" }}>{vi.index + 1}</div>
                 {columns.map((col) => <Cell key={col} col={col} entry={e} />)}
@@ -130,7 +146,7 @@ function Cell({ col, entry }: { col: string; entry: ldap.Entry }) {
       <div className="flex items-center gap-1.5 px-3 overflow-hidden" title={vals[0]}>
         {flags.length === 0
           ? <span className="text-[11px]" style={{ color: "var(--color-ink-3)" }}>Enabled</span>
-          : flags.map((f) => <span key={f} className={"status " + uacStatusClass(f)}>{f}</span>)}
+          : flags.map((f) => <StatusBadge key={f} tone={uacStatusTone(f)}>{f}</StatusBadge>)}
       </div>
     );
   }
@@ -141,7 +157,7 @@ function Cell({ col, entry }: { col: string; entry: ldap.Entry }) {
     return (
       <div className="flex items-center gap-1.5 px-3 overflow-hidden" title={text}>
         <span className="truncate text-[12px]" style={{ fontFamily: "var(--font-mono)", color: text === "Never" ? "var(--color-ink-3)" : "var(--color-ink)" }}>{text}</span>
-        {stale && <span className="status status-warn" title={`Not seen in >${DEFAULT_STALE_DAYS} days`}>stale</span>}
+        {stale && <StatusBadge tone="warn" title={`Not seen in >${DEFAULT_STALE_DAYS} days`}>stale</StatusBadge>}
       </div>
     );
   }

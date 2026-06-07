@@ -73,6 +73,9 @@ async function main() {
     await ctx.addInitScript(`${MOCK}\ntry { localStorage.setItem('adquery.theme','${theme}'); } catch (e) {}\n${extraInit ?? ""}`);
     const page = await ctx.newPage();
     await page.goto(url, { waitUntil: "networkidle" });
+    // Kill enter/exit animations so dialogs are captured fully settled (opaque),
+    // not mid-fade. Also removes flaky overlap during open/close transitions.
+    await page.addStyleTag({ content: "*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important;}" });
     await run(page);
     await ctx.close();
   }
@@ -84,7 +87,8 @@ async function main() {
   };
   const connectRun = async (page) => {
     await page.getByRole("button", { name: /Connect to CORP/ }).click();
-    await page.getByRole("button", { name: "Users", exact: true }).click();
+    // Object-type picker is a Radix ToggleGroup (items expose role="radio").
+    await page.getByRole("radio", { name: "Users", exact: true }).click();
     await page.getByRole("button", { name: "Run", exact: true }).click();
     await page.getByText("500 records").first().waitFor();
   };
@@ -103,7 +107,7 @@ async function main() {
     await page.locator("div.fixed.inset-0.z-20").click();
 
     await page.getByText("user2@adquery.test").click();
-    await page.locator("button.tab", { hasText: "Security" }).click();
+    await page.getByRole("tab", { name: "Security" }).click();
     await page.getByRole("button", { name: /Load security descriptor/ }).click();
     await page.getByText("DACL").waitFor();
     await shot(page, "04-inspector");
@@ -114,7 +118,8 @@ async function main() {
     await page.getByRole("button", { name: /Look up/ }).click();
     await page.getByText(/found/).first().waitFor();
     await shot(page, "05-bulk");
-    await page.getByRole("button", { name: "Close", exact: true }).click();
+    // Dialogs (shadcn) expose an auto close button labelled "Close"; take the first.
+    await page.getByRole("button", { name: "Close" }).first().click();
 
     await page.getByRole("button", { name: /Export CSV/ }).click();
     await page.getByText("Export to CSV").waitFor();
@@ -126,13 +131,20 @@ async function main() {
     await page.getByText("Built-in").waitFor();
     await shot(page, "08-reports");
 
-    const opens = page.locator('button.btn.h-8:not(.btn-quiet)', { hasText: "Open" });
-    await opens.nth(1).click(); // Unused licenses (reclaim)
+    // Report rows render an "Open" Button each; DOM order = All users, Stale, Reclaim.
+    const opens = page.getByRole("button", { name: "Open", exact: true });
+    await opens.nth(2).click(); // Unused licenses (reclaim)
+    await page.getByText("Built-in").waitFor({ state: "hidden" }); // Reports closes as the sub-report opens
     await page.getByText("dormant licensed users").first().waitFor();
     await shot(page, "09-reclaim");
-    await page.getByRole("button", { name: "Close", exact: true }).click();
+  });
 
-    await opens.nth(0).click(); // Stale accounts
+  // --- Stale report (own session; avoids nested-dialog churn) --------------
+  await session("light", "", async (page) => {
+    await page.getByRole("button", { name: /Connect to CORP/ }).click();
+    await page.locator('button[title="Reports"]').click();
+    await page.getByText("Built-in").waitFor();
+    await page.getByRole("button", { name: "Open", exact: true }).nth(1).click(); // Stale accounts
     await page.getByText("Not seen in the last").waitFor();
     await shot(page, "10-stale");
   });

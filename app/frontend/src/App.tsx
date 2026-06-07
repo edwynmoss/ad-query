@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Sun, Moon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Disconnect, Search, SchemaAttributes } from "../wailsjs/go/main/App";
 import { ldap } from "../wailsjs/go/models";
 import { ConnectionPanel } from "./components/ConnectionPanel";
@@ -93,11 +95,11 @@ function App() {
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-2 text-[12px]" style={{ color: "var(--color-ink-2)" }}>
             <span className="mono">{conn?.host}:{conn?.port}</span>
-            <span className="status status-neutral">{server.isActiveDirectory ? "Active Directory" : "LDAP"}</span>
+            <Badge variant="secondary">{server.isActiveDirectory ? "Active Directory" : "LDAP"}</Badge>
           </span>
           <span className="h-5 w-px" style={{ background: "var(--color-line)" }} />
-          <button className="btn btn-quiet btn-icon" onClick={toggleTheme} title="Toggle theme" aria-label="toggle theme">{theme === "light" ? <Moon size={15} /> : <Sun size={15} />}</button>
-          <button className="btn h-8" onClick={disconnect}>Disconnect</button>
+          <Button variant="ghost" size="icon" onClick={toggleTheme} title="Toggle theme" aria-label="toggle theme">{theme === "light" ? <Moon size={15} /> : <Sun size={15} />}</Button>
+          <Button variant="outline" size="sm" onClick={disconnect}>Disconnect</Button>
         </div>
       </header>
 

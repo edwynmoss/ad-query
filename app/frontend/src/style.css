@@ -163,80 +163,11 @@
 }
 
 @layer components {
-  /* Typographic primitives */
+  /* Typographic primitives — kept; everything else is now a shadcn component. */
   .display { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.02em; }
   .eyebrow {
     font-family: var(--font-ui); font-weight: 600; font-size: 10.5px;
     letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-3);
   }
   .mono { font-family: var(--font-mono); }
-
-  /* Buttons — neutral, restrained radii */
-  .btn {
-    @apply inline-flex items-center justify-center gap-1.5 h-9 px-3.5 text-[12.5px] font-medium whitespace-nowrap
-           transition-colors duration-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none;
-    border-radius: 8px;
-    border: 1px solid var(--color-line-strong);
-    background: var(--color-surface);
-    color: var(--color-ink);
-  }
-  .btn:hover:not(:disabled) { background: var(--color-sunken); }
-  .btn-primary {
-    background: var(--color-ink);
-    border-color: var(--color-ink);
-    color: var(--color-paper);
-  }
-  .btn-primary:hover:not(:disabled) { opacity: 0.88; }
-  .btn-quiet { border-color: transparent; background: transparent; color: var(--color-ink-2); }
-  .btn-quiet:hover:not(:disabled) { background: var(--color-sunken); color: var(--color-ink); }
-  .btn-icon { @apply h-9 w-9 px-0; }
-
-  /* Inputs */
-  .input {
-    @apply w-full h-9 px-3 text-[12.5px];
-    border-radius: 8px;
-    border: 1px solid var(--color-line-strong);
-    background: var(--color-surface);
-    color: var(--color-ink);
-  }
-  .input::placeholder { color: var(--color-ink-3); }
-  .input:focus { border-color: var(--color-brand); outline: none; box-shadow: 0 0 0 3px var(--color-brand-weak); }
-  .input.mono { font-family: var(--font-mono); font-size: 12px; }
-  select.input { padding-right: 1.5rem; }
-
-  /* Segmented control — modern: sunken track, white active pill with shadow */
-  .seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--color-line); border-radius: 9px; background: var(--color-sunken); }
-  .seg > button {
-    @apply h-7 px-3 text-[12px] font-medium cursor-pointer transition-colors duration-100;
-    color: var(--color-ink-2); border-radius: 6px;
-  }
-  .seg > button:hover:not([data-active="true"]) { color: var(--color-ink); }
-  .seg > button[data-active="true"] { background: var(--color-surface); color: var(--color-ink); box-shadow: 0 1px 2px rgba(0,0,0,0.10); }
-  .dark .seg > button[data-active="true"] { background: var(--color-line-strong); }
-
-  /* Underline tabs */
-  .tabs { display: flex; gap: 4px; }
-  .tab {
-    @apply h-9 text-[12.5px] font-medium cursor-pointer;
-    color: var(--color-ink-3); border-bottom: 2px solid transparent; padding: 0 2px;
-  }
-  .tab:hover { color: var(--color-ink); }
-  .tab[data-active="true"] { color: var(--color-ink); border-bottom-color: var(--color-brand); }
-
-  /* Surfaces */
-  .card { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
-
-  /* Token — quiet chip */
-  .token {
-    @apply inline-flex items-center gap-1 h-[22px] pl-2.5 pr-2 text-[11.5px];
-    border-radius: 7px; border: 1px solid var(--color-line-strong);
-    background: var(--color-surface); color: var(--color-ink-2); font-family: var(--font-mono);
-  }
-
-  /* Semantic status pills */
-  .status { @apply inline-flex items-center shrink-0 whitespace-nowrap h-[18px] px-2 text-[10.5px] font-semibold; border-radius: 6px; }
-  .status-ok { background: var(--color-ok-weak); color: var(--color-ok); }
-  .status-warn { background: var(--color-warn-weak); color: var(--color-warn); }
-  .status-danger { background: var(--color-danger-weak); color: var(--color-danger); }
-  .status-neutral { background: var(--color-sunken); color: var(--color-ink-2); }
 }

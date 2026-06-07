@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
-import { X, Loader2, Download, Eye, Cloud } from "lucide-react";
+import { Loader2, Download, Eye, Cloud } from "lucide-react";
 import { Search, M365SignedIn, M365Check } from "../../wailsjs/go/main/App";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ldap, m365 } from "../../wailsjs/go/models";
 import type { QueryState } from "./QueryBar";
 import { OBJECT_TYPES, filterFor } from "../lib/objectTypes";
@@ -83,21 +87,20 @@ export function StaleReportDialog({ isAD, baseDN, onOpen, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center" style={{ background: "rgba(0,0,0,0.40)" }} onClick={onClose}>
-      <div className="card w-[480px]" style={{ boxShadow: "0 16px 50px rgba(20,18,12,0.28)" }} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: "1px solid var(--color-line)" }}>
-          <span className="display text-[16px]" style={{ fontWeight: 600 }}>Stale accounts</span>
-          <button className="btn btn-quiet btn-icon" onClick={onClose}><X size={15} /></button>
-        </div>
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-[480px] max-h-[88vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-5 py-3.5 text-left" style={{ borderBottom: "1px solid var(--color-line)" }}>
+          <DialogTitle className="display text-[16px]" style={{ fontWeight: 600 }}>Stale accounts</DialogTitle>
+        </DialogHeader>
 
-        <div className="px-5 py-4 space-y-4">
+        <div className="overflow-auto px-5 py-4 space-y-4">
           <div className="flex items-center gap-2 text-[13px]">
             <span>Not seen in the last</span>
-            <input type="number" min={1} className="input w-20 text-center" value={days} onChange={(e) => setDays(Math.max(1, Number(e.target.value) || 90))} />
+            <Input type="number" min={1} className="w-20 text-center" value={days} onChange={(e) => setDays(Math.max(1, Number(e.target.value) || 90))} />
             <span>days</span>
           </div>
           <label className="flex items-center gap-2 text-[12.5px] cursor-pointer" style={{ color: "var(--color-ink-2)" }}>
-            <input type="checkbox" checked={enabledOnly} onChange={(e) => setEnabledOnly(e.target.checked)} disabled={!isAD} /> Enabled accounts only
+            <Checkbox checked={enabledOnly} onCheckedChange={(v) => setEnabledOnly(!!v)} disabled={!isAD} /> Enabled accounts only
           </label>
           <p className="text-[12px] leading-relaxed px-4 py-3 rounded-2xl" style={{ background: "var(--color-sunken)", color: "var(--color-ink-2)" }}>
             <b style={{ color: "var(--color-ink)" }}>Preview</b> shows AD-stale candidates in the grid. <b style={{ color: "var(--color-ink)" }}>Download</b> also folds in
@@ -106,13 +109,13 @@ export function StaleReportDialog({ isAD, baseDN, onOpen, onClose }: Props) {
           {error && <div className="text-[12px] px-4 py-2.5 rounded-2xl selectable" style={{ background: "var(--color-danger-weak)", color: "var(--color-danger)" }}>{error}</div>}
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-5 py-3.5" style={{ borderTop: "1px solid var(--color-line)" }}>
-          <button className="btn" onClick={preview}><Eye size={14} /> Preview in grid</button>
-          <button className="btn btn-primary px-5" onClick={download} disabled={busy}>
+        <DialogFooter className="px-5 py-3.5" style={{ borderTop: "1px solid var(--color-line)" }}>
+          <Button variant="outline" onClick={preview}><Eye size={14} /> Preview in grid</Button>
+          <Button className="px-5" onClick={download} disabled={busy}>
             {busy ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Download CSV
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

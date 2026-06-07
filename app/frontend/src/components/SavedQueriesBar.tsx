@@ -2,6 +2,9 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import type { QueryState } from "./QueryBar";
 import { SavedQuery, loadSavedQueries, saveQuery, deleteSavedQuery } from "../lib/savedQueries";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 interface Props {
   current: QueryState;
@@ -24,21 +27,21 @@ export function SavedQueriesBar({ current, onLoad }: Props) {
     <div className="flex items-center gap-1.5 flex-wrap text-[12px]">
       <span className="text-[11px] font-semibold tracking-wide" style={{ color: "var(--color-ink-2)" }}>SAVED QUERIES</span>
       {list.map((q) => (
-        <span key={q.id} className="token pr-0.5 cursor-pointer" onClick={() => onLoad(q.query)} title="Load query">
+        <Badge variant="secondary" key={q.id} className="font-mono font-normal pr-0.5 cursor-pointer" onClick={() => onLoad(q.query)} title="Load query">
           {q.name}
           <button className="opacity-60 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setList(deleteSavedQuery(q.id)); }} aria-label={`delete ${q.name}`}>
             <X size={11} />
           </button>
-        </span>
+        </Badge>
       ))}
       {list.length === 0 && !naming && <span style={{ color: "var(--color-ink-3)" }}>none</span>}
       {naming ? (
-        <input autoFocus className="input mono h-6 w-36" value={name} placeholder="query name…"
+        <Input autoFocus className="font-mono h-6 w-36" value={name} placeholder="query name…"
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") confirmSave(); if (e.key === "Escape") setNaming(false); }}
           onBlur={confirmSave} />
       ) : (
-        <button className="btn btn-quiet h-6 px-1.5" onClick={() => setNaming(true)}>Save current</button>
+        <Button variant="ghost" size="sm" className="h-6 px-1.5" onClick={() => setNaming(true)}>Save current</Button>
       )}
     </div>
   );

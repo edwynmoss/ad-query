@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { Loader2, X, ArrowRight, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Connect, StoreSecret, GetSecret, DeleteSecret, DetectDomain } from "../../wailsjs/go/main/App";
 import { ldap, sysenv } from "../../wailsjs/go/models";
 import { ConnectionProfile, loadProfiles, saveProfile, deleteProfile } from "../lib/profiles";
@@ -91,7 +94,7 @@ export function ConnectionPanel({ onConnected }: Props) {
 
   return (
     <div className="h-full grid place-items-center px-6" style={{ background: "var(--color-paper)" }}>
-      <div className="card w-[460px]" style={{ boxShadow: "0 12px 48px rgba(20,18,12,0.12)" }}>
+      <div className="w-[460px] rounded-xl border border-border bg-card shadow-xl">
         <div className="px-7 pt-7 pb-5" style={{ borderBottom: "1px solid var(--color-line)" }}>
           <div className="eyebrow" style={{ color: "var(--color-brand)" }}>Directory Ledger</div>
           <h1 className="display text-[27px] leading-none mt-2" style={{ fontWeight: 600 }}>AD Query</h1>
@@ -114,13 +117,13 @@ export function ConnectionPanel({ onConnected }: Props) {
                 Sign in as <span className="mono" style={{ color: "var(--color-ink)" }}>{detected.user || "the current user"}</span> — no password.
               </div>
             </div>
-            <button className="btn btn-primary w-full" onClick={connectAuto} disabled={busy}>
+            <Button className="w-full" onClick={connectAuto} disabled={busy}>
               {busy ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}{busy ? "Connecting…" : `Connect to ${detected.domain.toUpperCase()}`}
-            </button>
-            {error && <div className="text-[12px] px-4 py-2.5 rounded-2xl selectable" style={{ background: "var(--color-danger-weak)", color: "var(--color-danger)" }}>{error}</div>}
-            <button className="flex items-center gap-1 text-[12px] mx-auto btn-quiet h-7 px-3 rounded-full" onClick={() => { setError(null); setMode("manual"); }} style={{ color: "var(--color-ink-2)" }}>
+            </Button>
+            {error && <div className="text-[12px] px-4 py-2.5 rounded-lg selectable" style={{ background: "var(--color-danger-weak)", color: "var(--color-danger)" }}>{error}</div>}
+            <Button variant="ghost" size="sm" className="mx-auto flex" onClick={() => { setError(null); setMode("manual"); }}>
               Connect to a different directory <ArrowRight size={12} />
-            </button>
+            </Button>
           </div>
         )}
 
@@ -128,45 +131,49 @@ export function ConnectionPanel({ onConnected }: Props) {
           <>
             <div className="px-7 py-6 space-y-5">
               {import.meta.env.DEV && (
-                <button onClick={connectDev} disabled={busy}
-                  className="flex items-center gap-1.5 text-[11px] btn-quiet h-7 px-3 rounded-full"
-                  style={{ color: "var(--color-brand)", border: "1px dashed var(--color-brand)" }}>
+                <Button variant="ghost" size="sm" onClick={connectDev} disabled={busy}
+                  className="border border-dashed" style={{ color: "var(--color-brand)", borderColor: "var(--color-brand)" }}>
                   <ShieldCheck size={12} /> Dev: connect to local test directory
-                </button>
+                </Button>
               )}
               {detected?.joined && (
-                <button className="flex items-center gap-1 text-[12px] btn-quiet h-7 px-3 rounded-full" onClick={() => { setError(null); setMode("auto"); }} style={{ color: "var(--color-brand)" }}>
+                <Button variant="ghost" size="sm" onClick={() => { setError(null); setMode("auto"); }} style={{ color: "var(--color-brand)" }}>
                   <ArrowLeft size={12} /> Use this computer's domain ({detected.domain.toUpperCase()})
-                </button>
+                </Button>
               )}
 
               <div className="flex items-center gap-1.5 flex-wrap text-[12px]">
                 <span className="eyebrow">Saved</span>
                 {profiles.map((p) => (
-                  <span key={p.name} className="token cursor-pointer" onClick={() => loadProfile(p)} title={`${p.bindDN}@${p.host}:${p.port}`}>
+                  <span key={p.name} className="inline-flex items-center gap-1 h-[26px] pl-2.5 pr-1.5 rounded-md border border-border bg-card text-[11.5px] font-mono cursor-pointer hover:bg-muted" onClick={() => loadProfile(p)} title={`${p.bindDN}@${p.host}:${p.port}`}>
                     {p.name}<button className="opacity-50 hover:opacity-100" onClick={(e) => { e.stopPropagation(); removeProfile(p.name); }} aria-label={`delete ${p.name}`}><X size={11} /></button>
                   </span>
                 ))}
                 {profiles.length === 0 && !naming && <span style={{ color: "var(--color-ink-3)" }}>none</span>}
                 {naming
-                  ? <input autoFocus className="input mono h-7 w-32" value={profileName} placeholder="name…" onChange={(e) => setProfileName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveCurrentProfile(); if (e.key === "Escape") setNaming(false); }} onBlur={saveCurrentProfile} />
-                  : <button className="btn btn-quiet h-7 px-3" onClick={() => setNaming(true)}>Save current</button>}
+                  ? <Input autoFocus className="font-mono h-7 w-32" value={profileName} placeholder="name…" onChange={(e) => setProfileName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveCurrentProfile(); if (e.key === "Escape") setNaming(false); }} onBlur={saveCurrentProfile} />
+                  : <Button variant="ghost" size="sm" onClick={() => setNaming(true)}>Save current</Button>}
               </div>
 
               <div>
                 <Label>Server address</Label>
-                <input className="input mono" value={server} onChange={(e) => setServer(e.target.value)} placeholder="dc01.contoso.com" />
+                <Input className="font-mono" value={server} onChange={(e) => setServer(e.target.value)} placeholder="dc01.contoso.com" />
                 <p className="text-[11px] mt-1.5" style={{ color: "var(--color-ink-3)" }}>Your domain controller or directory host. Add <span className="mono">ldaps://</span> for a secure connection.</p>
               </div>
 
-              <div><Label>Sign in with</Label><div className="seg w-full">{AUTH.map(([v, l]) => <button key={v} className="flex-1" data-active={auth === v} onClick={() => setAuth(v)}>{l}</button>)}</div></div>
+              <div>
+                <Label>Sign in with</Label>
+                <ToggleGroup type="single" value={auth} onValueChange={(v) => v && setAuth(v)} className="w-full">
+                  {AUTH.map(([v, l]) => <ToggleGroupItem key={v} value={v} className="flex-1">{l}</ToggleGroupItem>)}
+                </ToggleGroup>
+              </div>
 
               {auth === "simple" && (<>
-                <div><Label>Username</Label><input className="input mono" value={bindDN} onChange={(e) => setBindDN(e.target.value)} placeholder="you@contoso.com" /></div>
-                <div><Label>Password</Label><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" /></div>
+                <div><Label>Username</Label><Input className="font-mono" value={bindDN} onChange={(e) => setBindDN(e.target.value)} placeholder="you@contoso.com" /></div>
+                <div><Label>Password</Label><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" /></div>
               </>)}
               {auth === "sspi" && (
-                <p className="text-[12px] leading-relaxed px-4 py-3 rounded-2xl" style={{ background: "var(--color-sunken)", color: "var(--color-ink-2)" }}>
+                <p className="text-[12px] leading-relaxed px-4 py-3 rounded-lg" style={{ background: "var(--color-sunken)", color: "var(--color-ink-2)" }}>
                   Signs in as you — the Windows account you're logged in with. No username or password needed.
                 </p>
               )}
@@ -177,13 +184,13 @@ export function ConnectionPanel({ onConnected }: Props) {
                 </label>
               )}
 
-              {error && <div className="text-[12px] px-4 py-2.5 rounded-2xl selectable" style={{ background: "var(--color-danger-weak)", color: "var(--color-danger)" }}>{error}</div>}
+              {error && <div className="text-[12px] px-4 py-2.5 rounded-lg selectable" style={{ background: "var(--color-danger-weak)", color: "var(--color-danger)" }}>{error}</div>}
             </div>
 
             <div className="px-7 py-5 flex justify-end" style={{ borderTop: "1px solid var(--color-line)" }}>
-              <button className="btn btn-primary px-7" onClick={connectManual} disabled={busy || !server.trim()}>
+              <Button className="px-7" onClick={connectManual} disabled={busy || !server.trim()}>
                 {busy && <Loader2 size={14} className="animate-spin" />}{busy ? "Connecting…" : "Open connection"}
-              </button>
+              </Button>
             </div>
           </>
         )}
