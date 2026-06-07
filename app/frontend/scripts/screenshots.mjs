@@ -135,10 +135,9 @@ async function main() {
 
     // Report rows render an "Open" Button each; DOM order = All users, Stale, Reclaim.
     const opens = page.getByRole("button", { name: "Open", exact: true });
-    await opens.nth(2).click(); // Unused licenses (reclaim)
+    await opens.nth(2).click(); // Licenses & sign-in
     await page.getByText("Built-in").waitFor({ state: "hidden" }); // Reports closes as the sub-report opens
-    await page.getByText("candidates to reclaim").waitFor();
-    await page.getByText(/licensed users/).first().waitFor();
+    await page.getByText(/licensed in scope/).waitFor();           // ready phase
     await shot(page, "09-reclaim");
   });
 

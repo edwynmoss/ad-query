@@ -1,6 +1,6 @@
 import { memo, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Download, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
+import { Download, ArrowUp, ArrowDown, Loader2, Cloud } from "lucide-react";
 import type { ldap } from "../../wailsjs/go/models";
 import { formatValue, decodeUAC } from "../lib/format";
 import { combineLastSeen, isStale, DEFAULT_STALE_DAYS } from "../lib/lastseen";
@@ -15,6 +15,8 @@ interface Props {
   columns: string[];
   selectedDN: string | null;
   onSelectRow: (e: ldap.Entry) => void;
+  signedIn365?: boolean;
+  onCheck365?: () => void;
 }
 
 const ROW_H = 33;
@@ -29,7 +31,7 @@ function uacStatusTone(flag: string): StatusTone {
   return "neutral";
 }
 
-export function ResultsGrid({ result, loading, columns, selectedDN, onSelectRow }: Props) {
+export function ResultsGrid({ result, loading, columns, selectedDN, onSelectRow, signedIn365, onCheck365 }: Props) {
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
   const [checked, setChecked] = useState<Set<string>>(new Set());
@@ -87,9 +89,16 @@ export function ResultsGrid({ result, loading, columns, selectedDN, onSelectRow 
             {result.count.toLocaleString()} records{checked.size > 0 ? ` · ${checked.size} marked` : ""}{result.truncated ? " · truncated" : ""}
           </span>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setShowExport(true)} disabled={entries.length === 0}>
-          <Download size={13} /> Export CSV{checked.size > 0 ? ` (${checked.size})` : ""}
-        </Button>
+        <div className="flex items-center gap-2">
+          {signedIn365 && (
+            <Button variant="outline" size="sm" onClick={onCheck365} disabled={entries.length === 0} title="Keep only users holding a 365 licence and add licence + sign-in columns">
+              <Cloud size={13} /> Check 365
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => setShowExport(true)} disabled={entries.length === 0}>
+            <Download size={13} /> Export CSV{checked.size > 0 ? ` (${checked.size})` : ""}
+          </Button>
+        </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-auto">

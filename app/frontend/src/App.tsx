@@ -3,9 +3,14 @@ import { Sun, Moon, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Toaster } from "@/components/ui/sonner";
-import { Disconnect, Search, SchemaAttributes, M365SignedIn, M365Account } from "../wailsjs/go/main/App";
+import { toast } from "sonner";
+import { Disconnect, Search, SchemaAttributes, M365SignedIn, M365Account, M365Check } from "../wailsjs/go/main/App";
+import { License365Dialog } from "./components/License365Dialog";
 
 const M365Dialog = lazy(() => import("./components/M365Dialog").then((m) => ({ default: m.M365Dialog })));
+
+const LIC_COL = "Microsoft 365 licenses";
+const SIGNIN_COL = "365 last sign-in";
 import { ldap } from "../wailsjs/go/models";
 import { ConnectionPanel } from "./components/ConnectionPanel";
 import { QueryBar, QueryState, effectiveFilter, DirLocation } from "./components/QueryBar";
@@ -27,6 +32,9 @@ function App() {
   const [theme, setTheme] = useState<Theme>(getTheme());
   const [show365, setShow365] = useState(false);
   const [m365, setM365] = useState<{ signedIn: boolean; account: string }>({ signedIn: false, account: "" });
+  const [show365Filter, setShow365Filter] = useState(false);
+  const [busy365, setBusy365] = useState(false);
+  const [extra365Cols, setExtra365Cols] = useState<string[]>([]);
 
   function toggleTheme() { const t = theme === "light" ? "dark" : "light"; applyTheme(t); setTheme(t); }
 
@@ -75,9 +83,36 @@ function App() {
     setServer(null); setConn(null); setResult(null); setSelected(null); setSchema([]); setLocations([]); setElapsed(null);
   }
 
+  // Enrich the current results with Microsoft 365: keep only users holding the
+  // selected licence(s) (empty = any licence) and add licence + sign-in columns.
+  async function apply365(skus: string[]) {
+    if (!result) return;
+    setBusy365(true);
+    try {
+      const entries = result.entries ?? [];
+      const ids = Array.from(new Set(entries.map((e) => e.attributes?.userPrincipalName?.[0] || e.attributes?.mail?.[0] || "").filter(Boolean)));
+      const users = ids.length ? await M365Check(ids) : [];
+      const byId = new Map(users.map((u) => [(u.identity || "").toLowerCase(), u]));
+      const kept = entries.flatMap((e) => {
+        const id = (e.attributes?.userPrincipalName?.[0] || e.attributes?.mail?.[0] || "").toLowerCase();
+        const u = id ? byId.get(id) : undefined;
+        const licenses = u && u.exists && u.licenses ? u.licenses : [];
+        const holds = licenses.length > 0 && (skus.length === 0 || licenses.some((l) => skus.includes(l)));
+        if (!holds) return [];
+        return [ldap.Entry.createFrom({ dn: e.dn, attributes: { ...e.attributes, [LIC_COL]: [licenses.join(", ")], [SIGNIN_COL]: [u?.lastSignIn || ""] } })];
+      });
+      setResult(ldap.SearchResult.createFrom({ count: kept.length, truncated: false, entries: kept }));
+      setExtra365Cols([LIC_COL, SIGNIN_COL]);
+      setSelected(null);
+      toast.success(`365 check — ${kept.length} of ${entries.length} hold the selected licence`);
+    } catch (e: any) {
+      toast.error("365 check failed", { description: String(e?.message ?? e) });
+    } finally { setBusy365(false); setShow365Filter(false); }
+  }
+
   async function runQuery(override?: QueryState) {
     const q = override ?? req;
-    setRunning(true); setError(null); setSelected(null);
+    setRunning(true); setError(null); setSelected(null); setExtra365Cols([]);
     const t0 = performance.now();
     try {
       const res = await Search(ldap.SearchRequest.createFrom({ baseDN: q.baseDN, scope: q.scope, filter: effectiveFilter(q), attributes: q.attributes, pageSize: 1000, sizeLimit: 0 }));
@@ -142,7 +177,7 @@ function App() {
         )}
 
         <div className="flex-1 flex min-h-0">
-          <ResultsGrid result={result} loading={running} columns={req.attributes} selectedDN={selected?.dn ?? null} onSelectRow={setSelected} />
+          <ResultsGrid result={result} loading={running} columns={[...req.attributes, ...extra365Cols]} selectedDN={selected?.dn ?? null} onSelectRow={setSelected} signedIn365={m365.signedIn} onCheck365={() => setShow365Filter(true)} />
           <Inspector entry={selected} onClose={() => setSelected(null)} />
         </div>
       </div>
@@ -164,6 +199,10 @@ function App() {
         <Suspense fallback={null}>
           <M365Dialog onClose={() => setShow365(false)} onChange={refreshM365} />
         </Suspense>
+      )}
+
+      {show365Filter && (
+        <License365Dialog count={result?.count ?? 0} busy={busy365} onApply={apply365} onClose={() => setShow365Filter(false)} />
       )}
 
       <Toaster position="bottom-right" />
