@@ -87,17 +87,17 @@ function App() {
   return (
     <div className="h-full flex flex-col">
       {/* Masthead */}
-      <header className="flex items-center justify-between pl-4 pr-3 h-12 shrink-0" style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-line)" }}>
+      <header className="flex items-center justify-between pl-4 pr-3 h-12 shrink-0 bg-surface border-b border-line">
         <div className="flex items-baseline gap-3">
-          <span className="display text-[17px]" style={{ fontWeight: 600 }}>AD&nbsp;Query</span>
-          <span className="eyebrow" style={{ color: "var(--color-brand)" }}>Directory Ledger</span>
+          <span className="display text-[17px] font-semibold">AD&nbsp;Query</span>
+          <span className="eyebrow text-brand">Directory Ledger</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="flex items-center gap-2 text-[12px]" style={{ color: "var(--color-ink-2)" }}>
+          <span className="flex items-center gap-2 text-[12px] text-ink-2">
             <span className="mono">{conn?.host}:{conn?.port}</span>
             <Badge variant="secondary">{server.isActiveDirectory ? "Active Directory" : "LDAP"}</Badge>
           </span>
-          <span className="h-5 w-px" style={{ background: "var(--color-line)" }} />
+          <span className="h-5 w-px bg-line" />
           <Button variant="ghost" size="icon" onClick={toggleTheme} title="Toggle theme" aria-label="toggle theme">{theme === "light" ? <Moon size={15} /> : <Sun size={15} />}</Button>
           <Button variant="outline" size="sm" onClick={disconnect}>Disconnect</Button>
         </div>
@@ -107,7 +107,7 @@ function App() {
         <QueryBar req={req} setReq={setReq} isAD={server.isActiveDirectory} running={running} onRun={() => runQuery()} onOpenReport={openReport} resultIdentities={resultIdentities} schemaAttributes={schema} locations={locations} />
 
         {error && (
-          <div className="mx-4 mt-3 px-3 py-2 text-[12px] rounded selectable" style={{ background: "var(--color-danger-weak)", color: "var(--color-danger)", border: "1px solid var(--color-line)" }}>{error}</div>
+          <div className="mx-4 mt-3 px-3 py-2 text-[12px] rounded-md selectable bg-critical-soft text-critical border border-line">{error}</div>
         )}
 
         <div className="flex-1 flex min-h-0">
@@ -117,9 +117,9 @@ function App() {
       </div>
 
       {/* Document footer */}
-      <footer className="flex items-center justify-between px-4 h-7 shrink-0 text-[11px]" style={{ background: "var(--color-surface)", borderTop: "1px solid var(--color-line)", color: "var(--color-ink-3)" }}>
+      <footer className="flex items-center justify-between px-4 h-7 shrink-0 text-[11px] bg-surface border-t border-line text-ink-3">
         <div className="flex items-center gap-2.5">
-          <span className="eyebrow" style={{ color: "var(--color-ok)" }}>● Connected</span>
+          <span className="eyebrow text-success">● Connected</span>
           <span className="mono">{req.baseDN}</span>
           <span>· {scopeLabel}</span>
         </div>

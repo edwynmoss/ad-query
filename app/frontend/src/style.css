@@ -16,6 +16,31 @@
 @theme {
   --font-sans: "Inter Variable", "Segoe UI", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", "Cascadia Mono", Consolas, monospace;
+
+  /* App semantic palette (light). Defined here so each becomes a real utility
+     — text-ink-2, bg-surface, border-line, bg-success-soft, … — and inline
+     `style={{ var(--color-*) }}` can be retired everywhere. Dark values are
+     overridden under .dark below and the utilities adapt automatically. */
+  --color-page: #f7f7f8;        /* app background        */
+  --color-surface: #ffffff;     /* cards / panels        */
+  --color-sunken: #f1f1f3;      /* insets / hover        */
+  --color-line: #e7e7ea;        /* hairline borders      */
+  --color-line-strong: #d6d6db; /* stronger dividers     */
+
+  --color-ink: #18181b;         /* primary text          */
+  --color-ink-2: #52525b;       /* secondary text        */
+  --color-ink-3: #9a9aa2;       /* subtle / placeholder  */
+
+  --color-brand: #2563eb;       /* accent / links        */
+  --color-brand-hover: #1d4ed8;
+  --color-brand-soft: #eef4ff;  /* accent wash           */
+
+  --color-success: #15803d;
+  --color-success-soft: #e9f6ec;
+  --color-warning: #b45309;
+  --color-warning-soft: #fbf1e0;
+  --color-critical: #dc2626;
+  --color-critical-soft: #fdecec;
 }
 
 :root {
@@ -45,27 +70,17 @@
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
 
-  /* legacy app tokens — neutral light */
-  --color-paper: #f7f7f8;
-  --color-surface: #ffffff;
-  --color-sunken: #f1f1f3;
-  --color-line: #e7e7ea;
-  --color-line-strong: #d6d6db;
-
-  --color-ink: #18181b;
-  --color-ink-2: #52525b;
-  --color-ink-3: #9a9aa2;
-
-  --color-brand: #2563eb;
-  --color-brand-hover: #1d4ed8;
-  --color-brand-weak: #eef4ff;
-
-  --color-ok: #15803d;
-  --color-warn: #b45309;
-  --color-danger: #dc2626;
-  --color-ok-weak: #e9f6ec;
-  --color-warn-weak: #fbf1e0;
-  --color-danger-weak: #fdecec;
+  /* Back-compat aliases for inline styles not yet migrated to utilities. These
+     reference the semantic tokens above (so they adapt to dark too) and get
+     deleted once the last `var(--color-*)` inline style is converted. */
+  --color-paper: var(--color-page);
+  --color-brand-weak: var(--color-brand-soft);
+  --color-ok: var(--color-success);
+  --color-ok-weak: var(--color-success-soft);
+  --color-warn: var(--color-warning);
+  --color-warn-weak: var(--color-warning-soft);
+  --color-danger: var(--color-critical);
+  --color-danger-weak: var(--color-critical-soft);
 }
 
 .dark {
@@ -89,8 +104,8 @@
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
 
-  /* legacy app tokens — neutral dark */
-  --color-paper: #09090b;
+  /* App semantic palette — dark overrides (utilities + aliases adapt). */
+  --color-page: #09090b;
   --color-surface: #141416;
   --color-sunken: #1c1c1f;
   --color-line: #26262a;
@@ -102,14 +117,14 @@
 
   --color-brand: #3b82f6;
   --color-brand-hover: #60a5fa;
-  --color-brand-weak: #182338;
+  --color-brand-soft: #182338;
 
-  --color-ok: #4ade80;
-  --color-warn: #fbbf24;
-  --color-danger: #f87171;
-  --color-ok-weak: #15271b;
-  --color-warn-weak: #2a2113;
-  --color-danger-weak: #2c1717;
+  --color-success: #4ade80;
+  --color-success-soft: #15271b;
+  --color-warning: #fbbf24;
+  --color-warning-soft: #2a2113;
+  --color-critical: #f87171;
+  --color-critical-soft: #2c1717;
 }
 
 @theme inline {
