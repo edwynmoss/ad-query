@@ -1,0 +1,166 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   AD Query — "Audit Ledger".
+
+   An instrument for interrogating identity and access, dressed as a precision
+   records document: warm paper, near-black ink, a single petrol accent, an
+   editorial serif (Spectral) for headings against a technical mono (Plex Mono)
+   for data. The results table is a numbered ledger — rule lines, not a grid.
+   ============================================================================ */
+@theme {
+  /* Light — warm paper */
+  --color-paper: #faf8f3;
+  --color-card: #ffffff;
+  --color-sunken: #f2efe7;
+  --color-line: #e8e2d4;
+  --color-line-strong: #d8d1bf;
+
+  --color-ink: #1b1a16;
+  --color-ink-2: #5d574b;
+  --color-ink-3: #938c7c;
+
+  --color-accent: #115458;        /* petrol */
+  --color-accent-hover: #0d4347;
+  --color-accent-weak: #e4eeed;
+
+  --color-ok: #2f6b3e;
+  --color-warn: #8a5a12;
+  --color-danger: #a23a2c;
+  --color-ok-weak: #e8f0e6;
+  --color-warn-weak: #f6edda;
+  --color-danger-weak: #f6e6e1;
+
+  --font-display: "Spectral", Georgia, "Times New Roman", serif;
+  --font-ui: "IBM Plex Sans Variable", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", "Cascadia Mono", Consolas, monospace;
+}
+
+/* Dark — warm charcoal, same ink-on-paper logic inverted */
+.dark {
+  --color-paper: #1a1915;
+  --color-card: #201e19;
+  --color-sunken: #26241e;
+  --color-line: #322f27;
+  --color-line-strong: #433f34;
+
+  --color-ink: #ece7da;
+  --color-ink-2: #a8a18f;
+  --color-ink-3: #756f60;
+
+  --color-accent: #4aa0a6;
+  --color-accent-hover: #5fb4ba;
+  --color-accent-weak: #15302f;
+
+  --color-ok: #5aa86f;
+  --color-warn: #c79a4a;
+  --color-danger: #d06b5b;
+  --color-ok-weak: #18271b;
+  --color-warn-weak: #2a2413;
+  --color-danger-weak: #2c1a16;
+}
+
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    margin: 0;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+  }
+  input, textarea, select, .selectable, td, code, pre { user-select: text; }
+
+  *::-webkit-scrollbar { width: 12px; height: 12px; }
+  *::-webkit-scrollbar-thumb { background: var(--color-line-strong); border-radius: 8px; border: 3px solid var(--color-paper); }
+  *::-webkit-scrollbar-thumb:hover { background: var(--color-ink-3); }
+  *::-webkit-scrollbar-track { background: transparent; }
+  :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+  ::selection { background: var(--color-accent-weak); }
+  input[type="checkbox"] { accent-color: var(--color-accent); width: 13px; height: 13px; cursor: pointer; }
+}
+
+@layer components {
+  /* Typographic primitives */
+  .display { font-family: var(--font-display); font-weight: 500; letter-spacing: -0.01em; }
+  .eyebrow {
+    font-family: var(--font-ui); font-weight: 600; font-size: 10.5px;
+    letter-spacing: 0.11em; text-transform: uppercase; color: var(--color-ink-3);
+  }
+  .mono { font-family: var(--font-mono); }
+
+  /* Buttons — ink, not color. The accent is a spark, never a fill. */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 h-9 px-4 text-[12.5px] font-medium whitespace-nowrap
+           transition-all duration-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none;
+    border-radius: 9999px;
+    border: 1px solid var(--color-line-strong);
+    background: var(--color-card);
+    color: var(--color-ink);
+  }
+  .btn:hover:not(:disabled) { background: var(--color-sunken); }
+  .btn-primary {
+    background: var(--color-ink);
+    border-color: var(--color-ink);
+    color: var(--color-paper);
+  }
+  .btn-primary:hover:not(:disabled) { background: #000; border-color: #000; }
+  .dark .btn-primary:hover:not(:disabled) { background: var(--color-ink); opacity: 0.9; }
+  .btn-quiet { border-color: transparent; background: transparent; color: var(--color-ink-2); }
+  .btn-quiet:hover:not(:disabled) { background: var(--color-sunken); color: var(--color-ink); }
+  .btn-icon { @apply h-9 w-9 px-0; }
+
+  /* Inputs */
+  .input {
+    @apply w-full h-9 px-3.5 text-[12.5px];
+    border-radius: 10px;
+    border: 1px solid var(--color-line-strong);
+    background: var(--color-card);
+    color: var(--color-ink);
+  }
+  .input::placeholder { color: var(--color-ink-3); }
+  .input:focus { border-color: var(--color-accent); outline: none; box-shadow: 0 0 0 3px var(--color-accent-weak); }
+  .input.mono { font-family: var(--font-mono); font-size: 12px; }
+  select.input { padding-right: 1.5rem; }
+
+  /* Segmented control — a rounded capsule; active segment is a petrol pill */
+  .seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--color-line-strong); border-radius: 9999px; background: var(--color-card); }
+  .seg > button {
+    @apply h-7 px-3.5 text-[12px] font-medium cursor-pointer transition-colors duration-100;
+    color: var(--color-ink-2); border-radius: 9999px;
+  }
+  .seg > button:hover:not([data-active="true"]) { background: var(--color-sunken); }
+  .seg > button[data-active="true"] { background: var(--color-accent); color: #fff; }
+  .dark .seg > button[data-active="true"] { color: var(--color-paper); }
+
+  /* Underline tabs */
+  .tabs { display: flex; gap: 4px; }
+  .tab {
+    @apply h-9 text-[12.5px] font-medium cursor-pointer;
+    color: var(--color-ink-3); border-bottom: 2px solid transparent; padding: 0 2px;
+  }
+  .tab:hover { color: var(--color-ink); }
+  .tab[data-active="true"] { color: var(--color-ink); border-bottom-color: var(--color-accent); }
+
+  /* Surfaces */
+  .card { background: var(--color-card); border: 1px solid var(--color-line); border-radius: 16px; box-shadow: 0 1px 2px rgba(20,18,12,0.05); }
+
+  /* Token — quiet mono pill */
+  .token {
+    @apply inline-flex items-center gap-1 h-[22px] pl-2.5 pr-2 text-[11.5px];
+    border-radius: 9999px; border: 1px solid var(--color-line-strong);
+    background: var(--color-card); color: var(--color-ink-2); font-family: var(--font-mono);
+  }
+
+  /* Semantic status pills */
+  .status { @apply inline-flex items-center shrink-0 whitespace-nowrap h-[18px] px-2 text-[10.5px] font-semibold rounded-full; }
+  .status-ok { background: var(--color-ok-weak); color: var(--color-ok); }
+  .status-warn { background: var(--color-warn-weak); color: var(--color-warn); }
+  .status-danger { background: var(--color-danger-weak); color: var(--color-danger); }
+  .status-neutral { background: var(--color-sunken); color: var(--color-ink-2); }
+}

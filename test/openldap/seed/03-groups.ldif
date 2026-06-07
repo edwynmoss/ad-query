@@ -1,0 +1,31 @@
+# Groups (groupOfNames) for membership / ACL-ish queries.
+dn: cn=Sales Team,ou=Groups,dc=adquery,dc=test
+objectClass: groupOfNames
+cn: Sales Team
+description: All sales staff
+member: uid=jdoe,ou=Sales,ou=People,dc=adquery,dc=test
+member: uid=bsmith,ou=Sales,ou=People,dc=adquery,dc=test
+
+dn: cn=IT Team,ou=Groups,dc=adquery,dc=test
+objectClass: groupOfNames
+cn: IT Team
+description: IT department
+member: uid=ckent,ou=IT,ou=People,dc=adquery,dc=test
+member: uid=llane,ou=IT,ou=People,dc=adquery,dc=test
+member: uid=pparker,ou=IT,ou=People,dc=adquery,dc=test
+
+dn: cn=Domain Admins,ou=Groups,dc=adquery,dc=test
+objectClass: groupOfNames
+cn: Domain Admins
+description: Privileged administrators
+member: uid=ckent,ou=IT,ou=People,dc=adquery,dc=test
+
+dn: cn=All Staff,ou=Groups,dc=adquery,dc=test
+objectClass: groupOfNames
+cn: All Staff
+description: Everyone
+member: uid=jdoe,ou=Sales,ou=People,dc=adquery,dc=test
+member: uid=bsmith,ou=Sales,ou=People,dc=adquery,dc=test
+member: uid=ckent,ou=IT,ou=People,dc=adquery,dc=test
+member: uid=llane,ou=IT,ou=People,dc=adquery,dc=test
+member: uid=pparker,ou=IT,ou=People,dc=adquery,dc=test

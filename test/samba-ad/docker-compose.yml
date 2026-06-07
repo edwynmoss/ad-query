@@ -1,0 +1,43 @@
+# Full Samba Active Directory Domain Controller (with Kerberos KDC) for AD Query.
+#
+# This replaces the earlier lightweight (smblds) directory so we can exercise the
+# Kerberos / GSSAPI bind path, not just AD-mode LDAP. It runs a real KDC on :88.
+#
+#   docker compose up -d         # provisions the domain (~1-2 min)
+#   ./seed.ps1                   # add sample OUs / users / groups
+#   docker compose down -v       # wipe
+#
+# (Plain-LDAP simple binds already work — the image ships with
+#  "ldap server require strong auth = No". Kerberos is on KDC port 88.)
+#
+# Realm:  ADQUERY.TEST   Domain: ADQUERY   Admin: administrator@adquery.test / AdminPass123!
+# LDAP 1389 / LDAPS 1636 ; Kerberos KDC 88 (tcp+udp) ; kpasswd 464.
+services:
+  samba-ad:
+    image: diegogslomp/samba-ad-dc:latest
+    container_name: adquery-samba
+    hostname: dc1
+    privileged: true
+    environment:
+      REALM: "ADQUERY.TEST"
+      DOMAIN: "ADQUERY"
+      ADMIN_PASS: "AdminPass123!"
+      DNS_FORWARDER: "8.8.8.8"
+      BIND_NETWORK_INTERFACES: "false"
+    ports:
+      - "1389:389"      # ldap://
+      - "1636:636"      # ldaps://
+      - "88:88"         # Kerberos KDC (tcp)
+      - "88:88/udp"     # Kerberos KDC (udp)
+      - "464:464"       # kpasswd (tcp)
+      - "464:464/udp"   # kpasswd (udp)
+      - "3268:3268"     # global catalog
+    volumes:
+      - samba-etc:/usr/local/samba/etc
+      - samba-private:/usr/local/samba/private
+      - samba-var:/usr/local/samba/var
+
+volumes:
+  samba-etc:
+  samba-private:
+  samba-var:

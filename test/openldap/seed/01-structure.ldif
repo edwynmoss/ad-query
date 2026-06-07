@@ -1,0 +1,24 @@
+# Organizational units for AD Query test directory.
+dn: ou=People,dc=adquery,dc=test
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=Sales,ou=People,dc=adquery,dc=test
+objectClass: organizationalUnit
+ou: Sales
+
+dn: ou=IT,ou=People,dc=adquery,dc=test
+objectClass: organizationalUnit
+ou: IT
+
+dn: ou=Disabled,ou=People,dc=adquery,dc=test
+objectClass: organizationalUnit
+ou: Disabled
+
+dn: ou=Groups,dc=adquery,dc=test
+objectClass: organizationalUnit
+ou: Groups
+
+dn: ou=Computers,dc=adquery,dc=test
+objectClass: organizationalUnit
+ou: Computers

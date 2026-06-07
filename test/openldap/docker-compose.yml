@@ -1,0 +1,46 @@
+# OpenLDAP test directory for AD Query.
+#
+#   docker compose up -d        # start
+#   docker compose down -v      # stop + wipe data
+#
+# Base DN:  dc=adquery,dc=test
+# Admin:    cn=admin,dc=adquery,dc=test  /  AdminPass123!
+# Plain LDAP on 3389, LDAPS on 6636 (self-signed).
+#
+# Seed data in ./seed/*.ldif is bootstrapped on first start.
+services:
+  openldap:
+    image: osixia/openldap:1.5.0
+    container_name: adquery-openldap
+    command: ["--copy-service", "--loglevel", "info"]
+    environment:
+      LDAP_ORGANISATION: "AD Query Test"
+      LDAP_DOMAIN: "adquery.test"
+      LDAP_BASE_DN: "dc=adquery,dc=test"
+      LDAP_ADMIN_PASSWORD: "AdminPass123!"
+      LDAP_CONFIG_PASSWORD: "ConfigPass123!"
+      LDAP_RFC2307BIS_SCHEMA: "true"
+      LDAP_TLS_VERIFY_CLIENT: "never"
+    ports:
+      - "3389:389"   # ldap://  (host 3389 -> container 389)
+      - "6636:636"   # ldaps:// (host 6636 -> container 636)
+    volumes:
+      - ldap-data:/var/lib/ldap
+      - ldap-config:/etc/ldap/slapd.d
+      - ./seed:/container/service/slapd/assets/config/bootstrap/ldif/custom:ro
+
+  # Optional web UI for poking at the directory by hand.
+  phpldapadmin:
+    image: osixia/phpldapadmin:0.9.0
+    container_name: adquery-phpldapadmin
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: "openldap"
+      PHPLDAPADMIN_HTTPS: "false"
+    ports:
+      - "8082:80"
+    depends_on:
+      - openldap
+
+volumes:
+  ldap-data:
+  ldap-config:

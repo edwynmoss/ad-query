@@ -1,0 +1,96 @@
+# Sample users. Password for everyone: Passw0rd!
+# Attribute spread is intentionally varied to exercise the column picker.
+
+dn: uid=jdoe,ou=Sales,ou=People,dc=adquery,dc=test
+objectClass: inetOrgPerson
+uid: jdoe
+cn: Jane Doe
+givenName: Jane
+sn: Doe
+displayName: Jane Doe
+mail: jane.doe@adquery.test
+title: Account Executive
+departmentNumber: Sales
+telephoneNumber: +1-202-555-0101
+employeeNumber: 1001
+userPassword: Passw0rd!
+
+dn: uid=bsmith,ou=Sales,ou=People,dc=adquery,dc=test
+objectClass: inetOrgPerson
+uid: bsmith
+cn: Bob Smith
+givenName: Bob
+sn: Smith
+displayName: Bob Smith
+mail: bob.smith@adquery.test
+title: Sales Manager
+departmentNumber: Sales
+telephoneNumber: +1-202-555-0102
+employeeNumber: 1002
+userPassword: Passw0rd!
+
+dn: uid=ckent,ou=IT,ou=People,dc=adquery,dc=test
+objectClass: inetOrgPerson
+uid: ckent
+cn: Clark Kent
+givenName: Clark
+sn: Kent
+displayName: Clark Kent
+mail: clark.kent@adquery.test
+title: Systems Administrator
+departmentNumber: IT
+telephoneNumber: +1-202-555-0103
+employeeNumber: 1003
+manager: uid=bsmith,ou=Sales,ou=People,dc=adquery,dc=test
+userPassword: Passw0rd!
+
+dn: uid=llane,ou=IT,ou=People,dc=adquery,dc=test
+objectClass: inetOrgPerson
+uid: llane
+cn: Lois Lane
+givenName: Lois
+sn: Lane
+displayName: Lois Lane
+mail: lois.lane@adquery.test
+title: Network Engineer
+departmentNumber: IT
+telephoneNumber: +1-202-555-0104
+employeeNumber: 1004
+userPassword: Passw0rd!
+
+dn: uid=pparker,ou=IT,ou=People,dc=adquery,dc=test
+objectClass: inetOrgPerson
+uid: pparker
+cn: Peter Parker
+givenName: Peter
+sn: Parker
+displayName: Peter Parker
+mail: peter.parker@adquery.test
+title: Junior Sysadmin
+departmentNumber: IT
+employeeNumber: 1005
+manager: uid=ckent,ou=IT,ou=People,dc=adquery,dc=test
+userPassword: Passw0rd!
+
+dn: uid=oldacct,ou=Disabled,ou=People,dc=adquery,dc=test
+objectClass: inetOrgPerson
+uid: oldacct
+cn: Former Employee
+givenName: Former
+sn: Employee
+displayName: Former Employee (disabled)
+mail: former.employee@adquery.test
+title: (terminated)
+departmentNumber: Sales
+employeeNumber: 9001
+userPassword: Passw0rd!
+
+dn: uid=svc-backup,ou=IT,ou=People,dc=adquery,dc=test
+objectClass: inetOrgPerson
+uid: svc-backup
+cn: Backup Service Account
+sn: Service
+displayName: svc-backup
+description: Service account for nightly backups
+employeeNumber: 9100
+userPassword: Passw0rd!

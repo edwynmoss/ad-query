@@ -1,0 +1,24 @@
+# Build output
+app/build/bin/
+app/frontend/dist/
+app/frontend/node_modules/
+node_modules/
+
+# Go
+*.exe
+*.test
+*.out
+
+# Wails
+app/frontend/wailsjs/
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local config / secrets
+*.local
+.env

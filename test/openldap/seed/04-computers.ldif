@@ -1,0 +1,20 @@
+# Sample computer objects (device objectClass).
+dn: cn=WS-SALES-01,ou=Computers,dc=adquery,dc=test
+objectClass: device
+cn: WS-SALES-01
+description: Workstation - Windows 11 - Sales floor
+serialNumber: SN-001-SALES
+owner: uid=jdoe,ou=Sales,ou=People,dc=adquery,dc=test
+
+dn: cn=WS-IT-01,ou=Computers,dc=adquery,dc=test
+objectClass: device
+cn: WS-IT-01
+description: Workstation - Windows 11 - IT
+serialNumber: SN-010-IT
+owner: uid=ckent,ou=IT,ou=People,dc=adquery,dc=test
+
+dn: cn=SRV-DC-01,ou=Computers,dc=adquery,dc=test
+objectClass: device
+cn: SRV-DC-01
+description: Server - Windows Server 2022 - Domain Controller
+serialNumber: SN-100-SRV
