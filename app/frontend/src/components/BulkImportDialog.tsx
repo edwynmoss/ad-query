@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { labelFor } from "../lib/attrLabels";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -141,7 +142,7 @@ export function BulkImportDialog({ req, onClose }: Props) {
 
         <div className="overflow-auto px-5 py-4 space-y-4">
           {/* File picker */}
-          <label className="flex items-center gap-3 px-4 py-4 rounded-2xl cursor-pointer border border-dashed border-line-strong bg-sunken">
+          <label className="flex items-center gap-3 px-4 py-4 rounded-xl cursor-pointer border border-dashed border-line-strong bg-sunken">
             <Upload size={18} className="text-brand" />
             <div className="flex-1">
               <div className="text-[12.5px] font-medium">{fileName || "Choose a .csv or .xlsx file"}</div>
@@ -164,18 +165,18 @@ export function BulkImportDialog({ req, onClose }: Props) {
                   </Select>
                 </div>
                 <div>
-                  <label className="eyebrow block mb-1.5">Match on attribute</label>
+                  <label className="eyebrow block mb-1.5">Match on field</label>
                   <Select value={matchAttr} onValueChange={(val) => setMatchAttr(val as MatchAttr)}>
-                    <SelectTrigger size="sm" className="font-mono"><SelectValue /></SelectTrigger>
+                    <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {MATCH_ATTRS.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                      {MATCH_ATTRS.map((a) => <SelectItem key={a} value={a}>{labelFor(a)} <span className="text-ink-3 font-mono">{a}</span></SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div>
                 <label className="eyebrow block mb-1.5">Returns your selected columns</label>
-                <div className="flex flex-wrap gap-1.5">{outAttrs.map((a) => <Badge key={a} variant="secondary" className="font-mono font-normal">{a}</Badge>)}</div>
+                <div className="flex flex-wrap gap-1.5">{outAttrs.map((a) => <Badge key={a} variant="secondary" className="font-normal" title={a}>{labelFor(a)}</Badge>)}</div>
               </div>
               <label className={cn("flex items-center gap-2 text-[12px] cursor-pointer", signedIn365 ? "text-ink-2" : "text-ink-3")}>
                 <Checkbox checked={check365} disabled={!signedIn365} onCheckedChange={(v) => setCheck365(!!v)} />
@@ -194,7 +195,7 @@ export function BulkImportDialog({ req, onClose }: Props) {
           )}
 
           {phase === "done" && (
-            <div className="rounded-2xl p-3.5 flex items-center gap-4 text-[12.5px] border border-line bg-sunken">
+            <div className="rounded-xl p-3.5 flex items-center gap-4 text-[12.5px] border border-line bg-sunken">
               <span className="flex items-center gap-1.5 text-success"><CheckCircle2 size={15} /> {summary.found} found</span>
               <span className="flex items-center gap-1.5 text-ink-2"><AlertCircle size={15} /> {summary.notFound} not found</span>
               {summary.multiple > 0 && <span className="text-warning">{summary.multiple} ambiguous</span>}
