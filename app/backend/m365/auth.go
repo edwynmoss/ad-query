@@ -26,10 +26,26 @@ type Doer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+// DefaultClientID is Microsoft's first-party "Microsoft Graph Command Line
+// Tools" public client (the same app id `Connect-MgGraph` uses). Using it means
+// the user signs in with their own credentials and needs NO app registration —
+// they just consent to the delegated, read-only scopes (an admin may approve
+// the cross-user read scopes once for the tenant). Organisations that prefer
+// their own app registration can override ClientID.
+const DefaultClientID = "14d82eec-204b-4c2f-b7e8-296a70dab67e"
+
 // Config identifies the tenant + public client app registration.
 type Config struct {
 	TenantID string `json:"tenantID"`
 	ClientID string `json:"clientID"`
+}
+
+// clientID returns the configured client or the built-in default.
+func (c Config) clientID() string {
+	if strings.TrimSpace(c.ClientID) == "" {
+		return DefaultClientID
+	}
+	return c.ClientID
 }
 
 // DefaultScopes are the delegated Graph permissions the check needs.
@@ -74,10 +90,7 @@ func (t Token) Valid() bool {
 
 // StartDeviceCode kicks off the device-code flow.
 func StartDeviceCode(doer Doer, cfg Config, scopes []string) (*DeviceCode, error) {
-	if cfg.ClientID == "" {
-		return nil, fmt.Errorf("a client (application) ID is required")
-	}
-	form := url.Values{"client_id": {cfg.ClientID}, "scope": {strings.Join(scopes, " ")}}
+	form := url.Values{"client_id": {cfg.clientID()}, "scope": {strings.Join(scopes, " ")}}
 	body, status, err := postForm(doer, cfg.authority()+"/oauth2/v2.0/devicecode", form)
 	if err != nil {
 		return nil, err
@@ -92,7 +105,7 @@ func StartDeviceCode(doer Doer, cfg Config, scopes []string) (*DeviceCode, error
 func PollToken(doer Doer, cfg Config, deviceCode string) (tok *Token, pending bool, err error) {
 	form := url.Values{
 		"grant_type": {"urn:ietf:params:oauth:grant-type:device_code"},
-		"client_id":  {cfg.ClientID},
+		"client_id":  {cfg.clientID()},
 		"device_code": {deviceCode},
 	}
 	body, status, err := postForm(doer, cfg.authority()+"/oauth2/v2.0/token", form)

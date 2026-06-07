@@ -65,11 +65,17 @@ export function M365Dialog({ onClose, onChange }: Props) {
           {phase === "config" && (
             <>
               <p className="text-[12px] text-ink-2">
-                Sign in to your tenant to enrich results with Entra facts (account exists/enabled, licenses, last sign-in). Uses delegated sign-in <b className="text-ink">as you</b> — no password stored.
+                Sign in with your Microsoft account to enrich results with Entra facts (account exists/enabled, licenses, last sign-in). Delegated sign-in <b className="text-ink">as you</b> — no password stored, and nothing to register: it uses Microsoft's standard sign-in app.
               </p>
-              <div><span className="eyebrow block mb-1.5">Tenant ID <span className="text-ink-3">(or "organizations")</span></span><Input className="font-mono" value={tenant} onChange={(e) => setTenant(e.target.value)} placeholder="contoso.onmicrosoft.com or GUID" /></div>
-              <div><span className="eyebrow block mb-1.5">Client (application) ID</span><Input className="font-mono" value={client} onChange={(e) => setClient(e.target.value)} placeholder="public client app registration GUID" /></div>
-              <p className="text-[11px] text-ink-3">Needs a one-time Entra app registration (public client, delegated <span className="mono">User.Read.All</span>). See docs/M365.md.</p>
+              <details className="rounded-lg border border-line px-3 py-2">
+                <summary className="eyebrow cursor-pointer select-none text-ink-3">Advanced · use your own tenant / app</summary>
+                <div className="space-y-3 mt-3">
+                  <div><span className="eyebrow block mb-1.5">Tenant ID <span className="text-ink-3">(or "organizations")</span></span><Input className="font-mono" value={tenant} onChange={(e) => setTenant(e.target.value)} placeholder="organizations (default)" /></div>
+                  <div><span className="eyebrow block mb-1.5">Client (application) ID</span><Input className="font-mono" value={client} onChange={(e) => setClient(e.target.value)} placeholder="Microsoft Graph sign-in app (default)" /></div>
+                  <p className="text-[11px] text-ink-3">Only needed if your organization requires its own app registration. See docs/M365.md.</p>
+                </div>
+              </details>
+              <p className="text-[11px] text-ink-3">Your admin may need to approve the read-only access once for the tenant.</p>
             </>
           )}
 
@@ -90,13 +96,13 @@ export function M365Dialog({ onClose, onChange }: Props) {
             </div>
           )}
 
-          {error && <div className="text-[12px] px-4 py-2.5 rounded-2xl selectable bg-critical-soft text-critical">{error}</div>}
+          {error && <div className="text-[12px] px-4 py-2.5 rounded-lg selectable bg-critical-soft text-critical">{error}</div>}
         </div>
 
         <DialogFooter>
           {phase === "done"
             ? <Button variant="outline" onClick={signOut}>Sign out</Button>
-            : <Button className="px-5" onClick={signIn} disabled={busy || phase === "pending" || !client.trim()}>
+            : <Button className="px-5" onClick={signIn} disabled={busy || phase === "pending"}>
                 {busy ? <Loader2 size={14} className="animate-spin" /> : <Cloud size={14} />}{phase === "pending" ? "Waiting…" : "Sign in"}
               </Button>}
         </DialogFooter>
