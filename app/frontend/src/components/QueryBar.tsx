@@ -94,9 +94,9 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
   function toggle(p: Panel) { setPanel((cur) => (cur === p ? null : p)); }
 
   return (
-    <div className="relative px-4 py-2.5" style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-line)" }}>
+    <div className="relative px-4 py-2.5 bg-surface border-b border-line">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className={(panel === "saved" ? "bg-[var(--color-sunken)]" : "")} title="Saved queries" onClick={() => toggle("saved")}>
+        <Button variant="ghost" size="icon" className={(panel === "saved" ? "bg-sunken" : "")} title="Saved queries" onClick={() => toggle("saved")}>
           <Bookmark size={15} />
         </Button>
         <Button variant="ghost" size="icon" title="Bulk lookup from file (CSV / Excel)" onClick={() => { setPanel(null); setShowImport(true); }}>
@@ -127,12 +127,12 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
           </Select>
         </div>
 
-        <Button variant="outline" className={(panel === "filters" ? "bg-[var(--color-sunken)]" : "")} onClick={() => toggle("filters")}>
-          <SlidersHorizontal size={14} /> Filters{activeConditions > 0 ? <span className="ml-0.5 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-semibold" style={{ background: "var(--color-brand)", color: "#fff" }}>{activeConditions}</span> : null}
+        <Button variant="outline" className={(panel === "filters" ? "bg-sunken" : "")} onClick={() => toggle("filters")}>
+          <SlidersHorizontal size={14} /> Filters{activeConditions > 0 ? <span className="ml-0.5 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-semibold bg-brand text-white">{activeConditions}</span> : null}
         </Button>
 
-        <Button variant="outline" className={(panel === "columns" ? "bg-[var(--color-sunken)]" : "")} onClick={() => toggle("columns")}>
-          <Columns3 size={14} /> Columns <span style={{ color: "var(--color-ink-3)" }}>{req.attributes.length}</span> <ChevronDown size={12} />
+        <Button variant="outline" className={(panel === "columns" ? "bg-sunken" : "")} onClick={() => toggle("columns")}>
+          <Columns3 size={14} /> Columns <span className="text-ink-3">{req.attributes.length}</span> <ChevronDown size={12} />
         </Button>
 
         <Button className="px-5" onClick={run} disabled={running || !req.baseDN}>
@@ -159,14 +159,14 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
           ) : (
             <FilterBuilder conditions={req.conditions} matchOp={req.matchOp} attributes={attrSource} onChange={(conditions, matchOp) => setReq({ ...req, conditions, matchOp })} />
           )}
-          <div className="flex items-center gap-2 text-[11.5px] mt-3 pt-2.5" style={{ borderTop: "1px solid var(--color-line)" }}>
+          <div className="flex items-center gap-2 text-[11.5px] mt-3 pt-2.5 border-t border-line">
             <span className="eyebrow">Effective</span>
-            <code className="truncate selectable" style={{ fontFamily: "var(--font-mono)", color: "var(--color-ink-2)" }} title={effectiveFilter(req)}>{effectiveFilter(req) || "(objectClass=*)"}</code>
+            <code className="truncate selectable font-mono text-ink-2" title={effectiveFilter(req)}>{effectiveFilter(req) || "(objectClass=*)"}</code>
           </div>
 
           {/* Advanced — for the rare power user who really wants a raw DN + scope. */}
-          <details className="mt-3 pt-2.5" style={{ borderTop: "1px solid var(--color-line)" }}>
-            <summary className="eyebrow cursor-pointer select-none" style={{ color: "var(--color-ink-3)" }}>Advanced · base DN &amp; scope</summary>
+          <details className="mt-3 pt-2.5 border-t border-line">
+            <summary className="eyebrow cursor-pointer select-none text-ink-3">Advanced · base DN &amp; scope</summary>
             <div className="grid grid-cols-3 gap-2 mt-2">
               <Input className="font-mono col-span-2 h-8" value={req.baseDN} onChange={(e) => setReq({ ...req, baseDN: e.target.value })} placeholder="base dn" />
               <Select value={String(req.scope)} onValueChange={(val) => setReq({ ...req, scope: Number(val) })}>
@@ -196,14 +196,14 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => addAttr(newAttr)} aria-label="add"><Plus size={14} /></Button>
             </div>
             {newAttr && suggestions.length > 0 && (
-              <div className="mt-1 max-h-44 overflow-auto" style={{ border: "1px solid var(--color-line)", borderRadius: 10 }}>
+              <div className="mt-1 max-h-44 overflow-auto rounded-[10px] border border-line">
                 {suggestions.map((s) => (
-                  <button key={s} className="block w-full text-left px-2.5 py-1.5 text-[12px] hover:bg-[var(--color-sunken)]" style={{ fontFamily: "var(--font-mono)" }} onClick={() => addAttr(s)}>{s}</button>
+                  <button key={s} className="block w-full text-left px-2.5 py-1.5 text-[12px] font-mono hover:bg-sunken" onClick={() => addAttr(s)}>{s}</button>
                 ))}
               </div>
             )}
           </div>
-          {schemaAttributes && schemaAttributes.length > 0 && <p className="text-[11px] mt-2" style={{ color: "var(--color-ink-3)" }}>{schemaAttributes.length} attributes in schema</p>}
+          {schemaAttributes && schemaAttributes.length > 0 && <p className="text-[11px] mt-2 text-ink-3">{schemaAttributes.length} attributes in schema</p>}
         </Pop>
       )}
 
@@ -216,7 +216,7 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
 
 function Pop({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={"absolute z-30 mt-1 card p-3 " + (className ?? "")} style={{ top: "100%", boxShadow: "0 10px 32px rgba(20,18,12,0.16)" }} onClick={(e) => e.stopPropagation()}>
+    <div className={"absolute top-full z-30 mt-1 p-3 rounded-xl border border-line bg-surface shadow-xl " + (className ?? "")} onClick={(e) => e.stopPropagation()}>
       {children}
     </div>
   );

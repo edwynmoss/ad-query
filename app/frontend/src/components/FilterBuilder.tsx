@@ -21,7 +21,7 @@ export function FilterBuilder({ conditions, matchOp, onChange, attributes }: Pro
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center gap-2 text-[11.5px]" style={{ color: "var(--color-ink-2)" }}>
+      <div className="flex items-center gap-2 text-[11.5px] text-ink-2">
         <span>Match</span>
         <ToggleGroup type="single" variant="outline" value={matchOp} onValueChange={(val) => val && onChange(conditions, val as MatchOp)}>
           <ToggleGroupItem value="and">All</ToggleGroupItem>
@@ -31,7 +31,7 @@ export function FilterBuilder({ conditions, matchOp, onChange, attributes }: Pro
       </div>
 
       {conditions.length === 0 && (
-        <div className="text-[12px]" style={{ color: "var(--color-ink-3)" }}>No conditions — all objects of the selected type.</div>
+        <div className="text-[12px] text-ink-3">No conditions — all objects of the selected type.</div>
       )}
 
       {conditions.map((c) => {

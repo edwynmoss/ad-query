@@ -3,6 +3,7 @@ import { Loader2, X, ArrowRight, ArrowLeft, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Connect, StoreSecret, GetSecret, DeleteSecret, DetectDomain } from "../../wailsjs/go/main/App";
 import { ldap, sysenv } from "../../wailsjs/go/models";
 import { ConnectionProfile, loadProfiles, saveProfile, deleteProfile } from "../lib/profiles";
@@ -93,16 +94,16 @@ export function ConnectionPanel({ onConnected }: Props) {
   async function removeProfile(name: string) { setProfiles(deleteProfile(name)); try { await DeleteSecret(name); } catch { /* */ } }
 
   return (
-    <div className="h-full grid place-items-center px-6" style={{ background: "var(--color-paper)" }}>
+    <div className="h-full grid place-items-center px-6 bg-page">
       <div className="w-[460px] rounded-xl border border-border bg-card shadow-xl">
-        <div className="px-7 pt-7 pb-5" style={{ borderBottom: "1px solid var(--color-line)" }}>
-          <div className="eyebrow" style={{ color: "var(--color-brand)" }}>Directory Ledger</div>
-          <h1 className="display text-[27px] leading-none mt-2" style={{ fontWeight: 600 }}>AD Query</h1>
-          <p className="text-[12.5px] mt-2.5" style={{ color: "var(--color-ink-2)" }}>Connect to your directory to search users, groups, and more.</p>
+        <div className="px-7 pt-7 pb-5 border-b border-line">
+          <div className="eyebrow text-brand">Directory Ledger</div>
+          <h1 className="display text-[27px] leading-none mt-2 font-semibold">AD Query</h1>
+          <p className="text-[12.5px] mt-2.5 text-ink-2">Connect to your directory to search users, groups, and more.</p>
         </div>
 
         {mode === "detecting" && (
-          <div className="px-7 py-10 flex items-center gap-2.5 text-[12.5px]" style={{ color: "var(--color-ink-2)" }}>
+          <div className="px-7 py-10 flex items-center gap-2.5 text-[12.5px] text-ink-2">
             <Loader2 size={15} className="animate-spin" /> Checking this machine for a domain…
           </div>
         )}
@@ -110,17 +111,17 @@ export function ConnectionPanel({ onConnected }: Props) {
         {/* Zero-config: connect to the joined domain as the current user (SSO). */}
         {mode === "auto" && detected && (
           <div className="px-7 py-6 space-y-5">
-            <div className="rounded-2xl p-4" style={{ border: "1px solid var(--color-line)", background: "var(--color-sunken)" }}>
-              <div className="flex items-center gap-2 eyebrow" style={{ color: "var(--color-brand)" }}><ShieldCheck size={13} /> This computer's domain</div>
-              <div className="display text-[19px] mt-1.5" style={{ fontWeight: 600 }}>{detected.domain.toUpperCase()}</div>
-              <div className="text-[12.5px] mt-1" style={{ color: "var(--color-ink-2)" }}>
-                Sign in as <span className="mono" style={{ color: "var(--color-ink)" }}>{detected.user || "the current user"}</span> — no password.
+            <div className="rounded-2xl p-4 border border-line bg-sunken">
+              <div className="flex items-center gap-2 eyebrow text-brand"><ShieldCheck size={13} /> This computer's domain</div>
+              <div className="display text-[19px] mt-1.5 font-semibold">{detected.domain.toUpperCase()}</div>
+              <div className="text-[12.5px] mt-1 text-ink-2">
+                Sign in as <span className="mono text-ink">{detected.user || "the current user"}</span> — no password.
               </div>
             </div>
             <Button className="w-full" onClick={connectAuto} disabled={busy}>
               {busy ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}{busy ? "Connecting…" : `Connect to ${detected.domain.toUpperCase()}`}
             </Button>
-            {error && <div className="text-[12px] px-4 py-2.5 rounded-lg selectable" style={{ background: "var(--color-danger-weak)", color: "var(--color-danger)" }}>{error}</div>}
+            {error && <div className="text-[12px] px-4 py-2.5 rounded-lg selectable bg-critical-soft text-critical">{error}</div>}
             <Button variant="ghost" size="sm" className="mx-auto flex" onClick={() => { setError(null); setMode("manual"); }}>
               Connect to a different directory <ArrowRight size={12} />
             </Button>
@@ -132,12 +133,12 @@ export function ConnectionPanel({ onConnected }: Props) {
             <div className="px-7 py-6 space-y-5">
               {import.meta.env.DEV && (
                 <Button variant="ghost" size="sm" onClick={connectDev} disabled={busy}
-                  className="border border-dashed" style={{ color: "var(--color-brand)", borderColor: "var(--color-brand)" }}>
+                  className="border border-dashed border-brand text-brand">
                   <ShieldCheck size={12} /> Dev: connect to local test directory
                 </Button>
               )}
               {detected?.joined && (
-                <Button variant="ghost" size="sm" onClick={() => { setError(null); setMode("auto"); }} style={{ color: "var(--color-brand)" }}>
+                <Button variant="ghost" size="sm" className="text-brand" onClick={() => { setError(null); setMode("auto"); }}>
                   <ArrowLeft size={12} /> Use this computer's domain ({detected.domain.toUpperCase()})
                 </Button>
               )}
@@ -149,7 +150,7 @@ export function ConnectionPanel({ onConnected }: Props) {
                     {p.name}<button className="opacity-50 hover:opacity-100" onClick={(e) => { e.stopPropagation(); removeProfile(p.name); }} aria-label={`delete ${p.name}`}><X size={11} /></button>
                   </span>
                 ))}
-                {profiles.length === 0 && !naming && <span style={{ color: "var(--color-ink-3)" }}>none</span>}
+                {profiles.length === 0 && !naming && <span className="text-ink-3">none</span>}
                 {naming
                   ? <Input autoFocus className="font-mono h-7 w-32" value={profileName} placeholder="name…" onChange={(e) => setProfileName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveCurrentProfile(); if (e.key === "Escape") setNaming(false); }} onBlur={saveCurrentProfile} />
                   : <Button variant="ghost" size="sm" onClick={() => setNaming(true)}>Save current</Button>}
@@ -158,7 +159,7 @@ export function ConnectionPanel({ onConnected }: Props) {
               <div>
                 <Label>Server address</Label>
                 <Input className="font-mono" value={server} onChange={(e) => setServer(e.target.value)} placeholder="dc01.contoso.com" />
-                <p className="text-[11px] mt-1.5" style={{ color: "var(--color-ink-3)" }}>Your domain controller or directory host. Add <span className="mono">ldaps://</span> for a secure connection.</p>
+                <p className="text-[11px] mt-1.5 text-ink-3">Your domain controller or directory host. Add <span className="mono">ldaps://</span> for a secure connection.</p>
               </div>
 
               <div>
@@ -173,21 +174,21 @@ export function ConnectionPanel({ onConnected }: Props) {
                 <div><Label>Password</Label><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" /></div>
               </>)}
               {auth === "sspi" && (
-                <p className="text-[12px] leading-relaxed px-4 py-3 rounded-lg" style={{ background: "var(--color-sunken)", color: "var(--color-ink-2)" }}>
+                <p className="text-[12px] leading-relaxed px-4 py-3 rounded-lg bg-sunken text-ink-2">
                   Signs in as you — the Windows account you're logged in with. No username or password needed.
                 </p>
               )}
 
               {isLdaps && (
-                <label className="flex items-center gap-2 text-[12px] cursor-pointer" style={{ color: "var(--color-ink-2)" }}>
-                  <input type="checkbox" checked={acceptSelfSigned} onChange={(e) => setAcceptSelfSigned(e.target.checked)} /> Accept self-signed certificate
+                <label className="flex items-center gap-2 text-[12px] cursor-pointer text-ink-2">
+                  <Checkbox checked={acceptSelfSigned} onCheckedChange={(v) => setAcceptSelfSigned(!!v)} /> Accept self-signed certificate
                 </label>
               )}
 
-              {error && <div className="text-[12px] px-4 py-2.5 rounded-lg selectable" style={{ background: "var(--color-danger-weak)", color: "var(--color-danger)" }}>{error}</div>}
+              {error && <div className="text-[12px] px-4 py-2.5 rounded-lg selectable bg-critical-soft text-critical">{error}</div>}
             </div>
 
-            <div className="px-7 py-5 flex justify-end" style={{ borderTop: "1px solid var(--color-line)" }}>
+            <div className="px-7 py-5 flex justify-end border-t border-line">
               <Button className="px-7" onClick={connectManual} disabled={busy || !server.trim()}>
                 {busy && <Loader2 size={14} className="animate-spin" />}{busy ? "Connecting…" : "Open connection"}
               </Button>

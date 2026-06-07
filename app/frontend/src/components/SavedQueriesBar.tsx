@@ -25,7 +25,7 @@ export function SavedQueriesBar({ current, onLoad }: Props) {
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap text-[12px]">
-      <span className="text-[11px] font-semibold tracking-wide" style={{ color: "var(--color-ink-2)" }}>SAVED QUERIES</span>
+      <span className="text-[11px] font-semibold tracking-wide text-ink-2">SAVED QUERIES</span>
       {list.map((q) => (
         <Badge variant="secondary" key={q.id} className="font-mono font-normal pr-0.5 cursor-pointer" onClick={() => onLoad(q.query)} title="Load query">
           {q.name}
@@ -34,7 +34,7 @@ export function SavedQueriesBar({ current, onLoad }: Props) {
           </button>
         </Badge>
       ))}
-      {list.length === 0 && !naming && <span style={{ color: "var(--color-ink-3)" }}>none</span>}
+      {list.length === 0 && !naming && <span className="text-ink-3">none</span>}
       {naming ? (
         <Input autoFocus className="font-mono h-6 w-36" value={name} placeholder="query name…"
           onChange={(e) => setName(e.target.value)}
