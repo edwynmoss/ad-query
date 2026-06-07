@@ -39,17 +39,17 @@ export function FilterBuilder({ conditions, matchOp, onChange, attributes }: Pro
         const needsValue = OPERATORS.find((o) => o.key === c.operator)?.needsValue ?? true;
         return (
           <div key={c.id} className="flex items-center gap-1.5">
-            <Input className="font-mono h-7 flex-1" list="adq-attr-list" placeholder="field (e.g. Department)"
+            <Input className="font-mono h-8 flex-1 min-w-0" list="adq-attr-list" placeholder="Field name…"
               value={c.attribute} onChange={(e) => update(c.id, { attribute: e.target.value })} />
             <Select value={c.operator} onValueChange={(val) => update(c.id, { operator: val as OperatorKey })}>
-              <SelectTrigger className="h-7 w-36"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-8 w-32 shrink-0"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {OPERATORS.map((o) => <SelectItem key={o.key} value={o.key}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Input className="font-mono h-7 flex-1" placeholder={needsValue ? "value" : "—"}
+            <Input className="font-mono h-8 flex-1 min-w-0" placeholder={needsValue ? "value" : "—"}
               value={c.value} disabled={!needsValue} onChange={(e) => update(c.id, { value: e.target.value })} />
-            <Button variant="ghost" size="icon" onClick={() => remove(c.id)} aria-label="remove condition"><X size={14} /></Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => remove(c.id)} aria-label="remove condition"><X size={14} /></Button>
           </div>
         );
       })}
