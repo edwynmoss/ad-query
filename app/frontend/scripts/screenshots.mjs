@@ -3,8 +3,8 @@
 //   npm run shots        (builds, serves dist via vite preview, drives Playwright)
 //
 // Runs fully offline: a mock `window.go` (the Wails bindings) is injected before
-// the app loads, so no directory/back-end is required. Captures the journey in
-// light and dark.
+// the app loads, so no directory/back-end is required. Captures the journey plus
+// the Reports / License / Stale / 365 surfaces, in light and dark.
 import { chromium } from "playwright";
 import { preview } from "vite";
 import { mkdir, writeFile, rm } from "node:fs/promises";
@@ -16,35 +16,47 @@ const TMP = path.resolve(process.cwd(), "node_modules/.cache/adquery-shots");
 
 // ---- Mock backend (injected as window.go before the SPA boots) -------------
 const MOCK = `
-window.go = { main: { App: {
-  DetectDomain: () => Promise.resolve({ joined:true, domain:'corp.example.com', server:'corp.example.com', user:'alice@corp.example.com' }),
-  Connect: () => Promise.resolve({ defaultNamingContext:'DC=adquery,DC=test', namingContexts:['DC=adquery,DC=test'], supportedControls:[], supportedSASLMechanisms:[], vendorName:'', vendorVersion:'', isActiveDirectory:true }),
-  Disconnect: () => Promise.resolve(),
-  ServerInfo: () => Promise.resolve({}),
-  SchemaAttributes: () => Promise.resolve(['displayName','sAMAccountName','mail','department','title','manager','userAccountControl','lastLogonTimestamp']),
-  GetACL: () => Promise.resolve({ owner:'Domain Admins', group:'Domain Users', dacl:[
-    {type:'Allow',allow:true,flags:0,mask:983551,rights:['Generic all'],sid:'S-1-5-32-544',trustee:'Administrators',objectType:''},
-    {type:'Deny',allow:false,flags:0,mask:131072,rights:['Read control'],sid:'S-1-5-11',trustee:'Authenticated Users',objectType:''},
-    {type:'Allow (object)',allow:true,flags:0,mask:256,rights:['Reset password'],sid:'S-1-5-21-x',trustee:'Help Desk',objectType:'00299570-246d-11d0-a768-00aa006e0529'}
-  ]}),
-  Search: (req) => {
-    if (req && req.filter && req.filter.indexOf('organizationalUnit') >= 0) {
-      const ous=[['People','OU=People'],['Sales','OU=Sales,OU=People'],['IT','OU=IT,OU=People'],['Engineering','OU=Engineering,OU=People'],['Finance','OU=Finance,OU=People'],['HR','OU=HR,OU=People']];
-      return Promise.resolve({ count:ous.length, truncated:false, entries: ous.map(([ou,dn]) => ({ dn: dn+',DC=adquery,DC=test', attributes:{ ou:[ou] } })) });
+(() => {
+  const recentFt = String((BigInt(Date.now() - 5*86400000) + 11644473600000n) * 10000n);
+  const oldFt = '133516992000000000';
+  const D = ['Sales','IT','Engineering','Finance','HR'];
+  const T = ['Account Executive','Systems Administrator','Software Engineer','Accountant','HR Specialist','IT Director'];
+  window.go = { main: { App: {
+    DetectDomain: () => Promise.resolve({ joined:true, domain:'corp.example.com', server:'corp.example.com', user:'alice@corp.example.com' }),
+    Connect: () => Promise.resolve({ defaultNamingContext:'DC=adquery,DC=test', namingContexts:['DC=adquery,DC=test'], supportedControls:[], supportedSASLMechanisms:[], vendorName:'', vendorVersion:'', isActiveDirectory:true }),
+    Disconnect: () => Promise.resolve(), ServerInfo: () => Promise.resolve({}),
+    SchemaAttributes: () => Promise.resolve(['displayName','sAMAccountName','mail','department','title','manager','userPrincipalName','userAccountControl','lastLogonTimestamp']),
+    GetACL: () => Promise.resolve({ owner:'Domain Admins', group:'Domain Users', dacl:[
+      {type:'Allow',allow:true,flags:0,mask:983551,rights:['Generic all'],sid:'S-1-5-32-544',trustee:'Administrators',objectType:''},
+      {type:'Deny',allow:false,flags:0,mask:131072,rights:['Read control'],sid:'S-1-5-11',trustee:'Authenticated Users',objectType:''},
+      {type:'Allow (object)',allow:true,flags:0,mask:256,rights:['Reset password'],sid:'S-1-5-21-x',trustee:'Help Desk',objectType:'00299570-246d-11d0-a768-00aa006e0529'}
+    ]}),
+    M365SignedIn: () => Promise.resolve(true),
+    M365StartSignIn: () => Promise.resolve({ device_code:'DC', user_code:'F7K2-9QLM', verification_uri:'https://microsoft.com/devicelogin', expires_in:900, interval:5, message:'' }),
+    M365PollSignIn: () => Promise.resolve(false),
+    M365SignOut: () => Promise.resolve(),
+    M365LicenseReport: () => Promise.resolve([
+      {product:'Microsoft 365 E3', skuPartNumber:'SPE_E3', purchased:250, assigned:231, available:19},
+      {product:'Microsoft 365 E5', skuPartNumber:'SPE_E5', purchased:50, assigned:44, available:6},
+      {product:'Power BI Pro', skuPartNumber:'POWER_BI_PRO', purchased:40, assigned:40, available:0},
+      {product:'Exchange Online (Plan 1)', skuPartNumber:'EXCHANGESTANDARD', purchased:30, assigned:35, available:-5},
+    ]),
+    M365Check: (ids) => Promise.resolve((ids||[]).map((id,i) => ({ identity:id, exists:true, enabled:true, displayName:id, upn:id, licenses: i%3===0?['Microsoft 365 E5']:(i%2===0?['Microsoft 365 E3']:[]), lastSignIn: i%4===0?'2026-06-01T09:00:00Z':'', error:'' }))),
+    StoreSecret: () => Promise.resolve(), GetSecret: () => Promise.resolve(''), HasSecret: () => Promise.resolve(false), DeleteSecret: () => Promise.resolve(),
+    Search: (req) => {
+      if (req && req.filter && req.filter.indexOf('organizationalUnit') >= 0) {
+        const ous=[['People','OU=People'],['Sales','OU=Sales,OU=People'],['IT','OU=IT,OU=People'],['Engineering','OU=Engineering,OU=People'],['Finance','OU=Finance,OU=People'],['HR','OU=HR,OU=People']];
+        return Promise.resolve({ count:ous.length, truncated:false, entries: ous.map(([ou,dn]) => ({ dn: dn+',DC=adquery,DC=test', attributes:{ ou:[ou] } })) });
+      }
+      const e=[];
+      for (let i=0;i<500;i++) e.push({ dn:'CN=User'+i+',OU='+D[i%5]+',OU=People,DC=adquery,DC=test', attributes:{ displayName:['User '+i], sAMAccountName:['user'+i], mail:['user'+i+'@adquery.test'], userPrincipalName:['user'+i+'@adquery.test'], department:[D[i%5]], title:[T[i%6]], userAccountControl:[i%9===0?'514':(i%6===0?'66048':'512')], lastLogonTimestamp:[i%3===0?recentFt:(i%4===0?'0':oldFt)] } });
+      return Promise.resolve({ count:e.length, truncated:false, entries:e });
     }
-    const e=[]; const d=['Sales','IT','Engineering','Finance','HR']; const t=['Account Executive','Systems Administrator','Software Engineer','Accountant','HR Specialist','IT Director'];
-    for (let i=0;i<500;i++) e.push({ dn:'CN=User'+i+',OU='+d[i%5]+',OU=People,DC=adquery,DC=test', attributes:{ displayName:['User '+i], sAMAccountName:['user'+i], mail:['user'+i+'@adquery.test'], department:[d[i%5]], title:[t[i%6]], userAccountControl:[i%9===0?'514':(i%6===0?'66048':'512')], lastLogonTimestamp:[i%4===0?'0':'133516992000000000'] } });
-    return Promise.resolve({ count:e.length, truncated:false, entries:e });
-  },
-  StoreSecret: () => Promise.resolve(), GetSecret: () => Promise.resolve(''), HasSecret: () => Promise.resolve(false), DeleteSecret: () => Promise.resolve(),
-}}};
+  }}};
+})();
 `;
 
 const url = `http://localhost:${PORT}`;
-
-function initScript(theme) {
-  return `${MOCK}\ntry { localStorage.setItem('adquery.theme','${theme}'); } catch (e) {}`;
-}
 
 async function main() {
   await mkdir(OUT, { recursive: true });
@@ -56,9 +68,9 @@ async function main() {
   const browser = await chromium.launch();
   const shots = [];
 
-  async function session(theme, run) {
+  async function session(theme, extraInit, run) {
     const ctx = await browser.newContext({ viewport: { width: 1360, height: 768 }, deviceScaleFactor: 2 });
-    await ctx.addInitScript(initScript(theme));
+    await ctx.addInitScript(`${MOCK}\ntry { localStorage.setItem('adquery.theme','${theme}'); } catch (e) {}\n${extraInit ?? ""}`);
     const page = await ctx.newPage();
     await page.goto(url, { waitUntil: "networkidle" });
     await run(page);
@@ -66,21 +78,23 @@ async function main() {
   }
 
   const shot = async (page, name) => {
-    const file = path.join(OUT, name + ".png");
-    await page.screenshot({ path: file });
+    await page.screenshot({ path: path.join(OUT, name + ".png") });
     shots.push(name + ".png");
     console.log("  ✓", name);
   };
-
-  // --- Light journey --------------------------------------------------------
-  await session("light", async (page) => {
-    await page.getByRole("heading", { name: "AD Query" }).waitFor();
-    await shot(page, "01-connect");                                   // auto-detect card
-
+  const connectRun = async (page) => {
     await page.getByRole("button", { name: /Connect to CORP/ }).click();
     await page.getByRole("button", { name: "Users", exact: true }).click();
     await page.getByRole("button", { name: "Run", exact: true }).click();
     await page.getByText("500 records").first().waitFor();
+  };
+
+  // --- Light: full journey + reports surfaces -------------------------------
+  await session("light", "", async (page) => {
+    await page.getByRole("heading", { name: "AD Query" }).waitFor();
+    await shot(page, "01-connect");
+
+    await connectRun(page);
     await shot(page, "02-ledger");
 
     await page.getByRole("button", { name: /Filters/ }).click();
@@ -105,14 +119,40 @@ async function main() {
     await page.getByRole("button", { name: /Export CSV/ }).click();
     await page.getByText("Export to CSV").waitFor();
     await shot(page, "06-export");
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+
+    // Reports panel + license + stale.
+    await page.locator('button[title="Reports"]').click();
+    await page.getByText("Built-in").waitFor();
+    await shot(page, "08-reports");
+
+    const opens = page.locator('button.btn.h-8:not(.btn-quiet)', { hasText: "Open" });
+    await opens.nth(1).click(); // License report
+    await page.getByText("Tenant totals").waitFor();
+    await shot(page, "09-license");
+    await page.locator("button", { hasText: "Close" }).first().click();
+
+    await opens.nth(0).click(); // Stale accounts
+    await page.getByText("Not seen in the last").waitFor();
+    await shot(page, "10-stale");
   });
 
-  // --- Dark ledger ----------------------------------------------------------
-  await session("dark", async (page) => {
-    await page.getByRole("button", { name: /Connect to CORP/ }).click();
-    await page.getByRole("button", { name: "Users", exact: true }).click();
-    await page.getByRole("button", { name: "Run", exact: true }).click();
-    await page.getByText("500 records").first().waitFor();
+  // --- 365 device-code sign-in (signed out) --------------------------------
+  await session("light",
+    `localStorage.setItem('adquery.m365.tenant','contoso.onmicrosoft.com');
+     localStorage.setItem('adquery.m365.client','11111111-2222-3333-4444-555555555555');
+     window.go.main.App.M365SignedIn = () => Promise.resolve(false);`,
+    async (page) => {
+      await page.getByRole("button", { name: /Connect to CORP/ }).click();
+      await page.locator('button[title="Microsoft 365 / Entra sign-in"]').click();
+      await page.getByRole("button", { name: /^Sign in/ }).click();
+      await page.getByText("F7K2-9QLM").waitFor();
+      await shot(page, "11-m365-signin");
+    });
+
+  // --- Dark ledger ---------------------------------------------------------
+  await session("dark", "", async (page) => {
+    await connectRun(page);
     await shot(page, "07-ledger-dark");
   });
 

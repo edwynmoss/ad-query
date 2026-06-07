@@ -22,6 +22,12 @@ Connect (auto-detects your domain → sign in as you, no password) and the resul
 |---|---|---|
 | ![Bulk](docs/screenshots/05-bulk.png) | ![Export](docs/screenshots/06-export.png) | ![Dark](docs/screenshots/07-ledger-dark.png) |
 
+Reports — one-click run/download recipes, tenant license seats, stale-account review, and Microsoft 365 sign-in:
+
+| Reports | License report | Stale accounts | 365 sign-in |
+|---|---|---|---|
+| ![Reports](docs/screenshots/08-reports.png) | ![License](docs/screenshots/09-license.png) | ![Stale](docs/screenshots/10-stale.png) | ![365](docs/screenshots/11-m365-signin.png) |
+
 > Regenerate with `cd app/frontend && npm run shots` (builds the app, serves it, and drives the journey via Playwright into `docs/screenshots/`).
 
 ## Stack
