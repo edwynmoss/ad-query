@@ -82,6 +82,7 @@ func Connect(opts ConnectOptions) (*Conn, error) {
 	}
 
 	tlsCfg := &tls.Config{
+		MinVersion:         tls.VersionTLS12,
 		ServerName:         opts.Host,
 		InsecureSkipVerify: opts.InsecureSkipVerify, //nolint:gosec // user-opt-in for self-signed dev directories
 	}

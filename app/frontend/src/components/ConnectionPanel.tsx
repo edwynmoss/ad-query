@@ -25,7 +25,9 @@ export function ConnectionPanel({ onConnected }: Props) {
   const [bindDN, setBindDN] = useState("");
   const [password, setPassword] = useState("");
   const [auth, setAuth] = useState("simple");
-  const [acceptSelfSigned, setAcceptSelfSigned] = useState(true);
+  // Secure by default: verify the server certificate. The user can opt into
+  // accepting a self-signed cert per-connection (shown only for LDAPS).
+  const [acceptSelfSigned, setAcceptSelfSigned] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<ConnectionProfile[]>(() => loadProfiles());
