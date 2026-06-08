@@ -2,6 +2,8 @@ module app
 
 go 1.24.0
 
+toolchain go1.26.4
+
 require (
 	github.com/danieljoos/wincred v1.2.3
 	github.com/go-ldap/ldap/v3 v3.4.13
