@@ -107,7 +107,8 @@ approve them once.
 
 ## Reporting feedback
 
-Tell us:
+Open an issue at **https://github.com/edwynmoss/ad-query/issues** — the bug-report
+form prompts for everything below. Include:
 
 1. What you were doing (the query, report, or action).
 2. What you expected vs. what happened.

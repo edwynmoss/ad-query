@@ -1,0 +1,53 @@
+name: Bug report
+description: Report a problem you hit while testing AD Query.
+labels: ["bug", "beta"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing. Please don't paste screenshots or exports that
+        contain real user data — a description of the problem is enough.
+  - type: textarea
+    id: what-you-did
+    attributes:
+      label: What you were doing
+      description: The query, report, or action you ran.
+      placeholder: e.g. Ran the Stale accounts report with a 90-day window.
+    validations:
+      required: true
+  - type: textarea
+    id: expected-vs-actual
+    attributes:
+      label: Expected vs. what happened
+      placeholder: |
+        Expected: a list of accounts not seen in 90 days.
+        Happened: the dialog showed "365 check failed" and no rows.
+    validations:
+      required: true
+  - type: dropdown
+    id: directory-type
+    attributes:
+      label: Directory type
+      options:
+        - Active Directory
+        - OpenLDAP / other LDAP
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: directory-size
+    attributes:
+      label: Approx. directory size
+      placeholder: e.g. ~12,000 users
+  - type: textarea
+    id: error-details
+    attributes:
+      label: Error details
+      description: The text under the "Details" expander on any error banner.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Shown in the app's About / title bar.
+      placeholder: e.g. 0.1.0
