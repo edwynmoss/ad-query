@@ -4,7 +4,7 @@ A Windows desktop app for running **granular, ad-hoc queries against Active Dire
 
 Pick an object type, narrow it with a filter, choose *any* attributes as columns (last logon, account flags, group membership, ACLs…), run it, and export the rows/columns you care about.
 
-> Status: early development. See **[docs/PRD.md](docs/PRD.md)** for the full product spec, stack rationale, design theme, and roadmap.
+> Status: early development. **Running the beta?** See **[docs/BETA.md](docs/BETA.md)** for install, connecting, data handling, and known limits. Full product spec, stack rationale, and roadmap are in **[docs/PRD.md](docs/PRD.md)**.
 
 ## Screenshots
 
