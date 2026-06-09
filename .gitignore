@@ -22,3 +22,9 @@ Thumbs.db
 # Local config / secrets
 *.local
 .env
+
+# Data exports — may contain real directory / Microsoft 365 data. Never commit.
+# (Use `git add -f` only for a deliberately-synthetic sample.)
+*.xlsx
+*.xls
+*.csv
