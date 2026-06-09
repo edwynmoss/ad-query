@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Toaster } from "@/components/ui/sonner";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { toast } from "sonner";
-import { Disconnect, Search, SchemaAttributes, M365SignedIn, M365Account, M365Check } from "../wailsjs/go/main/App";
+import { Disconnect, Search, SearchCached, SchemaAttributes, M365SignedIn, M365Account, M365Check } from "../wailsjs/go/main/App";
 import { License365Dialog } from "./components/License365Dialog";
 
 const M365Dialog = lazy(() => import("./components/M365Dialog").then((m) => ({ default: m.M365Dialog })));
@@ -30,6 +30,8 @@ function App() {
   const [schema, setSchema] = useState<string[]>([]);
   const [locations, setLocations] = useState<DirLocation[]>([]);
   const [elapsed, setElapsed] = useState<number | null>(null);
+  const [cacheAt, setCacheAt] = useState<number | null>(null); // unix s of the data's fetch
+  const [fromCache, setFromCache] = useState(false);
   const [theme, setTheme] = useState<Theme>(getTheme());
   const [show365, setShow365] = useState(false);
   const [m365, setM365] = useState<{ signedIn: boolean; account: string }>({ signedIn: false, account: "" });
@@ -111,14 +113,16 @@ function App() {
     } finally { setBusy365(false); setShow365Filter(false); }
   }
 
-  async function runQuery(override?: QueryState) {
+  // refresh=true forces a live re-fetch (Rescan); otherwise a cached result for
+  // this exact query is served instantly when one exists.
+  async function runQuery(override?: QueryState, refresh = false) {
     const q = override ?? req;
     setRunning(true); setError(null); setSelected(null); setExtra365Cols([]);
     const t0 = performance.now();
     try {
-      const res = await Search(ldap.SearchRequest.createFrom({ baseDN: q.baseDN, scope: q.scope, filter: effectiveFilter(q), attributes: q.attributes, pageSize: 1000, sizeLimit: 0 }));
-      setResult(res); setElapsed(Math.round(performance.now() - t0));
-    } catch (e: any) { setError(String(e?.message ?? e)); setResult(null); setElapsed(null); }
+      const cs = await SearchCached(ldap.SearchRequest.createFrom({ baseDN: q.baseDN, scope: q.scope, filter: effectiveFilter(q), attributes: q.attributes, pageSize: 1000, sizeLimit: 0 }), refresh);
+      setResult(cs.result ?? null); setCacheAt(cs.fetchedAt); setFromCache(cs.fromCache); setElapsed(Math.round(performance.now() - t0));
+    } catch (e: any) { setError(String(e?.message ?? e)); setResult(null); setElapsed(null); setCacheAt(null); setFromCache(false); }
     finally { setRunning(false); }
   }
 
@@ -177,6 +181,7 @@ function App() {
 
         <div className="flex-1 flex min-h-0">
           <ResultsGrid result={result} loading={running} columns={[...req.attributes, ...extra365Cols]} selectedDN={selected?.dn ?? null} onSelectRow={setSelected} signedIn365={m365.signedIn} onCheck365={() => setShow365Filter(true)}
+            fetchedAt={cacheAt} fromCache={fromCache} onRescan={() => runQuery(undefined, true)}
             exportMeta={{ directory: `${conn?.host ?? ""}${req.baseDN ? " · " + req.baseDN : ""}`, scope: scopeLabel, filter: effectiveFilter(req), tool: "AD Query 0.1.0" }} />
           <Inspector entry={selected} isAD={server.isActiveDirectory} onClose={() => setSelected(null)} />
         </div>
