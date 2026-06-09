@@ -78,6 +78,11 @@ approve them once.
 - Passwords live in Windows Credential Manager, not in the app or on disk. The
   365 token lives in memory only.
 - CSV files are written where you choose. Nothing is uploaded anywhere.
+- **Query results are cached locally** at `%AppData%\ADQuery\cache.db` so
+  re-running a query against a large domain is instant. This file holds the
+  directory attributes you've queried; it lives in your Windows profile and is
+  **not encrypted**. Clear it any time with **Tools → Clear cached data**.
+  Each result shows "as of <time>" — click **Rescan** to pull fresh values.
 
 ## Known limits in this beta
 
