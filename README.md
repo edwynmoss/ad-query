@@ -99,6 +99,14 @@ The **read-only guarantee** (`app/readonly_guard_test.go`) is enforced by the
 test suite: the build fails if any LDAP write or non-GET Graph call is ever
 introduced.
 
+**Local pre-push checks (no cloud CI):** a `.githooks/pre-push` hook runs the
+full suite (Go build/test/vet, `tsc`, Vitest) before any push. Enable it once
+per clone:
+
+```powershell
+git config core.hooksPath .githooks
+```
+
 ## Requirements
 
 - Go 1.26+, Node 20+, Wails CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)

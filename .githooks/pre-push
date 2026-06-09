@@ -1,0 +1,16 @@
+#!/bin/sh
+# Local pre-push gate — no cloud CI. Runs the full suite on your machine before
+# anything is pushed. Enable once per clone with:
+#   git config core.hooksPath .githooks
+set -e
+
+echo "[pre-push] Go build + tests + vet…"
+( cd app && go build ./... && go test ./... && go vet ./... )
+
+echo "[pre-push] Frontend typecheck…"
+( cd app/frontend && npx tsc --noEmit )
+
+echo "[pre-push] Frontend tests…"
+( cd app/frontend && npx vitest run )
+
+echo "[pre-push] OK — all local checks passed."
