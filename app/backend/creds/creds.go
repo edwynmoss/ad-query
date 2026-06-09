@@ -4,12 +4,34 @@
 package creds
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/danieljoos/wincred"
 )
 
 const targetPrefix = "ADQuery:"
+
+// CacheKey returns a stable 32-byte key used to encrypt the local cache,
+// creating and persisting one in the Windows Credential Manager on first use.
+// The key is DPAPI-protected at rest like any other stored secret.
+func CacheKey() ([]byte, error) {
+	const name = "__cachekey"
+	if s, err := Get(name); err == nil {
+		if b, err := base64.StdEncoding.DecodeString(s); err == nil && len(b) == 32 {
+			return b, nil
+		}
+	}
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return nil, err
+	}
+	if err := Store(name, base64.StdEncoding.EncodeToString(b)); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
 
 func targetName(name string) string {
 	return targetPrefix + name

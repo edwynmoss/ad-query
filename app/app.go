@@ -242,7 +242,8 @@ func (a *App) DetectDomain() sysenv.Domain {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	if path, err := cache.DefaultPath(); err == nil {
-		if store, err := cache.Open(path); err == nil {
+		key, _ := creds.CacheKey() // nil on failure → cache falls back to plaintext
+		if store, err := cache.Open(path, key); err == nil {
 			a.cacheStore = store
 		}
 	}
