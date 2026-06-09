@@ -363,12 +363,13 @@ func (a *App) SearchCached(req ldap.SearchRequest, refresh bool) (*CachedSearch,
 	a.mu.Lock()
 	conn := a.conn
 	host := a.opts.Host
+	bind := a.opts.BindDN
 	store := a.cacheStore
 	a.mu.Unlock()
 	if conn == nil {
 		return nil, fmt.Errorf("not connected: open a connection first")
 	}
-	key := cache.QueryKey(host, req.BaseDN, int(req.Scope), req.Filter, req.Attributes)
+	key := cache.QueryKey(host, bind, req.BaseDN, int(req.Scope), req.Filter, req.Attributes)
 	if !refresh && store != nil {
 		if raw, at, ok := store.GetQuery(key); ok {
 			var res ldap.SearchResult

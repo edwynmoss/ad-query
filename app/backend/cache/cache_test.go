@@ -12,10 +12,14 @@ func TestQueryRoundTrip(t *testing.T) {
 	}
 	defer s.Close()
 
-	k := QueryKey("dc1", "dc=x", 2, "(objectClass=user)", []string{"cn", "mail"})
+	k := QueryKey("dc1", "cn=admin", "dc=x", 2, "(objectClass=user)", []string{"cn", "mail"})
 	// key is order-independent on attributes
-	if k != QueryKey("dc1", "dc=x", 2, "(objectClass=user)", []string{"mail", "cn"}) {
+	if k != QueryKey("dc1", "cn=admin", "dc=x", 2, "(objectClass=user)", []string{"mail", "cn"}) {
 		t.Fatal("QueryKey should be attribute-order independent")
+	}
+	// a different bind identity on the same host must NOT collide
+	if k == QueryKey("dc1", "cn=other", "dc=x", 2, "(objectClass=user)", []string{"cn", "mail"}) {
+		t.Fatal("QueryKey must be scoped per bind identity")
 	}
 	if _, _, ok := s.GetQuery(k); ok {
 		t.Fatal("expected miss before put")

@@ -77,10 +77,12 @@ func Open(path string) (*Store, error) {
 func (s *Store) Close() error { return s.db.Close() }
 
 // QueryKey hashes the identity of a search so equivalent searches share a row.
-func QueryKey(host, baseDN string, scope int, filter string, attrs []string) string {
+// bind (the connection's bind DN / identity) is part of the key so a different
+// user on the same host never sees another user's cached results.
+func QueryKey(host, bind, baseDN string, scope int, filter string, attrs []string) string {
 	a := append([]string(nil), attrs...)
 	sort.Strings(a)
-	parts := []string{host, baseDN, fmt.Sprint(scope), filter, strings.Join(a, ",")}
+	parts := []string{host, bind, baseDN, fmt.Sprint(scope), filter, strings.Join(a, ",")}
 	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
 	return hex.EncodeToString(sum[:])
 }
