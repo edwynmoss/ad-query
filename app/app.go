@@ -212,6 +212,7 @@ func (a *App) M365Check(identities []string, refresh bool) ([]m365.User, error) 
 	}
 
 	out := make([]m365.User, 0, len(identities))
+	miss := make([]string, 0, len(identities))
 	for _, id := range identities {
 		if id == "" {
 			continue
@@ -220,11 +221,17 @@ func (a *App) M365Check(identities []string, refresh bool) ([]m365.User, error) 
 			out = append(out, u)
 			continue
 		}
-		u := m365.LookupUser(a.http, token, id)
-		out = append(out, u)
-		if store != nil && account != "" && u.Error == "" {
-			if raw, e := json.Marshal(u); e == nil {
-				_ = store.PutM365(account, id, raw, time.Now().Unix())
+		miss = append(miss, id)
+	}
+	// Resolve cache misses with a single batched pass (Graph $batch), not one
+	// HTTP round-trip per identity, then cache the clean results.
+	if len(miss) > 0 {
+		for _, u := range m365.LookupUsers(a.http, token, miss) {
+			out = append(out, u)
+			if store != nil && account != "" && u.Error == "" {
+				if raw, e := json.Marshal(u); e == nil {
+					_ = store.PutM365(account, u.Identity, raw, time.Now().Unix())
+				}
 			}
 		}
 	}

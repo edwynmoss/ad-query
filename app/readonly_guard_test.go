@@ -57,15 +57,38 @@ func TestNoLDAPWrites(t *testing.T) {
 }
 
 func TestGraphIsGetOnly(t *testing.T) {
-	// The Graph data layer (graph.go) must only issue GETs. OAuth POSTs live in
-	// auth.go / authcode.go and are the sign-in flow, not data mutations.
-	src, err := os.ReadFile(filepath.Join("backend", "m365", "graph.go"))
-	if err != nil {
-		t.Fatalf("read graph.go: %v", err)
+	read := func(name string) string {
+		b, err := os.ReadFile(filepath.Join("backend", "m365", name))
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		return string(b)
 	}
+
+	// graph.go is pure GET — no non-GET HTTP method at all. OAuth POSTs live in
+	// auth.go / authcode.go (the sign-in flow), not the data layer.
+	graph := read("graph.go")
 	for _, bad := range []string{"http.MethodPost", "http.MethodPut", "http.MethodPatch", "http.MethodDelete"} {
-		if strings.Contains(string(src), bad) {
+		if strings.Contains(graph, bad) {
 			t.Errorf("read-only violation: graph.go uses %q — Graph enrichment must be GET-only", bad)
 		}
+	}
+
+	// batch.go POSTs to the /$batch endpoint, but that POST is read-only: it only
+	// wraps GET sub-requests. Forbid mutating methods outright, and prove the
+	// sub-requests are GET-only (no non-GET Method literals).
+	batch := read("batch.go")
+	for _, bad := range []string{"http.MethodPut", "http.MethodPatch", "http.MethodDelete"} {
+		if strings.Contains(batch, bad) {
+			t.Errorf("read-only violation: batch.go uses %q — must never mutate via Graph", bad)
+		}
+	}
+	for _, badSub := range []string{`Method: "POST"`, `Method: "PUT"`, `Method: "PATCH"`, `Method: "DELETE"`} {
+		if strings.Contains(batch, badSub) {
+			t.Errorf("read-only violation: batch.go builds a %s sub-request — $batch must carry GET only", badSub)
+		}
+	}
+	if !strings.Contains(batch, `Method: "GET"`) {
+		t.Error("batch.go should build GET sub-requests; guard may be checking the wrong shape")
 	}
 }
