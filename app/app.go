@@ -187,8 +187,9 @@ func (a *App) M365LicenseReport() ([]m365.LicenseSku, error) {
 
 // M365Check resolves each identity (UPN/email) against Microsoft Graph, reusing
 // previously cached lookups for the signed-in account so only identities not
-// seen before incur the (slow, per-user) Graph round-trips.
-func (a *App) M365Check(identities []string) ([]m365.User, error) {
+// seen before incur the (slow, per-user) Graph round-trips. refresh=true bypasses
+// the cache read (used by report Rescan) so sign-in/license data is re-pulled.
+func (a *App) M365Check(identities []string, refresh bool) ([]m365.User, error) {
 	token, err := a.accessToken()
 	if err != nil {
 		return nil, err
@@ -199,7 +200,7 @@ func (a *App) M365Check(identities []string) ([]m365.User, error) {
 	a.mu.Unlock()
 
 	cached := map[string]m365.User{}
-	if store != nil && account != "" {
+	if store != nil && account != "" && !refresh {
 		if raws, err := store.GetM365(account, identities); err == nil {
 			for id, raw := range raws {
 				var u m365.User

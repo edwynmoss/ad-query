@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Download, RefreshCw } from "lucide-react";
-import { Search } from "../../wailsjs/go/main/App";
+import { SearchCached } from "../../wailsjs/go/main/App";
 import { ldap } from "../../wailsjs/go/models";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -35,29 +35,31 @@ export function PrivilegedDialog({ baseDN, onClose }: Props) {
   const [riskyOnly, setRiskyOnly] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => { scan(); }, []);
+  useEffect(() => { scan(false); }, []);
 
-  async function scan() {
+  // refresh=true forces live re-fetches (Rescan); otherwise cached results serve
+  // an instant re-open.
+  async function scan(refresh: boolean) {
     setPhase("scanning"); setError("");
     try {
       const byUser = new Map<string, PrivUser & { attrs: Record<string, string[]> }>();
       let found = 0;
       for (const g of PRIVILEGED_GROUPS) {
-        const gres = await Search(ldap.SearchRequest.createFrom({
+        const gres = (await SearchCached(ldap.SearchRequest.createFrom({
           baseDN, scope: 2,
           filter: `(&(objectClass=group)(|(sAMAccountName=${escapeLdapValue(g)})(cn=${escapeLdapValue(g)})))`,
           attributes: ["member"], pageSize: 100, sizeLimit: 0,
-        }));
-        const grp = gres.entries?.[0];
+        }), refresh)).result;
+        const grp = gres?.entries?.[0];
         if (!grp) continue;
         found++;
         const direct = new Set((grp.attributes?.member ?? []).map((d) => d.toLowerCase()));
-        const mres = await Search(ldap.SearchRequest.createFrom({
+        const mres = (await SearchCached(ldap.SearchRequest.createFrom({
           baseDN, scope: 2,
           filter: `(&(objectCategory=person)(objectClass=user)(memberOf:${IN_CHAIN}:=${grp.dn}))`,
           attributes: [...RISK_ATTRS, "displayName", "sAMAccountName", "userPrincipalName"], pageSize: 1000, sizeLimit: 0,
-        }));
-        for (const u of mres.entries ?? []) {
+        }), refresh)).result;
+        for (const u of mres?.entries ?? []) {
           const key = u.dn.toLowerCase();
           let rec = byUser.get(key);
           if (!rec) {
@@ -109,7 +111,7 @@ export function PrivilegedDialog({ baseDN, onClose }: Props) {
           <label className="flex items-center gap-2 text-[12.5px] cursor-pointer">
             <Checkbox checked={riskyOnly} onCheckedChange={(v) => setRiskyOnly(!!v)} disabled={phase !== "ready"} /> High &amp; Critical only
           </label>
-          <Button variant="ghost" size="sm" className="ml-auto" onClick={scan} disabled={phase === "scanning"}>
+          <Button variant="ghost" size="sm" className="ml-auto" onClick={() => scan(true)} disabled={phase === "scanning"}>
             {phase === "scanning" ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Rescan
           </Button>
         </div>

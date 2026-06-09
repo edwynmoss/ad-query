@@ -94,7 +94,7 @@ function App() {
     try {
       const entries = result.entries ?? [];
       const ids = Array.from(new Set(entries.map((e) => e.attributes?.userPrincipalName?.[0] || e.attributes?.mail?.[0] || "").filter(Boolean)));
-      const users = ids.length ? await M365Check(ids) : [];
+      const users = ids.length ? await M365Check(ids, false) : [];
       const byId = new Map(users.map((u) => [(u.identity || "").toLowerCase(), u]));
       const kept = entries.flatMap((e) => {
         const id = (e.attributes?.userPrincipalName?.[0] || e.attributes?.mail?.[0] || "").toLowerCase();

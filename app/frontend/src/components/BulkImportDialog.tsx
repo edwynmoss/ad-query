@@ -113,7 +113,7 @@ export function BulkImportDialog({ req, onClose }: Props) {
       try {
         const unique = Array.from(new Set(ids.filter(Boolean)));
         if (unique.length) {
-          const users = await M365Check(unique);
+          const users = await M365Check(unique, false);
           const byId = new Map<string, m365.User>();
           for (const u of users) byId.set((u.identity || "").toLowerCase(), u);
           cols.push("365 Account", "365 Enabled", "365 Licenses", "365 Last sign-in");

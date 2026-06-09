@@ -59,7 +59,7 @@ export function StaleReportDialog({ isAD, baseDN, onOpen, onClose }: Props) {
       const byId = new Map<string, m365.User>();
       if (signedIn365) {
         const ids = Array.from(new Set(entries.map((e) => first(e, "userPrincipalName") || first(e, "mail")).filter(Boolean)));
-        if (ids.length) for (const u of await M365Check(ids)) byId.set((u.identity || "").toLowerCase(), u);
+        if (ids.length) for (const u of await M365Check(ids, false)) byId.set((u.identity || "").toLowerCase(), u);
       }
 
       const staleCol = `Stale (>${days}d)`;

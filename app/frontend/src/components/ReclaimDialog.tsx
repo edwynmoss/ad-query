@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Download, RefreshCw } from "lucide-react";
-import { Search, M365SignedIn, M365Check, M365LicenseReport } from "../../wailsjs/go/main/App";
+import { SearchCached, M365SignedIn, M365Check, M365LicenseReport } from "../../wailsjs/go/main/App";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -46,30 +46,32 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
 
   useEffect(() => {
     (async () => {
-      try { (await M365SignedIn()) ? scan() : setPhase("needsSignin"); }
+      try { (await M365SignedIn()) ? scan(false) : setPhase("needsSignin"); }
       catch (e: any) { setError(String(e?.message ?? e)); setPhase("error"); }
     })();
   }, []);
 
-  async function scan() {
+  // refresh=true forces a live re-fetch (Rescan); otherwise cached results serve
+  // an instant re-open.
+  async function scan(refresh: boolean) {
     setPhase("scanning"); setError("");
     try {
       // Detected tenant subscriptions (for the picker) + the directory scan.
-      const [report, res] = await Promise.all([
+      const [report, cs] = await Promise.all([
         M365LicenseReport().catch(() => []),
-        Search(ldap.SearchRequest.createFrom({
+        SearchCached(ldap.SearchRequest.createFrom({
           baseDN, scope: 2, filter: filterFor(OBJECT_TYPES.find((x) => x.key === "users") ?? OBJECT_TYPES[0], isAD),
           attributes: ["displayName", "sAMAccountName", "userPrincipalName", "mail", "lastLogonTimestamp"],
           pageSize: 1000, sizeLimit: 0,
-        })),
+        }), refresh),
       ]);
       setSkus(report ?? []);
 
-      const entries = res.entries ?? [];
+      const entries = cs.result?.entries ?? [];
       const withId = entries.filter((e) => first(e, "userPrincipalName") || first(e, "mail"));
       const ids = Array.from(new Set(withId.map((e) => first(e, "userPrincipalName") || first(e, "mail"))));
       const byId = new Map<string, m365.User>();
-      if (ids.length) for (const u of await M365Check(ids)) byId.set((u.identity || "").toLowerCase(), u);
+      if (ids.length) for (const u of await M365Check(ids, refresh)) byId.set((u.identity || "").toLowerCase(), u);
 
       const out: Holder[] = [];
       let matched = 0;
@@ -134,7 +136,7 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
           <div className="flex items-center gap-2">
             <span className="eyebrow shrink-0">Licence</span>
             <div className="flex-1 min-w-0"><LicensePicker skus={skus} selected={selected} onChange={setSelected} /></div>
-            <Button variant="ghost" size="sm" className="shrink-0" onClick={scan} disabled={phase === "scanning"}>
+            <Button variant="ghost" size="sm" className="shrink-0" onClick={() => scan(true)} disabled={phase === "scanning"}>
               {phase === "scanning" ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Rescan
             </Button>
           </div>
