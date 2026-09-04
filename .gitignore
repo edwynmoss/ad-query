@@ -10,7 +10,6 @@ node_modules/
 *.out
 
 # Wails
-app/frontend/wailsjs/
 
 # Editor / OS
 .vscode/
