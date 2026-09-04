@@ -25,12 +25,6 @@ jobs:
           cache: npm
           cache-dependency-path: app/frontend/package-lock.json
 
-      - name: Wails CLI and fresh bindings
-        working-directory: app
-        run: |
-          go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
-          wails generate module
-
       - name: Frontend dependencies
         working-directory: app/frontend
         run: npm ci
@@ -46,6 +40,16 @@ jobs:
       - name: Frontend build
         working-directory: app/frontend
         run: npm run build
+
+      # The Go side embeds frontend/dist, so this runs after the frontend
+      # build. Regenerating the bindings here catches drift against the
+      # committed wailsjs/ as a failing diff rather than a broken typecheck.
+      - name: Bindings match the Go API
+        working-directory: app
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
+          wails generate module
+          git diff --exit-code -- frontend/wailsjs || (echo "wailsjs bindings are stale: run 'wails generate module' and commit" && exit 1)
 
       - name: Go build, vet and tests (includes the read-only guard)
         working-directory: app
