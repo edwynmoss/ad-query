@@ -393,3 +393,28 @@ export namespace sysenv {
 
 }
 
+export namespace update {
+	
+	export class Available {
+	    version: string;
+	    current: string;
+	    notes: string;
+	    url: string;
+	    signature: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Available(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.current = source["current"];
+	        this.notes = source["notes"];
+	        this.url = source["url"];
+	        this.signature = source["signature"];
+	    }
+	}
+
+}
+

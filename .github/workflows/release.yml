@@ -1,0 +1,136 @@
+name: Release
+
+# Pushing a tag like v1.0.0 builds the Windows installer with the version
+# stamped in, signs it with the project's minisign key, writes latest.json
+# (what installed copies poll), and publishes a draft release. Notes come
+# from docs/releases/<tag>.md, so write that file before tagging. Publishing
+# the draft is what makes installed copies start offering the update.
+#
+# Required repository secret:
+#   TAURI_SIGNING_PRIVATE_KEY   contents of the private key file (minisign
+#                               format, generated with `tauri signer generate`)
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD   its password (empty for this key)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: app/go.mod
+          cache-dependency-path: app/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+
+      - name: Version from tag
+        id: version
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          # wails.json drives the installer's version resource.
+          python - "$version" <<'EOF'
+          import json, sys
+          p = "app/wails.json"
+          conf = json.load(open(p, encoding="utf-8"))
+          conf["info"]["productVersion"] = sys.argv[1]
+          json.dump(conf, open(p, "w", encoding="utf-8"), indent=2)
+          EOF
+
+      - name: Tools
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
+          choco install nsis -y --no-progress
+          echo "/c/Program Files (x86)/NSIS" >> "$GITHUB_PATH"
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+
+      - name: Frontend dependencies
+        working-directory: app/frontend
+        run: npm ci
+
+      - name: Tests
+        working-directory: app
+        run: |
+          (cd frontend && npx tsc --noEmit && npx vitest run && npm run build)
+          go vet ./...
+          go test ./...
+
+      - name: Build installer
+        working-directory: app
+        run: |
+          wails build -nsis -clean -ldflags "-X main.Version=${{ steps.version.outputs.version }}"
+          ls -la build/bin
+          mv "build/bin/AD Query-amd64-installer.exe" "build/bin/ADQuery-${{ steps.version.outputs.version }}-x64-setup.exe"
+
+      - name: Sign installer
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        working-directory: app/build/bin
+        run: |
+          file="ADQuery-${{ steps.version.outputs.version }}-x64-setup.exe"
+          npx --yes @tauri-apps/cli@2 signer sign "$file"
+          ls -la "$file.sig"
+
+      - name: Update manifest
+        working-directory: app/build/bin
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          tag="${{ steps.version.outputs.tag }}"
+          file="ADQuery-$version-x64-setup.exe"
+          notes_file="../../../docs/releases/$tag.md"
+          python - "$version" "$tag" "$file" "$notes_file" <<'EOF'
+          import json, sys, os, datetime
+          version, tag, file, notes_file = sys.argv[1:5]
+          notes = open(notes_file, encoding="utf-8").read() if os.path.exists(notes_file) else f"AD Query {version}."
+          sig = open(file + ".sig", encoding="utf-8").read().strip()
+          manifest = {
+              "version": version,
+              "notes": notes,
+              "pub_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "platforms": {
+                  "windows-x86_64": {
+                      "signature": sig,
+                      "url": f"https://github.com/${{ github.repository }}/releases/download/{tag}/{file}",
+                  }
+              },
+          }
+          json.dump(manifest, open("latest.json", "w", encoding="utf-8"), indent=2)
+          print(open("latest.json").read()[:400])
+          EOF
+
+      - name: Release notes body
+        id: notes
+        run: |
+          file="docs/releases/${{ steps.version.outputs.tag }}.md"
+          if [ -f "$file" ]; then cp "$file" release-body.md; else echo "AD Query ${{ steps.version.outputs.version }}." > release-body.md; fi
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "${{ steps.version.outputs.tag }}: AD Query"
+          body_path: release-body.md
+          draft: true
+          files: |
+            app/build/bin/ADQuery-${{ steps.version.outputs.version }}-x64-setup.exe
+            app/build/bin/ADQuery-${{ steps.version.outputs.version }}-x64-setup.exe.sig
+            app/build/bin/latest.json

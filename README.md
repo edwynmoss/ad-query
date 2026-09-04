@@ -4,7 +4,7 @@ A Windows desktop app for running **granular, ad-hoc queries against Active Dire
 
 Pick an object type, narrow it with a filter, choose *any* attributes as columns (last logon, account flags, group membership, ACLs…), run it, and export the rows/columns you care about.
 
-> Status: early development. **Running the beta?** See **[docs/BETA.md](docs/BETA.md)** for install, connecting, data handling, and known limits. Full product spec, stack rationale, and roadmap are in **[docs/PRD.md](docs/PRD.md)**.
+> **Running it?** See **[docs/BETA.md](docs/BETA.md)** for install, connecting, data handling, and known limits. Full product spec, stack rationale, and roadmap are in **[docs/PRD.md](docs/PRD.md)**.
 
 ## Screenshots
 
@@ -22,7 +22,7 @@ Connect (auto-detects your domain → sign in as you, no password) and the resul
 |---|---|---|
 | ![Bulk](docs/screenshots/05-bulk.png) | ![Export](docs/screenshots/06-export.png) | ![Dark](docs/screenshots/07-ledger-dark.png) |
 
-Reports — one-click run/download recipes, **unused-license reclamation** (licensed users dormant in AD *and* 365), stale-account review, and Microsoft 365 sign-in:
+Reports: one-click run/download recipes, **unused-license reclamation** (licensed users dormant in AD *and* 365), stale-account review, and Microsoft 365 sign-in:
 
 | Reports | Privileged access | Licenses & sign-in | Stale accounts | 365 sign-in |
 |---|---|---|---|---|
@@ -33,7 +33,7 @@ Reports — one-click run/download recipes, **unused-license reclamation** (lice
 ## Stack
 
 - **Wails v2** desktop shell (Go ↔ WebView2)
-- **Go 1.26** backend — `go-ldap/ldap/v3`, streaming CSV, AD type decoders
+- **Go 1.26** backend: `go-ldap/ldap/v3`, streaming CSV, AD type decoders
 - **React 18 + TypeScript + Vite** frontend, Tailwind + TanStack Table
 
 ## Layout
@@ -47,9 +47,9 @@ test/samba-ad/  Dockerized real Active Directory DC (KDC) for AD-mode + Kerberos
 
 ## Authentication
 
-- **Password** — simple bind (DN/UPN + password). Works against any LDAP/AD; used for the test directories.
-- **Windows SSO** — SASL GSSAPI over SSPI: binds as the **current logged-in Windows user** with no prompt. Requires a domain-joined machine.
-- **Kerberos** — explicit-credential GSSAPI against a named KDC (cross-platform; what the Samba AD test directory validates).
+- **Password**: simple bind (DN/UPN + password). Works against any LDAP/AD; used for the test directories.
+- **Windows SSO**: SASL GSSAPI over SSPI: binds as the **current logged-in Windows user** with no prompt. Requires a domain-joined machine.
+- **Kerberos**: explicit-credential GSSAPI against a named KDC (cross-platform; what the Samba AD test directory validates).
 
 ## Quick start (development)
 
@@ -76,17 +76,22 @@ cd app
 wails dev
 ```
 
-## Build a release
+## Install
+
+Grab `ADQuery-x.y.z-x64-setup.exe` from the [latest release](https://github.com/edwynmoss/ad-query/releases/latest). It installs for your account only (no administrator prompt) and adds a Start menu entry. From 1.0.0 the app checks for a newer release a few seconds after launch and while it stays open, and offers it in a toast; **Check for updates** is in the Tools menu. Installers are signed with the project's release key and verified before they run.
+
+The installer is not yet code-signed for Windows SmartScreen, so expect a prompt on first launch.
+
+## Build a release locally
 
 ```powershell
 cd app
-wails build              # → app/build/bin/ADQuery.exe
+wails build -nsis -ldflags "-X main.Version=1.0.0"   # app/build/bin/AD Query-amd64-installer.exe
 ```
 
-Produces a standalone ~14 MB Windows executable (no installer required; the
-WebView2 runtime ships with Windows 11). For distribution outside your own
-machine you'll want to code-sign the binary. `wails build -nsis` produces an
-installer if you have NSIS installed.
+Needs NSIS (`makensis`) on the PATH. The icon set and installer artwork are generated from the mark by `python scripts/installer-art.py`; the same geometry is drawn inline by `app/frontend/src/components/Mark.tsx`.
+
+Tagging `vX.Y.Z` runs the release workflow: it stamps the version, builds and signs the installer, writes the update manifest, and opens a draft release with notes from `docs/releases/vX.Y.Z.md`. Publishing the draft is what makes installed copies start offering the update.
 
 ## Testing
 
@@ -99,9 +104,8 @@ The **read-only guarantee** (`app/readonly_guard_test.go`) is enforced by the
 test suite: the build fails if any LDAP write or non-GET Graph call is ever
 introduced.
 
-**Local pre-push checks (no cloud CI):** a `.githooks/pre-push` hook runs the
-full suite (Go build/test/vet, `tsc`, Vitest) before any push. Enable it once
-per clone:
+CI runs the same suite on every pull request. A `.githooks/pre-push` hook can
+run it locally before any push as well. Enable it once per clone:
 
 ```powershell
 git config core.hooksPath .githooks

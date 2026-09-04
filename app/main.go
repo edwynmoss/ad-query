@@ -11,6 +11,10 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// Version is stamped at build time: wails build -ldflags "-X main.Version=1.0.0".
+// Development builds report 0.0.0-dev and never see an update as newer.
+var Version = "0.0.0-dev"
+
 func main() {
 	// Create an instance of the app structure
 	app := NewApp()
