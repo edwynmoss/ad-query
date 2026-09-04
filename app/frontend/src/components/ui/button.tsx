@@ -39,7 +39,7 @@ const buttonVariants = cva(
 )
 
 // forwardRef so Radix `asChild` triggers (DropdownMenu/Tooltip/Popover) can
-// attach their ref to the Button under React 18 — without it, those triggers
+// attach their ref to the Button under React 18, without it, those triggers
 // silently fail to anchor/manage their content.
 const Button = React.forwardRef<
   HTMLButtonElement,

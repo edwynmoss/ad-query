@@ -2,7 +2,7 @@ import { fileTimeToDate } from "./format";
 
 // Combines a "last seen" signal from on-prem AD (lastLogonTimestamp, a Windows
 // FILETIME) and Entra/365 (last interactive sign-in, an ISO datetime), taking
-// whichever is more recent — and flags accounts not seen anywhere for a while.
+// whichever is more recent, and flags accounts not seen anywhere for a while.
 
 export interface LastSeen {
   date: Date | null;
@@ -29,7 +29,7 @@ export function daysSince(d: Date | null, now: Date = new Date()): number | null
   return Math.floor((now.getTime() - d.getTime()) / 86_400_000);
 }
 
-// A Windows FILETIME (string) for "N days ago" — used to build an AD-side
+// A Windows FILETIME (string) for "N days ago", used to build an AD-side
 // filter like (lastLogonTimestamp<=...) to preview stale accounts server-side.
 export function fileTimeDaysAgo(days: number, now: number = Date.now()): string {
   const ms = now - days * 86_400_000;

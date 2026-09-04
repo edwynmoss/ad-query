@@ -142,14 +142,14 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
           </div>
           <label className="flex items-center gap-2 text-[12.5px] cursor-pointer">
             <Checkbox checked={dormantOnly} onCheckedChange={(v) => setDormantOnly(!!v)} disabled={phase !== "ready"} />
-            Only dormant — idle more than
+            Only dormant, idle more than
             <Input type="number" min={1} className="w-16 h-8 text-center" value={days} onChange={(e) => setDays(Math.max(1, Number(e.target.value) || 90))} disabled={!dormantOnly || phase !== "ready"} />
             days
           </label>
         </div>
 
         <div className="overflow-auto px-5 py-4 min-h-[160px]">
-          {phase === "needsSignin" && <div className="text-[12.5px] text-ink-2">Sign in to Microsoft 365 first (the ☁ button) — licences and cloud sign-ins come from Entra.</div>}
+          {phase === "needsSignin" && <div className="text-[12.5px] text-ink-2">Sign in to Microsoft 365 first (the cloud button). Licences and cloud sign-ins come from Entra.</div>}
           {phase === "scanning" && <div className="flex items-center gap-2 text-[12.5px] text-ink-2"><Loader2 size={14} className="animate-spin" /> Joining licensed users with last-login…</div>}
           {phase === "error" && <ErrorBanner error={error} />}
 
@@ -162,7 +162,7 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
           {phase === "ready" && all.length === 0 && (
             <div className="text-[12.5px] text-ink-2 space-y-2">
               <p className="font-medium text-ink">No licensed Microsoft 365 users matched.</p>
-              <p>None of the accounts in this location resolved to a 365 user with an assigned licence — commonly because the directory accounts have no <span className="font-mono">userPrincipalName</span>/<span className="font-mono">mail</span> matching 365 (e.g. a non-AD test directory), none currently hold a licence, or the location has no licensed users (widen “Search in”).</p>
+              <p>None of the accounts in this location resolved to a 365 user with an assigned licence. That is commonly because the directory accounts have no <span className="font-mono">userPrincipalName</span>/<span className="font-mono">mail</span> matching 365 (e.g. a non-AD test directory), none currently hold a licence, or the location has no licensed users (widen “Search in”).</p>
             </div>
           )}
 
@@ -194,14 +194,14 @@ export function ReclaimDialog({ isAD, baseDN, onClose }: Props) {
                   {rows.length === 0 && <tr><td colSpan={4} className="py-6 text-center text-ink-3">{dormantOnly ? `No matching users idle more than ${days} days. 🎉` : "No users hold the selected licence."}</td></tr>}
                 </tbody>
               </table>
-              {rows.length > 200 && <p className="text-[11px] mt-2 text-ink-3">Showing first 200 of {rows.length} — export for the full list.</p>}
+              {rows.length > 200 && <p className="text-[11px] mt-2 text-ink-3">Showing first 200 of {rows.length}. Export for the full list.</p>}
             </>
           )}
         </div>
 
         <DialogFooter className="px-5 py-3.5 border-t border-line">
           <p className="text-[11px] flex-1 min-w-0 mr-auto text-left text-ink-3">
-            Scans accounts in your AD, then matches them to 365 licences — cloud-only users (no AD account) aren't included.
+            Scans accounts in your AD, then matches them to 365 licences. Cloud-only users (no AD account) aren't included.
           </p>
           <Button variant="outline" onClick={onClose}>Close</Button>
           <Button className="px-5" onClick={exportCsv} disabled={phase !== "ready" || rows.length === 0}><Download size={14} /> Export {rows.length} users</Button>

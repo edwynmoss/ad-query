@@ -34,7 +34,7 @@ export function FilterBuilder({ conditions, matchOp, onChange, attributes }: Pro
       </div>
 
       {conditions.length === 0 && (
-        <div className="text-[12px] text-ink-3">No conditions — all objects of the selected type.</div>
+        <div className="text-[12px] text-ink-3">No conditions: all objects of the selected type.</div>
       )}
 
       {conditions.map((c) => {
@@ -48,7 +48,7 @@ export function FilterBuilder({ conditions, matchOp, onChange, attributes }: Pro
                 {OPERATORS.map((o) => <SelectItem key={o.key} value={o.key}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Input className="font-mono h-8 flex-1 min-w-0" placeholder={needsValue ? "value" : "—"}
+            <Input className="font-mono h-8 flex-1 min-w-0" placeholder={needsValue ? "value" : ""}
               value={c.value} disabled={!needsValue} onChange={(e) => update(c.id, { value: e.target.value })} />
             <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => remove(c.id)} aria-label="remove condition"><X size={14} /></Button>
           </div>
@@ -60,7 +60,7 @@ export function FilterBuilder({ conditions, matchOp, onChange, attributes }: Pro
   );
 }
 
-// Searchable field dropdown — styled to match the operator <Select> so the row
+// Searchable field dropdown, styled to match the operator <Select> so the row
 // reads as two uniform dropdowns. Searches friendly labels + raw names, common
 // fields first, and allows a custom attribute via "Use …".
 function FieldCombobox({ value, attributes, onChange }: { value: string; attributes: string[]; onChange: (v: string) => void }) {

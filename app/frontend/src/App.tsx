@@ -107,7 +107,7 @@ function App() {
       setResult(ldap.SearchResult.createFrom({ count: kept.length, truncated: false, entries: kept }));
       setExtra365Cols([LIC_COL, SIGNIN_COL]);
       setSelected(null);
-      toast.success(`365 check — ${kept.length} of ${entries.length} hold the selected licence`);
+      toast.success(`365 check: ${kept.length} of ${entries.length} hold the selected licence`);
     } catch (e: any) {
       toast.error("365 check failed", { description: String(e?.message ?? e) });
     } finally { setBusy365(false); setShow365Filter(false); }
@@ -155,10 +155,10 @@ function App() {
             <Badge variant="secondary">{server.isActiveDirectory ? "Active Directory" : "LDAP"}</Badge>
           </span>
 
-          {/* Microsoft 365 connection state — persistent, click to manage. */}
+          {/* Microsoft 365 connection state, persistent, click to manage. */}
           <button
             onClick={() => setShow365(true)}
-            title={m365.signedIn ? `Microsoft 365 — signed in${m365.account ? " as " + m365.account : ""}` : "Connect Microsoft 365"}
+            title={m365.signedIn ? `Microsoft 365, signed in${m365.account ? " as " + m365.account : ""}` : "Connect Microsoft 365"}
             className={"flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[12px] transition-colors " +
               (m365.signedIn ? "bg-success-soft text-success hover:brightness-95" : "text-ink-3 hover:bg-sunken hover:text-ink")}
           >

@@ -120,7 +120,7 @@ export function BulkImportDialog({ req, onClose }: Props) {
           rows.forEach((row, i) => {
             const id = ids[i];
             const u = id ? byId.get(id.toLowerCase()) : undefined;
-            row["365 Account"] = !id ? "" : u ? (u.exists ? "Found" : "Missing") : "—";
+            row["365 Account"] = !id ? "" : u ? (u.exists ? "Found" : "Missing") : "";
             row["365 Enabled"] = u && u.exists ? (u.enabled ? "Yes" : "No") : "";
             row["365 Licenses"] = u && u.exists ? (u.licenses || []).join("; ") : "";
             row["365 Last sign-in"] = u && u.exists ? (u.lastSignIn || "") : "";
@@ -142,7 +142,7 @@ export function BulkImportDialog({ req, onClose }: Props) {
     downloadCsv(`adquery-bulk-unmatched-${stampNow()}.csv`, rowsToCsv(resultCols, unmatched));
   }
 
-  // Rows that didn't resolve to exactly one directory object — surfaced inline
+  // Rows that didn't resolve to exactly one directory object, surfaced inline
   // so partial failures are visible, not buried in the exported CSV.
   const unmatched = phase === "done" ? resultRows.filter((r) => r[STATUS_COL] !== "Found") : [];
 
@@ -194,7 +194,7 @@ export function BulkImportDialog({ req, onClose }: Props) {
               </div>
               <label className={cn("flex items-center gap-2 text-[12px] cursor-pointer", signedIn365 ? "text-ink-2" : "text-ink-3")}>
                 <Checkbox checked={check365} disabled={!signedIn365} onCheckedChange={(v) => setCheck365(!!v)} />
-                <Cloud size={13} /> Also check Microsoft 365 {signedIn365 ? "(enabled · licenses · last sign-in)" : "— sign in via the ☁ button first"}
+                <Cloud size={13} /> Also check Microsoft 365 {signedIn365 ? "(enabled · licenses · last sign-in)" : "sign in via the ☁ button first"}
               </label>
             </>
           )}
@@ -229,9 +229,9 @@ export function BulkImportDialog({ req, onClose }: Props) {
                     <StatusBadge tone={r[STATUS_COL] === "Multiple matches" ? "warning" : "neutral"}>{r[STATUS_COL] === "Multiple matches" ? "ambiguous" : "not found"}</StatusBadge>
                   </div>
                 ))}
-                {unmatched.length > 100 && <div className="px-3 py-1.5 text-[11px] text-ink-3">+{unmatched.length - 100} more — see the exported file.</div>}
+                {unmatched.length > 100 && <div className="px-3 py-1.5 text-[11px] text-ink-3">+{unmatched.length - 100} more, see the exported file.</div>}
               </div>
-              <p className="text-[11px] text-ink-3">Correct these in your file (or change the match field) and import again. <span className="font-medium">Ambiguous</span> means more than one directory object matched — only the first was returned.</p>
+              <p className="text-[11px] text-ink-3">Correct these in your file (or change the match field) and import again. <span className="font-medium">Ambiguous</span> means more than one directory object matched, only the first was returned.</p>
             </div>
           )}
         </div>

@@ -39,7 +39,7 @@ export function M365Dialog({ onClose, onChange }: Props) {
   }
 
   // Primary: seamless browser sign-in (auth-code + PKCE). Opens the default
-  // browser — silent if already signed in — and resolves when done.
+  // browser, silent if already signed in, and resolves when done.
   async function signIn() {
     setBusy(true); setError(null); persist();
     setPhase("browser");
@@ -86,7 +86,7 @@ export function M365Dialog({ onClose, onChange }: Props) {
           {phase === "config" && (
             <>
               <p className="text-[12px] text-ink-2">
-                Sign in with your Microsoft account to enrich results with Entra facts (account exists/enabled, licenses, last sign-in). Delegated sign-in <b className="text-ink">as you</b> — no password stored, and nothing to register: it uses Microsoft's standard sign-in app.
+                Sign in with your Microsoft account to enrich results with Entra facts (account exists/enabled, licenses, last sign-in). Delegated sign-in <b className="text-ink">as you</b>, no password stored, and nothing to register: it uses Microsoft's standard sign-in app.
               </p>
               <details className="rounded-lg border border-line px-3 py-2">
                 <summary className="eyebrow cursor-pointer select-none text-ink-3">Advanced · use your own tenant / app</summary>

@@ -32,7 +32,7 @@ function DialogClose({
 }
 
 // forwardRef: Radix wraps the overlay in <Presence>, which clones it and
-// attaches a ref — a plain function component can't receive it under React 18.
+// attaches a ref, a plain function component can't receive it under React 18.
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentProps<typeof DialogPrimitive.Overlay>

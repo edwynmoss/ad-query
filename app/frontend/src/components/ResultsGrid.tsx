@@ -133,7 +133,7 @@ export function ResultsGrid({ result, loading, columns, selectedDN, onSelectRow,
           <div className="flex items-center justify-center"><Checkbox checked={checked.size === entries.length && entries.length > 0} onCheckedChange={toggleAll} aria-label="mark all" /></div>
           <div className="flex items-center justify-end pr-2 eyebrow">#</div>
           {columns.map((col) => (
-            <button key={col} onClick={() => toggleSort(col)} className="flex items-center gap-1 h-9 px-3 text-left eyebrow hover:text-ink" title={`${col} — sort`}>
+            <button key={col} onClick={() => toggleSort(col)} className="flex items-center gap-1 h-9 px-3 text-left eyebrow hover:text-ink" title={`${col}, sort`}>
               <span className="truncate">{labelFor(col)}</span>
               {sortCol === col && (sortAsc ? <ArrowUp size={11} /> : <ArrowDown size={11} />)}
             </button>
@@ -199,7 +199,7 @@ const Cell = memo(function Cell({ col, entry }: { col: string; entry: ldap.Entry
   return (
     <div className="flex items-center px-3 overflow-hidden">
       <span className={"truncate selectable " + (mono ? "font-mono text-[12px]" : "text-[13px]") + " " + (text ? "text-ink" : "text-ink-3")}
-        title={text}>{text || "—"}</span>
+        title={text}>{text || ""}</span>
     </div>
   );
 });

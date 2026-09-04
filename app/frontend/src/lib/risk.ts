@@ -9,10 +9,10 @@ import type { StatusTone } from "@/components/ui/status-badge";
 export type RiskLevel = "Low" | "Medium" | "High" | "Critical";
 export interface RiskFlag { label: string; level: RiskLevel; reason: string }
 // notApplicable: the object isn't an AD security principal, so the AD-posture
-// rules below don't apply — surfaced so the UI says so instead of pretending.
+// rules below don't apply, surfaced so the UI says so instead of pretending.
 export interface RiskAssessment { level: RiskLevel; flags: RiskFlag[]; notApplicable?: boolean }
 
-// Attributes the assessment reads — fetch these for the user being assessed.
+// Attributes the assessment reads, fetch these for the user being assessed.
 export const RISK_ATTRS = [
   "userAccountControl", "lastLogonTimestamp", "lastLogon", "pwdLastSet",
   "accountExpires", "adminCount", "servicePrincipalName", "memberOf",
@@ -51,7 +51,7 @@ export function assessRisk(attrs: Record<string, string[]>): RiskAssessment {
   // Every rule below keys off Active Directory posture attributes
   // (userAccountControl, accountExpires, SPNs, …). A generic LDAP directory
   // doesn't expose userAccountControl, so account status / password policy /
-  // delegation are unknowable here — return "not applicable" rather than emit
+  // delegation are unknowable here, return "not applicable" rather than emit
   // hygiene-only flags (e.g. "never logged in") that read as a real verdict.
   if (!("userAccountControl" in attrs)) return { level: "Low", flags: [], notApplicable: true };
 
@@ -68,15 +68,15 @@ export function assessRisk(attrs: Record<string, string[]>): RiskAssessment {
   const neverLoggedIn = seen.date === null;
 
   // --- Privileged-account combinations (highest severity) ---
-  if (privileged && disabled) add("Disabled but privileged", "Critical", "Account is disabled yet still a member of a privileged group — remove the privileged access.");
-  if (privileged && !disabled && idle !== null && idle >= 90) add("Privileged & inactive", "High", `Member of a privileged group and not seen for ${idle} days — confirm the access is still required.`);
-  if (privileged && uac.includes("Password never expires")) add("Privileged · password never expires", "High", "Privileged account whose password never expires — a high-value, long-lived credential.");
+  if (privileged && disabled) add("Disabled but privileged", "Critical", "Account is disabled yet still a member of a privileged group. Remove the privileged access.");
+  if (privileged && !disabled && idle !== null && idle >= 90) add("Privileged & inactive", "High", `Member of a privileged group and not seen for ${idle} days, confirm the access is still required.`);
+  if (privileged && uac.includes("Password never expires")) add("Privileged · password never expires", "High", "Privileged account whose password never expires, a high-value, long-lived credential.");
   if (privileged && !disabled && idle === null && neverLoggedIn) add("Privileged · never logged in", "High", "Privileged account with no recorded login.");
 
   // --- Configuration weaknesses ---
-  if (uac.includes("Password not required")) add("Password not required", "High", "PASSWD_NOTREQD is set — the account can have a blank password.");
-  if (uac.includes("Trusted for delegation")) add("Trusted for delegation", "High", "Unconstrained delegation — a known privilege-escalation risk.");
-  if (hasSPN && uac.includes("Password never expires")) add("SPN · password never expires", "High", "Service account (has an SPN) with a non-expiring password — kerberoasting exposure.");
+  if (uac.includes("Password not required")) add("Password not required", "High", "PASSWD_NOTREQD is set: the account can have a blank password.");
+  if (uac.includes("Trusted for delegation")) add("Trusted for delegation", "High", "Unconstrained delegation, a known privilege-escalation risk.");
+  if (hasSPN && uac.includes("Password never expires")) add("SPN · password never expires", "High", "Service account (has an SPN) with a non-expiring password, kerberoasting exposure.");
   if (uac.includes("Password never expires") && !privileged) add("Password never expires", "Medium", "Password is set to never expire.");
 
   // --- Activity / lifecycle ---
@@ -84,11 +84,11 @@ export function assessRisk(attrs: Record<string, string[]>): RiskAssessment {
   if (neverLoggedIn && !privileged) add("Never logged in", "Medium", "No login has been recorded for this account.");
   if (uac.includes("Locked out")) add("Locked out", "Medium", "The account is currently locked.");
   if (expired(val(attrs, "accountExpires"))) add("Account expired", "Medium", "The account's expiry date has passed.");
-  if (val(attrs, "adminCount") === "1" && !privileged) add("adminCount = 1", "Medium", "Was privileged at some point (adminCount stamped) but isn't in a privileged group now — verify.");
-  if (hasSPN && !uac.includes("Password never expires")) add("Service account (SPN)", "Low", "Has a service principal name — treat as a service account.");
+  if (val(attrs, "adminCount") === "1" && !privileged) add("adminCount = 1", "Medium", "Was privileged at some point (adminCount stamped) but isn't in a privileged group now, verify.");
+  if (hasSPN && !uac.includes("Password never expires")) add("Service account (SPN)", "Low", "Has a service principal name. Treat it as a service account.");
 
   // --- Hygiene ---
-  if (!(attrs.manager ?? []).length) add("No manager", "Low", "No manager is set — ownership is unclear for access reviews.");
+  if (!(attrs.manager ?? []).length) add("No manager", "Low", "No manager is set, so ownership is unclear for access reviews.");
   if (!(attrs.department ?? []).length && !(attrs.departmentNumber ?? []).length) add("No department", "Low", "No department is set.");
 
   const level = flags.reduce<RiskLevel>((acc, f) => higher(acc, f.level), "Low");
