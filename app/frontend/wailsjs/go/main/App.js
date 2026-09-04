@@ -6,6 +6,14 @@ export function AccurateLastLogon(arg1) {
   return window['go']['main']['App']['AccurateLastLogon'](arg1);
 }
 
+export function AppVersion() {
+  return window['go']['main']['App']['AppVersion']();
+}
+
+export function CheckForUpdate() {
+  return window['go']['main']['App']['CheckForUpdate']();
+}
+
 export function ClearCache() {
   return window['go']['main']['App']['ClearCache']();
 }
@@ -36,6 +44,10 @@ export function GetSecret(arg1) {
 
 export function HasSecret(arg1) {
   return window['go']['main']['App']['HasSecret'](arg1);
+}
+
+export function InstallUpdate(arg1, arg2) {
+  return window['go']['main']['App']['InstallUpdate'](arg1, arg2);
 }
 
 export function IsConnected() {

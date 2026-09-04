@@ -18,6 +18,8 @@ import { QueryBar, QueryState, effectiveFilter, DirLocation } from "./components
 import { ResultsGrid } from "./components/ResultsGrid";
 import { Inspector } from "./components/Inspector";
 import { getTheme, applyTheme, Theme } from "./lib/theme";
+import { Mark } from "./components/Mark";
+import { appVersion, scheduleUpdateChecks } from "./lib/updates";
 
 function App() {
   const [server, setServer] = useState<ldap.ServerInfo | null>(null);
@@ -38,6 +40,12 @@ function App() {
   const [show365Filter, setShow365Filter] = useState(false);
   const [busy365, setBusy365] = useState(false);
   const [extra365Cols, setExtra365Cols] = useState<string[]>([]);
+  const [version, setVersion] = useState<string>("");
+
+  useEffect(() => {
+    appVersion().then(setVersion);
+    scheduleUpdateChecks();
+  }, []);
 
   function toggleTheme() { const t = theme === "light" ? "dark" : "light"; applyTheme(t); setTheme(t); }
 
@@ -146,6 +154,7 @@ function App() {
       {/* Masthead */}
       <header className="flex items-center justify-between pl-4 pr-3 h-12 shrink-0 bg-surface border-b border-line">
         <div className="flex items-baseline gap-3">
+          <Mark size={18} className="self-center text-ink" />
           <span className="display text-[17px] font-semibold">AD&nbsp;Query</span>
           <span className="eyebrow text-brand">Directory Ledger</span>
         </div>
@@ -182,7 +191,7 @@ function App() {
         <div className="flex-1 flex min-h-0">
           <ResultsGrid result={result} loading={running} columns={[...req.attributes, ...extra365Cols]} selectedDN={selected?.dn ?? null} onSelectRow={setSelected} signedIn365={m365.signedIn} onCheck365={() => setShow365Filter(true)}
             fetchedAt={cacheAt} fromCache={fromCache} onRescan={() => runQuery(undefined, true)}
-            exportMeta={{ directory: `${conn?.host ?? ""}${req.baseDN ? " · " + req.baseDN : ""}`, scope: scopeLabel, filter: effectiveFilter(req), tool: "AD Query 0.1.0" }} />
+            exportMeta={{ directory: `${conn?.host ?? ""}${req.baseDN ? " · " + req.baseDN : ""}`, scope: scopeLabel, filter: effectiveFilter(req), tool: `AD Query ${version || "dev"}` }} />
           <Inspector entry={selected} isAD={server.isActiveDirectory} onClose={() => setSelected(null)} />
         </div>
       </div>
@@ -197,6 +206,7 @@ function App() {
         <div className="flex items-center gap-3 mono">
           {result && <span>{result.count.toLocaleString()} records</span>}
           {elapsed !== null && <span>{elapsed} ms</span>}
+          {version && <span title="AD Query version">v{version}</span>}
         </div>
       </footer>
 

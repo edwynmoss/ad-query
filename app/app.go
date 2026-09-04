@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"app/backend/ldap"
 	"app/backend/m365"
 	"app/backend/sysenv"
+	"app/backend/update"
 
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -240,6 +242,52 @@ func (a *App) M365Check(identities []string, refresh bool) ([]m365.User, error) 
 
 // DetectDomain reports whether this machine is domain-joined, enabling a
 // zero-config "connect to my domain as the current user (SSO)" path.
+// ---------------------------------------------------------------- updates
+
+// Where releases publish their manifest. Installed copies poll this; the
+// repository must be public (or a public releases repository) for it to
+// resolve without credentials.
+const updateManifestURL = "https://github.com/edwynmoss/ad-query/releases/latest/download/latest.json"
+
+// Public half of the release signing key; installers are verified against it
+// before they run. The private key lives outside the repository.
+const updatePublicKey = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVBQkZDMjE0NEJBQUMzQjUKUldTMXc2cExGTUsvV3JoS1J3emFvNUg0anZDeWJNMkFqcjM4Qm0vK0N4VFVwT3haK1d3QjViUEEK"
+
+// AppVersion is the running build's version, as stamped at build time.
+func (a *App) AppVersion() string {
+	return Version
+}
+
+// CheckForUpdate asks the release manifest for a newer version. nil means
+// the running build is current.
+func (a *App) CheckForUpdate() (*update.Available, error) {
+	return update.Check(a.ctx, updateManifestURL, Version)
+}
+
+// InstallUpdate downloads the installer, verifies its signature, starts it
+// silently and quits so the running executable can be replaced. Progress is
+// emitted as "update:progress" events with {received, total}.
+func (a *App) InstallUpdate(url string, signature string) error {
+	path, err := update.Download(a.ctx, url, func(received, total int64) {
+		wruntime.EventsEmit(a.ctx, "update:progress", map[string]int64{"received": received, "total": total})
+	})
+	if err != nil {
+		return err
+	}
+	if err := update.Verify(path, signature, updatePublicKey); err != nil {
+		_ = os.Remove(path)
+		return err
+	}
+	if err := update.Install(path); err != nil {
+		return err
+	}
+	go func() {
+		time.Sleep(400 * time.Millisecond)
+		wruntime.Quit(a.ctx)
+	}()
+	return nil
+}
+
 func (a *App) DetectDomain() sysenv.Domain {
 	return sysenv.Detect()
 }

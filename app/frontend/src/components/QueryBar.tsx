@@ -1,5 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from "react";
-import { Play, X, Loader2, SlidersHorizontal, Columns3, Bookmark, ChevronDown, Upload, FileBarChart, Search, Wrench, MapPin, Check, Trash2 } from "lucide-react";
+import { offerUpdate } from "../lib/updates";
+import { Play, X, Loader2, SlidersHorizontal, Columns3, Bookmark, ChevronDown, Upload, FileBarChart, Search, Wrench, MapPin, Check, Trash2, RefreshCw } from "lucide-react";
 import { ClearCache } from "../../wailsjs/go/main/App";
 import { toast } from "sonner";
 import { OBJECT_TYPES, filterFor, defaultAttributesFor, COMMON_ATTRIBUTES } from "../lib/objectTypes";
@@ -146,6 +147,7 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
               <DropdownMenuItem onSelect={() => { setPanel(null); setShowImport(true); }}><Upload size={14} /> Bulk lookup (CSV / Excel)</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => { setPanel(null); setShowReports(true); }}><FileBarChart size={14} /> Reports</DropdownMenuItem>
               <DropdownMenuItem onSelect={async () => { setPanel(null); try { await ClearCache(); toast.success("Cached data cleared. The next query re-fetches from the directory."); } catch (e: any) { toast.error("Couldn't clear cache", { description: String(e?.message ?? e) }); } }}><Trash2 size={14} /> Clear cached data</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => { setPanel(null); void offerUpdate(true); }}><RefreshCw size={14} /> Check for updates</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <PopoverContent align="start" className="w-[300px]">

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Mark } from "./Mark";
 import { Loader2, X, ArrowRight, ArrowLeft, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,7 +102,7 @@ export function ConnectionPanel({ onConnected }: Props) {
       <div className="w-[460px] rounded-xl border border-border bg-card shadow-xl">
         <div className="px-7 pt-7 pb-5 border-b border-line">
           <div className="eyebrow text-brand">Directory Ledger</div>
-          <h1 className="display text-[27px] leading-none mt-2 font-semibold">AD Query</h1>
+          <h1 className="display text-[27px] leading-none mt-2 font-semibold flex items-center gap-3"><Mark size={26} className="text-ink" />AD Query</h1>
           <p className="text-[12.5px] mt-2.5 text-ink-2">Connect to your directory to search users, groups, and more.</p>
         </div>
 
