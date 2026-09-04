@@ -46,6 +46,11 @@ const MOCK = `
     ]),
     M365Check: (ids) => Promise.resolve((ids||[]).map((id,i) => ({ identity:id, exists:true, enabled:true, displayName:id, upn:id, licenses: i%3===0?['Microsoft 365 E5']:(i%2===0?['Microsoft 365 E3']:[]), lastSignIn: i%4===0?'2026-06-01T09:00:00Z':'', error:'' }))),
     StoreSecret: () => Promise.resolve(), GetSecret: () => Promise.resolve(''), HasSecret: () => Promise.resolve(false), DeleteSecret: () => Promise.resolve(),
+    // Newer App methods the shell calls; the mock answers like a fresh, current install.
+    SearchCached: (req) => window.go.main.App.Search(req).then((result) => ({ result, fetchedAt: Math.floor(Date.now()/1000), fromCache: false })),
+    ClearCache: () => Promise.resolve(),
+    AppVersion: () => Promise.resolve('1.0.0'),
+    CheckForUpdate: () => Promise.resolve(null),
     Search: (req) => {
       if (req && req.scope === 0) { // base-scope = the Risk tab fetching one user's posture
         return Promise.resolve({ count:1, truncated:false, entries:[{ dn: req.baseDN, attributes:{ userAccountControl:['66048'], memberOf:['CN=Domain Admins,CN=Users,DC=adquery,DC=test'], lastLogonTimestamp:[oldFt], servicePrincipalName:[], manager:[], department:[] } }] });
@@ -153,13 +158,13 @@ async function main() {
     // Reports panel + license + stale.
     await page.getByRole("button", { name: /Tools/ }).click();
     await page.getByRole("menuitem", { name: /Reports/ }).click();
-    await page.getByText("Built-in").waitFor();
+    await page.getByText("Built-in", { exact: true }).waitFor();
     await shot(page, "08-reports");
 
     // Report rows render an "Open" Button each; DOM order = All users, Stale, Reclaim.
     const opens = page.getByRole("button", { name: "Open", exact: true });
     await opens.nth(2).click(); // Licenses & sign-in
-    await page.getByText("Built-in").waitFor({ state: "hidden" }); // Reports closes as the sub-report opens
+    await page.getByText("Built-in", { exact: true }).waitFor({ state: "hidden" }); // Reports closes as the sub-report opens
     await page.getByText(/licensed in scope/).waitFor();           // ready phase
     await shot(page, "09-reclaim");
   });
@@ -169,7 +174,7 @@ async function main() {
     await page.getByRole("button", { name: /Connect to CORP/ }).click();
     await page.getByRole("button", { name: /Tools/ }).click();
     await page.getByRole("menuitem", { name: /Reports/ }).click();
-    await page.getByText("Built-in").waitFor();
+    await page.getByText("Built-in", { exact: true }).waitFor();
     await page.getByRole("button", { name: "Open", exact: true }).nth(1).click(); // Stale accounts
     await page.getByText("Not seen in the last").waitFor();
     await shot(page, "10-stale");
@@ -180,7 +185,7 @@ async function main() {
     await page.getByRole("button", { name: /Connect to CORP/ }).click();
     await page.getByRole("button", { name: /Tools/ }).click();
     await page.getByRole("menuitem", { name: /Reports/ }).click();
-    await page.getByText("Built-in").waitFor();
+    await page.getByText("Built-in", { exact: true }).waitFor();
     await page.getByRole("button", { name: "Open", exact: true }).nth(3).click(); // Privileged access
     await page.getByText(/privileged users/).waitFor();
     await shot(page, "14-privileged");
