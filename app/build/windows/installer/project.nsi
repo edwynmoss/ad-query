@@ -31,7 +31,7 @@ ManifestDPIAware true
 SetCompressor /SOLID lzma
 BrandingText "${INFO_PRODUCTNAME} ${INFO_PRODUCTVERSION}"
 
-!include "MUI.nsh"
+!include "MUI2.nsh"
 
 # --- Look ---------------------------------------------------------------
 # Dark welcome and finish pages matching the sidebar; a dark header strip on
