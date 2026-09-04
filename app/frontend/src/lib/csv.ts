@@ -21,7 +21,7 @@ export const DEFAULT_CSV_OPTIONS: CsvOptions = {
   evidenceHeader: true,
 };
 
-// Provenance for the export's evidence header — who/what/when, so a CSV handed
+// Provenance for the export's evidence header, who/what/when, so a CSV handed
 // to Governance is self-describing.
 export interface EvidenceMeta {
   generatedAt: string;  // ISO timestamp (caller supplies, keeps buildCsv pure)
@@ -51,7 +51,7 @@ export function buildCsv(
   if (opts.evidenceHeader && meta) {
     const d = opts.delimiter;
     const kv = (k: string, v: string) => escapeCell(k, d) + d + escapeCell(v, d);
-    lines.push(escapeCell("AD Query — export evidence", d));
+    lines.push(escapeCell("AD Query export evidence", d));
     lines.push(kv("Generated", meta.generatedAt));
     if (meta.tool) lines.push(kv("Tool", meta.tool));
     if (meta.directory) lines.push(kv("Directory", meta.directory));

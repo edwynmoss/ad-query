@@ -37,7 +37,7 @@ describe("assessRisk", () => {
   });
 
   it("is not-applicable on a non-AD object (no userAccountControl), not a false verdict", () => {
-    // Generic LDAP person (no userAccountControl) — must not emit hygiene flags
+    // Generic LDAP person (no userAccountControl), must not emit hygiene flags
     // like "never logged in" / "no department" that read as a real assessment.
     const r = assessRisk({ uid: ["oldacct"], mail: ["x@y.test"], displayName: ["Former Employee"] });
     expect(r.notApplicable).toBe(true);

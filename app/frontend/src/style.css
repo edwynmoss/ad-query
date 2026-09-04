@@ -4,11 +4,11 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ============================================================================
-   AD Query — neutral modern theme.
+   AD Query, neutral modern theme.
 
    A clean, corporate admin surface in the Linear/Vercel idiom: neutral grays,
    crisp hairlines, Inter for everything, a single restrained blue accent.
-   Built on shadcn/ui — its tokens own the Tailwind color namespace; the app's
+   Built on shadcn/ui, its tokens own the Tailwind color namespace; the app's
    own legacy tokens (--color-ink, --color-brand, …) live alongside as plain
    variables for the surfaces not yet migrated to shadcn components.
    ============================================================================ */
@@ -18,7 +18,7 @@
   --font-mono: "IBM Plex Mono", "Cascadia Mono", Consolas, monospace;
 
   /* App semantic palette (light). Defined here so each becomes a real utility
-     — text-ink-2, bg-surface, border-line, bg-success-soft, … — and inline
+    , text-ink-2, bg-surface, border-line, bg-success-soft, …, and inline
      `style={{ var(--color-*) }}` can be retired everywhere. Dark values are
      overridden under .dark below and the utilities adapt automatically. */
   --color-page: #f7f7f8;        /* app background        */
@@ -93,7 +93,7 @@
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
 
-  /* App semantic palette — dark overrides (utilities + aliases adapt). */
+  /* App semantic palette, dark overrides (utilities + aliases adapt). */
   --color-page: #09090b;
   --color-surface: #141416;
   --color-sunken: #1c1c1f;
@@ -167,7 +167,7 @@
 }
 
 @layer components {
-  /* Typographic primitives — kept; everything else is now a shadcn component. */
+  /* Typographic primitives, kept; everything else is now a shadcn component. */
   .display { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.02em; }
   .eyebrow {
     font-family: var(--font-ui); font-weight: 600; font-size: 10.5px;

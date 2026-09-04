@@ -95,8 +95,8 @@ function LoginTab({ entry, isAD }: { entry: ldap.Entry; isAD?: boolean }) {
     <div className="space-y-3 text-[12px]">
       <div>
         <div className="eyebrow text-ink-3 mb-1">Replicated (fast)</div>
-        <div className="font-mono">{fast ? formatValue("lastLogonTimestamp", [fast]) : "—"}</div>
-        <p className="text-[11px] text-ink-3 mt-0.5">From <span className="font-mono">lastLogonTimestamp</span> — replicated but lags by days.</p>
+        <div className="font-mono">{fast ? formatValue("lastLogonTimestamp", [fast]) : "not recorded"}</div>
+        <p className="text-[11px] text-ink-3 mt-0.5">From <span className="font-mono">lastLogonTimestamp</span>: replicated, but lags by days.</p>
       </div>
 
       <div className="pt-2.5 border-t border-line">
@@ -155,7 +155,7 @@ function RiskTab({ dn }: { dn: string }) {
   if (assessment.notApplicable) {
     return (
       <div className="space-y-2 text-[12px] text-ink-2">
-        <p>Risk flags are derived from <span className="font-medium text-ink">Active Directory</span> posture — account status, password policy, delegation, service accounts.</p>
+        <p>Risk flags are derived from <span className="font-medium text-ink">Active Directory</span> posture: account status, password policy, delegation, service accounts.</p>
         <p className="text-ink-3">This directory doesn't expose those attributes, so there's nothing to assess here.</p>
       </div>
     );
@@ -168,7 +168,7 @@ function RiskTab({ dn }: { dn: string }) {
         <StatusBadge tone={riskTone(assessment.level)}>{assessment.level}</StatusBadge>
       </div>
       {assessment.flags.length === 0 ? (
-        <p className="text-[12px] text-ink-2">No risk indicators — account looks healthy.</p>
+        <p className="text-[12px] text-ink-2">No risk indicators. The account looks healthy.</p>
       ) : (
         <ul className="space-y-2">
           {assessment.flags.map((f, i) => (

@@ -84,11 +84,11 @@ export function StaleReportDialog({ isAD, baseDN, onOpen, onClose }: Props) {
         });
       }
       if (rows.length === 0) {
-        toast.info(`No accounts stale beyond ${days} days${signedIn365 ? "" : " (AD only — sign in to 365 to fold in cloud sign-ins)"}.`);
+        toast.info(`No accounts stale beyond ${days} days${signedIn365 ? "" : " (AD only; sign in to 365 to fold in cloud sign-ins)"}.`);
         onClose(); return;
       }
       downloadCsv(`adquery-stale-${days}d-${new Date().toISOString().slice(0, 10)}.csv`, rowsToCsv(cols, rows));
-      toast.success(`Stale report — ${rows.length.toLocaleString()} ${rows.length === 1 ? "account" : "accounts"} exported`);
+      toast.success(`Stale report: ${rows.length.toLocaleString()} ${rows.length === 1 ? "account" : "accounts"} exported`);
       onClose();
     } catch (e: any) { setError(String(e?.message ?? e)); } finally { setBusy(false); }
   }
@@ -111,7 +111,7 @@ export function StaleReportDialog({ isAD, baseDN, onOpen, onClose }: Props) {
           </label>
           <p className="text-[12px] leading-relaxed px-4 py-3 rounded-2xl bg-sunken text-ink-2">
             <b className="text-ink">Preview</b> shows AD-stale candidates in the grid. <b className="text-ink">Download</b> also folds in
-            {signedIn365 ? " Microsoft 365 sign-ins (a recent cloud sign-in clears an AD-stale account)" : " — sign in to 365 (☁) to include cloud sign-ins"} and exports the combined set.
+            {signedIn365 ? " Microsoft 365 sign-ins (a recent cloud sign-in clears an AD-stale account)" : ". Sign in to 365 (cloud button) to include cloud sign-ins"} and exports the combined set.
           </p>
           {error && <ErrorBanner error={error} />}
         </div>

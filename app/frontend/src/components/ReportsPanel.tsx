@@ -41,7 +41,7 @@ export function ReportsPanel({ req, isAD, onOpen, onClose }: Props) {
       const stamp = new Date().toISOString().slice(0, 10);
       const rows = res.entries ?? [];
       downloadCsv(`adquery-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${stamp}.csv`, buildCsv(rows, q.attributes, DEFAULT_CSV_OPTIONS));
-      toast.success(`${name} — ${rows.length.toLocaleString()} rows exported`);
+      toast.success(`${name}: ${rows.length.toLocaleString()} rows exported`);
     } catch (e: any) { toast.error("Report failed", { description: String(e?.message ?? e) }); } finally { setBusy(null); }
   }
 
@@ -56,7 +56,7 @@ export function ReportsPanel({ req, isAD, onOpen, onClose }: Props) {
         <DialogContent className="w-[600px] max-h-[86vh] overflow-hidden flex flex-col p-0">
           <DialogHeader className="px-5 py-3.5">
             <DialogTitle><span className="flex items-center gap-2"><FileBarChart size={16} className="text-brand" /><span className="display text-[16px] font-semibold">Reports</span></span></DialogTitle>
-            <DialogDescription className="text-[12px] text-ink-3">Built-in and saved reports — run them in the grid or download a CSV.</DialogDescription>
+            <DialogDescription className="text-[12px] text-ink-3">Built-in and saved reports. Run them in the grid or download a CSV.</DialogDescription>
           </DialogHeader>
 
           <div className="overflow-auto px-5 py-2">
@@ -78,7 +78,7 @@ export function ReportsPanel({ req, isAD, onOpen, onClose }: Props) {
             })}
 
             <div className="eyebrow pt-3 pb-1">Saved queries</div>
-            {saved.length === 0 && <div className="text-[12px] py-2 text-ink-3">None yet — save a query from the ⌘ Saved menu.</div>}
+            {saved.length === 0 && <div className="text-[12px] py-2 text-ink-3">None yet. Save a query from the Saved menu.</div>}
             {saved.map((s) =>
               <ReportRow key={s.id} name={s.name} description={`${s.query.attributes.length} columns · ${s.query.filter}`} actions={<>
                 <Button variant="ghost" size="sm" onClick={() => onOpen(s.query)}>Open</Button>
@@ -90,7 +90,7 @@ export function ReportsPanel({ req, isAD, onOpen, onClose }: Props) {
           </div>
 
           <div className="px-5 py-2.5 text-[11px] flex items-center gap-1.5 border-t border-line text-ink-3">
-            <Cloud size={12} /> {signedIn365 ? "Signed in to 365 — stale & license reports include cloud data." : "Sign in to 365 (☁) for cloud sign-ins and license seats."}
+            <Cloud size={12} /> {signedIn365 ? "Signed in to 365. Stale and licence reports include cloud data." : "Sign in to 365 (☁) for cloud sign-ins and license seats."}
           </div>
         </DialogContent>
       </Dialog>

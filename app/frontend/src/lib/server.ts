@@ -1,5 +1,5 @@
 // A directory address carries its own transport: port 636 (or an explicit
-// ldaps:// prefix) means LDAPS, everything else is plain LDAP — which is what
+// ldaps:// prefix) means LDAPS, everything else is plain LDAP, which is what
 // AD shops run. So the connection form needs a single "Server" field, not a
 // port box and an encryption switch.
 export interface ServerTarget {

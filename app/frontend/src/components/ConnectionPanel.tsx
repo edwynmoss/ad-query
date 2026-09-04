@@ -118,7 +118,7 @@ export function ConnectionPanel({ onConnected }: Props) {
               <div className="flex items-center gap-2 eyebrow text-brand"><ShieldCheck size={13} /> This computer's domain</div>
               <div className="display text-[19px] mt-1.5 font-semibold">{detected.domain.toUpperCase()}</div>
               <div className="text-[12.5px] mt-1 text-ink-2">
-                Sign in as <span className="mono text-ink">{detected.user || "the current user"}</span> — no password.
+                Sign in as <span className="mono text-ink">{detected.user || "the current user"}</span>, no password needed.
               </div>
             </div>
             <Button className="w-full" onClick={connectAuto} disabled={busy}>
@@ -184,7 +184,7 @@ export function ConnectionPanel({ onConnected }: Props) {
               </>)}
               {auth === "sspi" && (
                 <p className="text-[12px] leading-relaxed px-4 py-3 rounded-lg bg-sunken text-ink-2">
-                  Signs in as you — the Windows account you're logged in with. No username or password needed.
+                  Signs in as you, the Windows account you're logged in with. No username or password needed.
                 </p>
               )}
 

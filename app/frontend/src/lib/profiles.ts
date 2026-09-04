@@ -1,5 +1,5 @@
 // Connection-profile metadata, stored in localStorage. The password is NOT
-// stored here — it lives in the Windows Credential Manager (see App.StoreSecret
+// stored here, it lives in the Windows Credential Manager (see App.StoreSecret
 // / GetSecret), keyed by the profile name.
 
 export interface ConnectionProfile {

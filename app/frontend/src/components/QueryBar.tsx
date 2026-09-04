@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { FilterBuilder } from "./FilterBuilder";
 import { SavedQueriesBar } from "./SavedQueriesBar";
 
-// Lazy — pulls in SheetJS only when the user opens bulk lookup.
+// Lazy, pulls in SheetJS only when the user opens bulk lookup.
 const BulkImportDialog = lazy(() => import("./BulkImportDialog").then((m) => ({ default: m.BulkImportDialog })));
 const ReportsPanel = lazy(() => import("./ReportsPanel").then((m) => ({ default: m.ReportsPanel })));
 import { Condition, MatchOp, compileConditions, combineAnd, quickSearchFilter, isConditionValid } from "../lib/filterBuilder";
@@ -36,7 +36,7 @@ export function effectiveFilter(req: QueryState): string {
 }
 
 // A directory location the user can pick by name (mapped to a base DN behind
-// the scenes — nobody should have to type a distinguished name).
+// the scenes, nobody should have to type a distinguished name).
 export interface DirLocation {
   dn: string;
   label: string;
@@ -69,7 +69,7 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
   const attrSource = schemaAttributes && schemaAttributes.length > 0 ? schemaAttributes : COMMON_ATTRIBUTES;
   const activeConditions = req.conditions.filter(isConditionValid).length;
 
-  // Location options for "Search in" — always include the current base DN so a
+  // Location options for "Search in", always include the current base DN so a
   // custom/advanced DN still shows a sensible selection.
   const locs = useMemo<DirLocation[]>(() => {
     const list: DirLocation[] = locations && locations.length ? [...locations] : req.baseDN ? [{ dn: req.baseDN, label: "Entire directory", depth: 0 }] : [];
@@ -133,8 +133,8 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
         <Popover open={panel === "saved"} onOpenChange={(o) => { if (!o) setPanel(null); }}>
           {/* One Button is both the dropdown trigger and the popover anchor:
               both asChild Slots compose their props + ref onto it (Button is
-              forwardRef). Anchoring to a real element — not the DropdownMenu
-              root — avoids "function components cannot be given refs". */}
+              forwardRef). Anchoring to a real element, not the DropdownMenu
+              root, avoids "function components cannot be given refs". */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <PopoverAnchor asChild>
@@ -145,7 +145,7 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
               <DropdownMenuItem onSelect={() => toggle("saved")}><Bookmark size={14} /> Saved queries</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => { setPanel(null); setShowImport(true); }}><Upload size={14} /> Bulk lookup (CSV / Excel)</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => { setPanel(null); setShowReports(true); }}><FileBarChart size={14} /> Reports</DropdownMenuItem>
-              <DropdownMenuItem onSelect={async () => { setPanel(null); try { await ClearCache(); toast.success("Cached data cleared — the next query re-fetches from the directory."); } catch (e: any) { toast.error("Couldn't clear cache", { description: String(e?.message ?? e) }); } }}><Trash2 size={14} /> Clear cached data</DropdownMenuItem>
+              <DropdownMenuItem onSelect={async () => { setPanel(null); try { await ClearCache(); toast.success("Cached data cleared. The next query re-fetches from the directory."); } catch (e: any) { toast.error("Couldn't clear cache", { description: String(e?.message ?? e) }); } }}><Trash2 size={14} /> Clear cached data</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <PopoverContent align="start" className="w-[300px]">
@@ -182,7 +182,7 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
           ) : null}
         </div>
 
-        {/* Where to search — one picker owns location + depth + custom path. */}
+        {/* Where to search, one picker owns location + depth + custom path. */}
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" className="shrink-0 max-w-[220px]" title="Where to search">
@@ -257,7 +257,7 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
           <PopoverContent align="end" className="w-[340px]">
             <div className="eyebrow mb-1.5">Showing {req.attributes.length} columns</div>
             <div className="flex flex-wrap gap-1.5 mb-2.5 max-h-24 overflow-auto">
-              {req.attributes.length === 0 && <span className="text-[12px] text-ink-3">None — pick some below.</span>}
+              {req.attributes.length === 0 && <span className="text-[12px] text-ink-3">None yet. Pick some below.</span>}
               {req.attributes.map((a) => (
                 <Badge variant="secondary" key={a} className="font-normal" title={a}>{labelFor(a)}<button className="opacity-50 hover:opacity-100" onClick={() => removeAttr(a)} aria-label={`remove ${labelFor(a)}`}><X size={11} /></button></Badge>
               ))}
@@ -286,7 +286,7 @@ export function QueryBar({ req, setReq, isAD, running, onRun, onOpenReport, resu
               {newAttr.trim()
                 ? `${colMatches.length} match${colMatches.length === 1 ? "" : "es"}`
                 : schemaAttributes && schemaAttributes.length > 0
-                  ? `${commonAvailable.length} common · ${schemaAttributes.length} total — type to search all`
+                  ? `${commonAvailable.length} common · ${schemaAttributes.length} total. Type to search all`
                   : "Type to search all attributes"}
             </p>
           </PopoverContent>

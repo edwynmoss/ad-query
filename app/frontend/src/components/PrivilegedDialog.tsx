@@ -123,7 +123,7 @@ export function PrivilegedDialog({ baseDN, onClose }: Props) {
           {phase === "ready" && users.length === 0 && (
             <div className="text-[12.5px] text-ink-2 space-y-2">
               <p className="font-medium text-ink">No privileged users found.</p>
-              <p>None of the default privileged groups were found with members in this location — common against a non-AD test directory, or the groups live in a different OU (widen “Search in”).</p>
+              <p>None of the default privileged groups were found with members in this location. That is common against a non-AD test directory, or the groups live in a different OU (widen “Search in”).</p>
             </div>
           )}
 
@@ -149,7 +149,7 @@ export function PrivilegedDialog({ baseDN, onClose }: Props) {
                   {rows.length === 0 && <tr><td colSpan={4} className="py-6 text-center text-ink-3">No High/Critical privileged users. 🎉</td></tr>}
                 </tbody>
               </table>
-              {rows.length > 200 && <p className="text-[11px] mt-2 text-ink-3">Showing first 200 of {rows.length} — export for the full list.</p>}
+              {rows.length > 200 && <p className="text-[11px] mt-2 text-ink-3">Showing first 200 of {rows.length}. Export for the full list.</p>}
             </>
           )}
         </div>

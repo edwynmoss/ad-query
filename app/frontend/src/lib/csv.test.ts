@@ -19,7 +19,7 @@ describe("buildCsv", () => {
       generatedAt: "2026-06-07T10:00:00.000Z", directory: "dc01 · DC=x", scope: "Subtree", filter: "(objectClass=user)", tool: "AD Query 0.1.0",
     });
     const lines = csv.split("\r\n");
-    expect(lines[0]).toBe("AD Query — export evidence");
+    expect(lines[0]).toBe("AD Query export evidence");
     expect(lines).toContain("Generated,2026-06-07T10:00:00.000Z");
     expect(lines).toContain("Rows,2");
     expect(lines).toContain('Filter,(objectClass=user)');
