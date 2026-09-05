@@ -51,6 +51,23 @@ const MOCK = `
     SearchCached: (req) => window.go.main.App.Search(req).then((result) => ({ result, fetchedAt: Math.floor(Date.now()/1000), fromCache: false })),
     ClearCache: () => Promise.resolve(),
     PolicyChain: (dn) => {
+      if (/OU=(Workstations|Servers)/i.test(dn)) { // a computer sits in its own OU
+        const ou = dn.match(/OU=(Workstations|Servers)/i)[1];
+        const pol = (name, extra) => Object.assign({ dn:'CN={'+name+'},CN=Policies,CN=System,DC=adquery,DC=test', guid:'{'+name+'}', name, version:3, path:'', userDisabled:false, computerDisabled:false, wmiFilter:'', applyAllow:['S-1-5-11'], applyDeny:[], aclKnown:true }, extra||{});
+        const path = [
+          { dn:'CN=Default-First-Site-Name,CN=Sites,CN=Configuration,DC=adquery,DC=test', kind:'site', name:'Default-First-Site-Name', links:[], blockInheritance:false },
+          { dn:'DC=adquery,DC=test', kind:'domain', name:'adquery.test', links:[], blockInheritance:false },
+          { dn:'OU='+ou+',DC=adquery,DC=test', kind:'ou', name:ou, links:[], blockInheritance:false },
+        ];
+        const entries = [
+          { precedence:1, policy:pol('Corporate Baseline'), somDN:path[1].dn, somKind:'domain', somName:'adquery.test', enforced:true, verdict:'applies', reason:'', wmiUnknown:false },
+          { precedence:2, policy:pol(ou === 'Servers' ? 'Server Config' : 'Workstation Hardening', ou === 'Servers' ? {} : { wmiFilter:'[adquery.test;{1};0]' }), somDN:path[2].dn, somKind:'ou', somName:ou, enforced:false, verdict:'applies', reason: ou === 'Servers' ? '' : 'Has a WMI filter, which only the client can evaluate.', wmiUnknown: ou !== 'Servers' },
+          { precedence:3, policy:pol('VPN Client Settings'), somDN:path[1].dn, somKind:'domain', somName:'adquery.test', enforced:false, verdict:'applies', reason:'', wmiUnknown:false },
+          { precedence:4, policy:pol('Default Domain Policy'), somDN:path[1].dn, somKind:'domain', somName:'adquery.test', enforced:false, verdict:'applies', reason:'', wmiUnknown:false },
+          { precedence:5, policy:pol('Site Time Sync'), somDN:path[0].dn, somKind:'site', somName:'Default-First-Site-Name', enforced:false, verdict:'applies', reason:'', wmiUnknown:false },
+        ];
+        return Promise.resolve({ targetDN:dn, targetKind:'computer', path, entries, notes:[], names:{}, tokenSIDs:[] });
+      }
       const pol = (name, extra) => Object.assign({ dn:'CN={'+name+'},CN=Policies,CN=System,DC=adquery,DC=test', guid:'{'+name.replace(/\s+/g,'-').toUpperCase()+'}', name, version:3, path:'', userDisabled:false, computerDisabled:false, wmiFilter:'', applyAllow:['S-1-5-11'], applyDeny:[], aclKnown:true }, extra||{});
       const ou = (dn.match(/OU=([^,]+)/)||[])[1] || 'People';
       const path = [
@@ -268,6 +285,18 @@ async function main() {
     await page.getByText(/Users in Sales get/).waitFor();
     await page.getByText(/150 users/).waitFor();
     await shot(page, "19-policies-trace");
+    // A person signed in on a machine: the two halves side by side.
+    await page.getByRole("button", { name: "Policies" }).first().click();
+    await page.getByPlaceholder("A person, a computer or a container").fill("user");
+    await page.locator(".ledger-line", { hasText: "User 2" }).first().click();
+    await page.getByText(/User 2 gets/).waitFor();
+    await page.getByRole("button", { name: "On a computer…" }).click();
+    await page.getByPlaceholder("a computer by name").fill("WS");
+    await page.locator(".ledger-move").getByRole("button", { name: /WS-SALES-01/ }).first().click();
+    await page.locator(".ledger-pair-col").nth(1).locator(".ledger-flow-result").waitFor();
+    await shot(page, "23-person-on-machine");
+    await page.getByRole("button", { name: /^Just / }).click();
+
     await page.locator(".ledger-page-main").getByRole("button", { name: "Sales Drive Maps", exact: true }).click();
     await page.getByText(/Sales Drive Maps is linked at/).waitFor();
     await page.getByRole("button", { name: "try: switch the policy off" }).click({ force: true });

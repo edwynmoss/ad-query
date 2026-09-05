@@ -40,6 +40,12 @@ Group Policy, as far as the directory can tell. A row's Policies section answers
 |---|---|
 | ![Tree](docs/screenshots/20-policies-tree.png) | ![Policies list](docs/screenshots/21-policies-list.png) |
 
+Any line can be tried as a hypothetical: unlink a policy, stop a container blocking inheritance, or move a person and watch the flow redraw. A person signed in on a machine is traced as two halves, the person's user settings beside the machine's computer settings.
+
+| A policy, with a change tried on it | Signed in on a machine |
+|---|---|
+| ![Policy page](docs/screenshots/22-policy-page.png) | ![Person on a machine](docs/screenshots/23-person-on-machine.png) |
+
 > Regenerate with `cd app/frontend && npm run shots` (builds the app, serves it, and drives the journey through Playwright into `docs/screenshots/`). `node scripts/e2e-ledger.mjs` drives the real backend through `wails dev` against the Samba AD container in `test/samba-ad`.
 
 ## Stack

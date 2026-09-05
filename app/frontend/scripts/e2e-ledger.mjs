@@ -270,6 +270,27 @@ await step("what if this person left a group, or moved", async () => {
   await page.locator(".ledger-hypo").waitFor({ state: "hidden", timeout: 10000 });
 });
 
+// A session is the person's user settings plus the machine's computer settings.
+await step("a person signed in on a machine", async () => {
+  await page.getByRole("button", { name: "On a computer…" }).click();
+  await page.getByPlaceholder("a computer by name").fill("WS-SALES");
+  await page.locator(".ledger-move").getByRole("button", { name: /WS-SALES-01/ }).first().click();
+  await page.locator(".ledger-pair").waitFor({ timeout: 60000 });
+  await page.locator(".ledger-pair-col").nth(1).locator(".ledger-flow-result").waitFor({ timeout: 60000 });
+  const lede = await page.locator(".ledger-qhead").innerText();
+  if (!/Signed in on WS-SALES-01, Terry Wong gets \d+ polic\w+ and the machine gets \d+ polic\w+/.test(lede)) throw new Error("paired headline: " + lede.slice(0, 300));
+  const machineCol = page.locator(".ledger-pair-col").nth(1);
+  // The machine sits in Workstations, so it gets the policy linked there and
+  // the person does not.
+  await machineCol.getByText("Workstation Hardening").first().waitFor({ timeout: 30000 });
+  await machineCol.getByText(/WS-SALES-01/).first().waitFor({ timeout: 10000 });
+  await page.getByText(/loopback/i).waitFor({ timeout: 10000 });
+  if (await page.locator(".ledger-pair-col").first().getByText("Workstation Hardening").count()) throw new Error("the person should not get the machine's policy");
+  await shot(page, "l21-person-on-machine");
+  await page.getByRole("button", { name: /^Just Terry Wong$/ }).click();
+  await page.locator(".ledger-pair").waitFor({ state: "hidden", timeout: 10000 });
+});
+
 await step("bulk lookup from a CSV", async () => {
   await page.getByRole("tab", { name: "Bulk lookup" }).click();
   await page.getByRole("heading", { name: "Bulk lookup" }).waitFor({ timeout: 5000 });
