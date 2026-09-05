@@ -457,7 +457,7 @@ export namespace gpo {
 	
 	
 	export class WhatIf {
-	    change: Change;
+	    changes: Change[];
 	    description: string;
 	    users: Effect[];
 	    computers: Effect[];
@@ -469,7 +469,7 @@ export namespace gpo {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.change = this.convertValues(source["change"], Change);
+	        this.changes = this.convertValues(source["changes"], Change);
 	        this.description = source["description"];
 	        this.users = this.convertValues(source["users"], Effect);
 	        this.computers = this.convertValues(source["computers"], Effect);

@@ -7,7 +7,7 @@ import (
 )
 
 // A Change is one hypothetical edit to Group Policy, applied in memory and
-// never to the directory.
+// never to the directory. Several can be stacked.
 type Change struct {
 	Kind        string `json:"kind"`        // policy-off | unlink | link-off | delete | block | unblock | enforce | unenforce
 	PolicyDN    string `json:"policyDN"`    // for policy-off, unlink, link-off, delete, enforce, unenforce
@@ -18,7 +18,7 @@ type Change struct {
 func (c Change) Describe(policyName, containerName string) string {
 	switch c.Kind {
 	case "policy-off":
-		return fmt.Sprintf("%s switched off (both halves)", policyName)
+		return fmt.Sprintf("%s switched off", policyName)
 	case "delete":
 		return fmt.Sprintf("%s deleted", policyName)
 	case "unlink":
@@ -37,19 +37,19 @@ func (c Change) Describe(policyName, containerName string) string {
 	return c.Kind
 }
 
-// Apply returns copies of the containers and policies with the change made.
-func Apply(c Change, nodes []MapNode, policies map[string]Policy) ([]MapNode, map[string]Policy) {
-	out := make([]MapNode, len(nodes))
-	for i, n := range nodes {
-		links := make([]Link, 0, len(n.Links))
-		for _, l := range n.Links {
+// applyLinks returns a container's links after the changes.
+func applyLinks(changes []Change, containerDN string, links []Link) []Link {
+	out := make([]Link, 0, len(links))
+	for _, l := range links {
+		keep := true
+		for _, c := range changes {
 			samePolicy := strings.EqualFold(l.PolicyDN, c.PolicyDN)
-			sameContainer := strings.EqualFold(n.DN, c.ContainerDN)
+			sameContainer := strings.EqualFold(containerDN, c.ContainerDN)
 			switch {
 			case c.Kind == "delete" && samePolicy:
-				continue
+				keep = false
 			case c.Kind == "unlink" && samePolicy && sameContainer:
-				continue
+				keep = false
 			case c.Kind == "link-off" && samePolicy && sameContainer:
 				l.Disabled = true
 			case c.Kind == "enforce" && samePolicy && sameContainer:
@@ -57,25 +57,62 @@ func Apply(c Change, nodes []MapNode, policies map[string]Policy) ([]MapNode, ma
 			case c.Kind == "unenforce" && samePolicy && sameContainer:
 				l.Enforced = false
 			}
-			links = append(links, l)
 		}
-		n.Links = links
-		if c.Kind == "block" && strings.EqualFold(n.DN, c.ContainerDN) {
-			n.BlockInheritance = true
+		if keep {
+			out = append(out, l)
 		}
-		if c.Kind == "unblock" && strings.EqualFold(n.DN, c.ContainerDN) {
-			n.BlockInheritance = false
-		}
-		out[i] = n
 	}
+	return out
+}
+
+func applyBlock(changes []Change, containerDN string, block bool) bool {
+	for _, c := range changes {
+		if !strings.EqualFold(containerDN, c.ContainerDN) {
+			continue
+		}
+		if c.Kind == "block" {
+			block = true
+		}
+		if c.Kind == "unblock" {
+			block = false
+		}
+	}
+	return block
+}
+
+func applyPolicies(changes []Change, policies map[string]Policy) map[string]Policy {
 	ps := make(map[string]Policy, len(policies))
 	for k, p := range policies {
-		if c.Kind == "policy-off" && strings.EqualFold(p.DN, c.PolicyDN) {
-			p.UserDisabled, p.ComputerDisabled = true, true
+		for _, c := range changes {
+			if c.Kind == "policy-off" && strings.EqualFold(p.DN, c.PolicyDN) {
+				p.UserDisabled, p.ComputerDisabled = true, true
+			}
 		}
 		ps[k] = p
 	}
-	return out, ps
+	return ps
+}
+
+// Apply returns copies of the containers and policies with the changes made.
+func Apply(changes []Change, nodes []MapNode, policies map[string]Policy) ([]MapNode, map[string]Policy) {
+	out := make([]MapNode, len(nodes))
+	for i, n := range nodes {
+		n.Links = applyLinks(changes, n.DN, n.Links)
+		n.BlockInheritance = applyBlock(changes, n.DN, n.BlockInheritance)
+		out[i] = n
+	}
+	return out, applyPolicies(changes, policies)
+}
+
+// ApplyToPath does the same for one object's path of containers.
+func ApplyToPath(changes []Change, path []SOM, policies map[string]Policy) ([]SOM, map[string]Policy) {
+	out := make([]SOM, len(path))
+	for i, s := range path {
+		s.Links = applyLinks(changes, s.DN, s.Links)
+		s.BlockInheritance = applyBlock(changes, s.DN, s.BlockInheritance)
+		out[i] = s
+	}
+	return out, applyPolicies(changes, policies)
 }
 
 // Effect is what changes for one container.
@@ -91,9 +128,9 @@ type Effect struct {
 	Root        bool     `json:"root"`      // no ancestor is affected the same way
 }
 
-// WhatIf is the answer.
+// WhatIf is the aggregate answer for a set of changes.
 type WhatIf struct {
-	Change      Change   `json:"change"`
+	Changes     []Change `json:"changes"`
 	Description string   `json:"description"`
 	Users       []Effect `json:"users"`     // per container, user half
 	Computers   []Effect `json:"computers"` // per container, computer half
@@ -127,11 +164,11 @@ func arrivals(c *Chain) []string {
 	return out
 }
 
-// Evaluate runs the change against every container for one account kind
+// Evaluate runs the changes against every container for one account kind
 // and reports the containers whose arrivals change. Group filtering is not
 // known for a container, so "depends" links count as arriving on both sides.
-func Evaluate(c Change, nodes []MapNode, policies map[string]Policy, kind string) []Effect {
-	after, afterPolicies := Apply(c, nodes, policies)
+func Evaluate(changes []Change, nodes []MapNode, policies map[string]Policy, kind string) []Effect {
+	after, afterPolicies := Apply(changes, nodes, policies)
 	before := map[string]MapNode{}
 	for _, n := range nodes {
 		before[strings.ToLower(n.DN)] = n
@@ -166,7 +203,6 @@ func Evaluate(c Change, nodes []MapNode, policies map[string]Policy, kind string
 			}
 		}
 		if len(e.Loses) == 0 && len(e.Gains) == 0 {
-			// Same set; did the order move?
 			if strings.Join(a, "|") != strings.Join(b, "|") {
 				e.Reordered = a
 			} else {
@@ -175,7 +211,6 @@ func Evaluate(c Change, nodes []MapNode, policies map[string]Policy, kind string
 		}
 		effects = append(effects, e)
 	}
-	// An effect is a root when its parent is not affected in the same way.
 	byDN := map[string]*Effect{}
 	for i := range effects {
 		byDN[strings.ToLower(effects[i].ContainerDN)] = &effects[i]

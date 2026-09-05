@@ -287,7 +287,11 @@ func (a *App) pathFor(conn *ldap.Conn, root, cfg, dn string, isContainer bool, k
 
 // PolicyChain lays out which Group Policy Objects reach one user or computer,
 // in precedence order, with a verdict for every link on the way.
-func (a *App) PolicyChain(dn string) (*gpo.Chain, error) {
+func (a *App) PolicyChain(dn string) (*gpo.Chain, error) { return a.PolicyChainWith(dn, nil) }
+
+// PolicyChainWith is PolicyChain with hypothetical changes applied to the
+// containers and policies first. Nothing is written.
+func (a *App) PolicyChainWith(dn string, changes []gpo.Change) (*gpo.Chain, error) {
 	conn, root, cfg, err := a.policyRoots()
 	if err != nil {
 		return nil, err
@@ -327,6 +331,9 @@ func (a *App) PolicyChain(dn string) (*gpo.Chain, error) {
 	path, notes := a.pathFor(conn, root, cfg, dn, false, kind, first(t, "dNSHostName"))
 	policies, pnotes := a.policies(conn, root)
 	notes = append(notes, pnotes...)
+	if len(changes) > 0 {
+		path, policies = gpo.ApplyToPath(changes, path, policies)
+	}
 	chain := gpo.Resolve(dn, kind, path, policies, gpo.Token(own, groups))
 	chain.Notes = append(notes, "Read from the directory only: WMI filters are not evaluated, loopback and slow-link processing happen on the client, and the settings inside each policy live in SYSVOL.")
 	chain.Names = trusteeNames(conn, root, chain.Entries)
@@ -336,6 +343,11 @@ func (a *App) PolicyChain(dn string) (*gpo.Chain, error) {
 // ContainerChain traces policy into a container (the domain or an OU) for
 // users or computers in general, rather than one account.
 func (a *App) ContainerChain(containerDN string, kind string) (*gpo.Chain, error) {
+	return a.ContainerChainWith(containerDN, kind, nil)
+}
+
+// ContainerChainWith is ContainerChain with hypothetical changes applied.
+func (a *App) ContainerChainWith(containerDN string, kind string, changes []gpo.Change) (*gpo.Chain, error) {
 	conn, root, cfg, err := a.policyRoots()
 	if err != nil {
 		return nil, err
@@ -346,6 +358,9 @@ func (a *App) ContainerChain(containerDN string, kind string) (*gpo.Chain, error
 	path, notes := a.pathFor(conn, root, cfg, containerDN, true, kind, "")
 	policies, pnotes := a.policies(conn, root)
 	notes = append(notes, pnotes...)
+	if len(changes) > 0 {
+		path, policies = gpo.ApplyToPath(changes, path, policies)
+	}
 	chain := gpo.Resolve(containerDN, kind, path, policies, nil)
 	chain.Notes = append(notes, "A container trace cannot know group membership, so links with security filtering are marked as depending on it. Trace a person for the exact answer.")
 	chain.Names = trusteeNames(conn, root, chain.Entries)
@@ -454,7 +469,7 @@ func containers(conn *ldap.Conn, root, cfg string) ([]gpo.MapNode, []string, err
 // containers would gain or lose policy, for users and for computers, with
 // subtree counts on the containers where the impact starts. The directory
 // is only read.
-func (a *App) WhatIf(change gpo.Change) (*gpo.WhatIf, error) {
+func (a *App) WhatIf(changes []gpo.Change) (*gpo.WhatIf, error) {
 	conn, root, cfg, err := a.policyRoots()
 	if err != nil {
 		return nil, err
@@ -465,19 +480,23 @@ func (a *App) WhatIf(change gpo.Change) (*gpo.WhatIf, error) {
 	}
 	set, pnotes := a.policies(conn, root)
 	notes = append(notes, pnotes...)
-	policyName := change.PolicyDN
-	if p, ok := set[strings.ToLower(change.PolicyDN)]; ok {
-		policyName = p.Name
-	}
-	containerName := gpo.NameOf(change.ContainerDN, "ou")
-	for _, n := range nodes {
-		if strings.EqualFold(n.DN, change.ContainerDN) {
-			containerName = n.Name
+	var described []string
+	for _, change := range changes {
+		policyName := change.PolicyDN
+		if p, ok := set[strings.ToLower(change.PolicyDN)]; ok {
+			policyName = p.Name
 		}
+		containerName := gpo.NameOf(change.ContainerDN, "ou")
+		for _, n := range nodes {
+			if strings.EqualFold(n.DN, change.ContainerDN) {
+				containerName = n.Name
+			}
+		}
+		described = append(described, change.Describe(policyName, containerName))
 	}
-	w := &gpo.WhatIf{Change: change, Description: change.Describe(policyName, containerName)}
-	w.Users = gpo.Evaluate(change, nodes, set, "user")
-	w.Computers = gpo.Evaluate(change, nodes, set, "computer")
+	w := &gpo.WhatIf{Changes: changes, Description: strings.Join(described, "; ")}
+	w.Users = gpo.Evaluate(changes, nodes, set, "user")
+	w.Computers = gpo.Evaluate(changes, nodes, set, "computer")
 	// Count the accounts under each impact root, a dozen at most.
 	counted := 0
 	for _, list := range []*[]gpo.Effect{&w.Users, &w.Computers} {

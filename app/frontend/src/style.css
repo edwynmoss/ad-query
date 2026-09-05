@@ -536,16 +536,31 @@
   .ledger-flow-pick:disabled { cursor: default; border-bottom: 0; }
 }
 
-/* what if */
+/* trying a change in place */
 @layer components {
-  .ledger-whatif { margin-top: 26px; }
-  .ledger-whatif-options { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; }
-  .ledger-whatif-opt { color: var(--color-ink-2); border-bottom: 1px dotted var(--color-line-strong); cursor: pointer; text-align: left; }
-  .ledger-whatif-opt::before { content: "…"; color: var(--color-ink-3); margin-right: 4px; }
-  .ledger-whatif-opt:hover { color: var(--color-ink); border-bottom-color: var(--color-ink); }
-  .ledger-whatif-opt.is-on { color: var(--color-ink); border-bottom: 1.5px solid var(--color-ink); }
-  .ledger-whatif-result { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--color-line); }
-  .ledger-whatif-result .ledger-headline { font-size: 14px; }
+  .ledger-try-group { display: inline-flex; gap: 10px; margin-left: 10px; }
+  .ledger-try { font-size: 11px; color: var(--color-ink-3); border-bottom: 1px dotted var(--color-line-strong); cursor: pointer; opacity: 0; transition: opacity .12s; white-space: nowrap; margin-left: 10px; }
+  .ledger-try-group .ledger-try { margin-left: 0; }
+  .ledger-try:hover { color: var(--color-ink); border-bottom-color: var(--color-ink); }
+  .ledger-flow-pol:hover .ledger-try, .ledger-flow-block:hover .ledger-try, .ledger-flow-stn-name:hover .ledger-try, .ledger-kv dd:hover .ledger-try, .ledger-line:hover .ledger-try, .ledger-try:focus-visible { opacity: 1; }
+  .ledger-h4-hint { margin-left: 10px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--color-ink-3); }
+  .ledger-hypo { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding: 9px 26px; font-size: 12.5px; color: var(--color-ink); background: var(--color-sunken); border-bottom: 1px solid var(--color-line); }
+  .ledger-hypo-word { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--color-warning); margin-right: 6px; }
+  .ledger-hypo-item { display: inline-flex; align-items: baseline; gap: 4px; }
+  .ledger-hypo-x { color: var(--color-ink-3); font-size: 13px; line-height: 1; padding: 0 2px; cursor: pointer; }
+  .ledger-hypo-x:hover { color: var(--color-critical); }
+  .ledger-mark { font-weight: 500; font-family: var(--font-ui); }
+  .ledger-mark.is-start { color: var(--color-success); }
+  .ledger-mark.is-stop { color: var(--color-critical); }
+  .ledger-flow-pol.is-starts { background: var(--color-success-soft); margin: 0 -8px; padding-left: 8px; padding-right: 8px; }
+  .ledger-flow-pol.is-stops { background: var(--color-critical-soft); margin: 0 -8px; padding-left: 8px; padding-right: 8px; }
+  .ledger-flow-pol.is-gone .ledger-flow-who { color: var(--color-ink-3); text-decoration: line-through; text-decoration-color: var(--color-line-strong); }
+  .ledger-flow-block.is-gone { border-top-style: dotted; color: var(--color-ink-3); }
+  .ledger-flow-block.is-gone::before { background: var(--color-ink-3); }
+  .ledger-line.is-gone .ledger-flow-pick { color: var(--color-ink-3); text-decoration: line-through; text-decoration-color: var(--color-line-strong); }
+  .ledger-impact { margin-top: 26px; }
+  .ledger-page-side .ledger-impact { margin-top: 0; }
+  .ledger-impact .ledger-headline { font-size: 14px; }
   .ledger-line.is-sub { padding-left: 18px; }
   .ledger-line.is-sub .ledger-line-text { color: var(--color-ink-2); }
 }

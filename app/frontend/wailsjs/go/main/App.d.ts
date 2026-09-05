@@ -20,6 +20,8 @@ export function Connect(arg1:ldap.ConnectOptions):Promise<ldap.ServerInfo>;
 
 export function ContainerChain(arg1:string,arg2:string):Promise<gpo.Chain>;
 
+export function ContainerChainWith(arg1:string,arg2:string,arg3:Array<gpo.Change>):Promise<gpo.Chain>;
+
 export function CountUnder(arg1:string):Promise<main.Counts>;
 
 export function DeleteSecret(arg1:string):Promise<void>;
@@ -56,6 +58,8 @@ export function M365StartSignIn(arg1:string,arg2:string):Promise<m365.DeviceCode
 
 export function PolicyChain(arg1:string):Promise<gpo.Chain>;
 
+export function PolicyChainWith(arg1:string,arg2:Array<gpo.Change>):Promise<gpo.Chain>;
+
 export function PolicyInventory():Promise<gpo.Inventory>;
 
 export function PolicyMap():Promise<gpo.Map>;
@@ -70,4 +74,4 @@ export function ServerInfo():Promise<ldap.ServerInfo>;
 
 export function StoreSecret(arg1:string,arg2:string):Promise<void>;
 
-export function WhatIf(arg1:gpo.Change):Promise<gpo.WhatIf>;
+export function WhatIf(arg1:Array<gpo.Change>):Promise<gpo.WhatIf>;

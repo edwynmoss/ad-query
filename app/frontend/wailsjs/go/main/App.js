@@ -26,6 +26,10 @@ export function ContainerChain(arg1, arg2) {
   return window['go']['main']['App']['ContainerChain'](arg1, arg2);
 }
 
+export function ContainerChainWith(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ContainerChainWith'](arg1, arg2, arg3);
+}
+
 export function CountUnder(arg1) {
   return window['go']['main']['App']['CountUnder'](arg1);
 }
@@ -96,6 +100,10 @@ export function M365StartSignIn(arg1, arg2) {
 
 export function PolicyChain(arg1) {
   return window['go']['main']['App']['PolicyChain'](arg1);
+}
+
+export function PolicyChainWith(arg1, arg2) {
+  return window['go']['main']['App']['PolicyChainWith'](arg1, arg2);
 }
 
 export function PolicyInventory() {
