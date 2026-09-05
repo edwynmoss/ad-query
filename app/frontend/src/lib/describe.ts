@@ -31,6 +31,9 @@ export function describeCondition(c: Condition): string {
 export function describeType(q: QueryState, isAD: boolean): string {
   const t = OBJECT_TYPES.find((t) => filterFor(t, isAD) === q.filter);
   if (t) return t.key === "any" ? "Everything" : t.label;
+  // A narrowed preset (the stale register adds clauses to the users filter) still reads as its type.
+  const within = OBJECT_TYPES.find((x) => x.key !== "any" && q.filter.includes(filterFor(x, isAD)));
+  if (within) return within.label;
   return q.filter && q.filter !== "(objectClass=*)" ? "Objects matching a raw filter" : "Everything";
 }
 
