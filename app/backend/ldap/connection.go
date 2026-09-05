@@ -33,9 +33,9 @@ type ConnectOptions struct {
 	Timeout            int        `json:"timeoutSeconds"`     // 0 => default
 
 	// Authentication method:
-	//   "" / "simple" — simple bind with BindDN + Password (default)
-	//   "kerberos"    — SASL GSSAPI via explicit Kerberos creds (cross-platform, testable)
-	//   "sspi"        — Windows Integrated Auth; blank BindDN = current logged-in user (SSO)
+	//   "" / "simple": simple bind with BindDN + Password (default)
+	//   "kerberos": SASL GSSAPI via explicit Kerberos creds (cross-platform, testable)
+	//   "sspi": Windows Integrated Auth; blank BindDN = current logged-in user (SSO)
 	Auth AuthMethod `json:"auth"`
 	// Kerberos / SSPI parameters.
 	Realm            string `json:"realm"`            // e.g. ADQUERY.TEST

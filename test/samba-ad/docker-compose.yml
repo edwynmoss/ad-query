@@ -7,7 +7,7 @@
 #   ./seed.ps1                   # add sample OUs / users / groups
 #   docker compose down -v       # wipe
 #
-# (Plain-LDAP simple binds already work — the image ships with
+# (Plain-LDAP simple binds already work, the image ships with
 #  "ldap server require strong auth = No". Kerberos is on KDC port 88.)
 #
 # Realm:  ADQUERY.TEST   Domain: ADQUERY   Admin: administrator@adquery.test / AdminPass123!

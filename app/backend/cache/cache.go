@@ -1,13 +1,13 @@
 // Package cache is a local, durable (SQLite) store for directory query results
 // and Microsoft 365 lookups, so re-running a query or reopening a report against
 // a large domain is instant instead of re-fetching everything. Entries are kept
-// until the user rescans (overwrites a row) or clears the cache — staleness is
+// until the user rescans (overwrites a row) or clears the cache, staleness is
 // surfaced in the UI (the fetched-at time), not hidden.
 //
 // Stored values are encrypted at rest with AES-256-GCM under a key the caller
 // supplies (kept in the Windows Credential Manager), since the rows hold real
-// directory attributes. It stores opaque bytes — the caller marshals/unmarshals
-// its own types — so this package depends on neither ldap nor m365. Pure-Go
+// directory attributes. It stores opaque bytes, the caller marshals/unmarshals
+// its own types, so this package depends on neither ldap nor m365. Pure-Go
 // SQLite driver (modernc.org/sqlite) keeps the Wails build CGO-free.
 package cache
 
@@ -115,7 +115,7 @@ func Open(path string, key []byte) (*Store, error) {
 
 // migrate brings an existing database up to schemaVersion. Pre-v2 caches stored
 // plaintext, so they're cleared (the data is re-fetched on demand) before the
-// version is stamped — avoids decrypting plaintext as ciphertext.
+// version is stamped, avoids decrypting plaintext as ciphertext.
 func migrate(db *sql.DB) error {
 	var ver int
 	_ = db.QueryRow(`PRAGMA user_version`).Scan(&ver)

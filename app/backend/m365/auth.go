@@ -3,7 +3,7 @@
 // assigned licenses, last sign-in).
 //
 // Auth is the OAuth2 *device code* flow against a public client app
-// registration — delegated, so it runs as the signed-in user with their
+// registration, delegated, so it runs as the signed-in user with their
 // permissions and needs no client secret. On a domain/Entra-joined machine the
 // browser step is silent (SSO via the user's PRT).
 //
@@ -29,7 +29,7 @@ type Doer interface {
 
 // DefaultClientID is Microsoft's first-party "Microsoft Graph Command Line
 // Tools" public client (the same app id `Connect-MgGraph` uses). Using it means
-// the user signs in with their own credentials and needs NO app registration —
+// the user signs in with their own credentials and needs NO app registration 
 // they just consent to the delegated, read-only scopes (an admin may approve
 // the cross-user read scopes once for the tenant). Organisations that prefer
 // their own app registration can override ClientID.
@@ -90,7 +90,7 @@ func (t Token) Valid() bool {
 	return t.AccessToken != "" && time.Now().Before(t.Acquired.Add(time.Duration(t.ExpiresIn)*time.Second))
 }
 
-// Expiring reports whether the token is gone or within 60s of expiry — the cue
+// Expiring reports whether the token is gone or within 60s of expiry, the cue
 // to refresh it silently before the next Graph call.
 func (t Token) Expiring() bool {
 	return t.AccessToken == "" || time.Now().After(t.Acquired.Add(time.Duration(t.ExpiresIn-60)*time.Second))

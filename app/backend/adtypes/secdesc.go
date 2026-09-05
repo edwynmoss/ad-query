@@ -7,7 +7,7 @@ import (
 
 // SecurityDescriptor is a parsed self-relative Windows SECURITY_DESCRIPTOR, as
 // stored in the AD nTSecurityDescriptor attribute. We surface the owner/group
-// and the DACL (discretionary ACL) — the access-control entries an admin wants
+// and the DACL (discretionary ACL), the access-control entries an admin wants
 // to audit. The SACL is not parsed (it requires SeSecurityPrivilege to read).
 type SecurityDescriptor struct {
 	Owner string `json:"owner"`
@@ -47,7 +47,7 @@ func ParseSecurityDescriptor(b []byte) (*SecurityDescriptor, error) {
 		return nil, fmt.Errorf("security descriptor too short: %d bytes", len(b))
 	}
 	// Header: Revision(1) Sbz1(1) Control(2) OffsetOwner(4) OffsetGroup(4)
-	//         OffsetSacl(4) OffsetDacl(4) — all offsets little-endian.
+	//         OffsetSacl(4) OffsetDacl(4), all offsets little-endian.
 	offOwner := binary.LittleEndian.Uint32(b[4:8])
 	offGroup := binary.LittleEndian.Uint32(b[8:12])
 	offDacl := binary.LittleEndian.Uint32(b[16:20])

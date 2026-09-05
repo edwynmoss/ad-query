@@ -7,9 +7,9 @@ import (
 )
 
 // Accurate last-login analysis. AD's `lastLogon` is NOT replicated between
-// domain controllers — each DC records the logons it authenticated — so the
+// domain controllers, each DC records the logons it authenticated, so the
 // only reliable "last login" is the newest `lastLogon` across every DC.
-// `lastLogonTimestamp` IS replicated but lags (default ~9–14 days), so it's the
+// `lastLogonTimestamp` IS replicated but lags (default ~9-14 days), so it's the
 // "fast" approximation good enough for stale-account sweeps but not forensics.
 
 // DCLastLogon is one domain controller's answer for a user.
@@ -136,13 +136,13 @@ func aggregateLastLogon(dn string, perDC []DCLastLogon, llt string) *LastLogonRe
 	switch {
 	case rep.ReachedDCs == 0:
 		rep.Confidence = "Low"
-		rep.Note = "No domain controllers responded — result unavailable."
+		rep.Note = "No domain controllers responded. The result is unavailable."
 	case best == 0:
 		rep.Confidence = "Low"
 		rep.Note = fmt.Sprintf("No interactive login recorded on the %d responding DC(s).", rep.ReachedDCs)
 	case rep.ReachedDCs < rep.QueriedDCs:
 		rep.Confidence = "Medium"
-		rep.Note = fmt.Sprintf("%d of %d domain controllers responded; %d did not — a newer login may exist on an unreachable DC.", rep.ReachedDCs, rep.QueriedDCs, rep.QueriedDCs-rep.ReachedDCs)
+		rep.Note = fmt.Sprintf("%d of %d domain controllers responded; %d did not. A newer login may exist on an unreachable DC.", rep.ReachedDCs, rep.QueriedDCs, rep.QueriedDCs-rep.ReachedDCs)
 	default:
 		rep.Confidence = "High"
 		rep.Note = fmt.Sprintf("Queried all %d domain controllers.", rep.QueriedDCs)

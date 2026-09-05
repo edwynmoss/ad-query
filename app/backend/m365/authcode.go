@@ -66,7 +66,7 @@ func AcquireInteractive(ctx context.Context, doer Doer, openURL func(string) err
 	}
 	defer ln.Close()
 	// Entra allows a dynamic port for a loopback redirect, but the registered
-	// URI on the built-in client is "http://localhost" (no path) — so the
+	// URI on the built-in client is "http://localhost" (no path), so the
 	// redirect must be exactly host:port with no path segment. This mirrors the
 	// MSAL system-browser form the client is registered for.
 	redirect := fmt.Sprintf("http://localhost:%d", ln.Addr().(*net.TCPAddr).Port)
@@ -94,16 +94,16 @@ func AcquireInteractive(ctx context.Context, doer Doer, openURL func(string) err
 			return
 		}
 		if e := q.Get("error"); e != "" {
-			writeClose(w, "Sign-in failed — you can close this window.")
+			writeClose(w, "Sign-in failed, you can close this window.")
 			resCh <- result{err: fmt.Errorf("sign-in failed: %s", firstLine(q.Get("error_description")))}
 			return
 		}
 		if q.Get("state") != state {
-			writeClose(w, "Sign-in could not be verified — you can close this window.")
+			writeClose(w, "Sign-in could not be verified, you can close this window.")
 			resCh <- result{err: fmt.Errorf("state mismatch")}
 			return
 		}
-		writeClose(w, "Signed in to AD Query — you can close this window and return to the app.")
+		writeClose(w, "Signed in to AD Query, you can close this window and return to the app.")
 		resCh <- result{code: q.Get("code")}
 	})
 	srv := &http.Server{Handler: mux}

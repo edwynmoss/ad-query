@@ -99,7 +99,7 @@ async function main() {
   }
 
   // Freeze animations to their end state for the capture only (so dialogs are
-  // opaque/settled) — without globally disabling them, which breaks Radix's
+  // opaque/settled), without globally disabling them, which breaks Radix's
   // open-state detection for menus/popovers at interaction time.
   const shot = async (page, name) => {
     await page.screenshot({ path: path.join(OUT, name + ".png"), animations: "disabled" });

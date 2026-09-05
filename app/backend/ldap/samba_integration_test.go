@@ -9,7 +9,7 @@ import (
 
 // These run against the Samba AD test directory (test/samba-ad) on localhost:1389.
 // Unlike OpenLDAP, this is real Active Directory, so it exercises AD detection,
-// AD-mode filters, and — most importantly — the security-descriptor parser
+// AD-mode filters, and, most importantly, the security-descriptor parser
 // against a genuine nTSecurityDescriptor. Skipped if Samba isn't running.
 
 func sambaOptions() ConnectOptions {

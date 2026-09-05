@@ -42,7 +42,7 @@ func LookupUsers(doer Doer, token string, identities []string) []User {
 		users[i] = User{Identity: id}
 	}
 
-	// Pass 1 — resolve the users.
+	// Pass 1: resolve the users.
 	forEachBatch(len(identities), func(start, end int) {
 		reqs := make([]batchRequest, 0, end-start)
 		for i := start; i < end; i++ {
@@ -78,7 +78,7 @@ func LookupUsers(doer Doer, token string, identities []string) []User {
 		}
 	})
 
-	// Pass 2 — license details for the resolved users (best-effort).
+	// Pass 2: license details for the resolved users (best-effort).
 	idxs := make([]int, 0, len(objID))
 	for i := range objID {
 		idxs = append(idxs, i)

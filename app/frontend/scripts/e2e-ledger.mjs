@@ -80,10 +80,26 @@ await shot(page, "l05-facts");
 
 await step("row inspector", async () => {
   await page.locator(".ledger-row").first().click();
-  await page.getByText("Distinguished name").waitFor({ timeout: 5000 });
+  await page.locator(".ledger-record-dn").waitFor({ timeout: 5000 });
   await page.waitForTimeout(400);
 });
 await shot(page, "l06-row");
+
+await step("row: login, risk and security sections", async () => {
+  await page.getByRole("tab", { name: "Login" }).click();
+  await page.getByRole("button", { name: "Ask them all" }).click();
+  await page.getByText(/confidence/).waitFor({ timeout: 30000 });
+  await shot(page, "l06b-row-login");
+  await page.getByRole("tab", { name: "Risk" }).click();
+  await page.getByText(/Overall/).waitFor({ timeout: 30000 });
+  await shot(page, "l06c-row-risk");
+  await page.getByRole("tab", { name: "Security" }).click();
+  await page.getByRole("button", { name: "Read it" }).click();
+  await page.getByText(/Access control/).waitFor({ timeout: 30000 });
+  await page.waitForTimeout(300);
+  await shot(page, "l06d-row-security");
+  await page.getByRole("tab", { name: "Attributes" }).click();
+});
 
 await step("sort by a column and save the query", async () => {
   await page.locator(".ledger-head-sort").nth(0).click();

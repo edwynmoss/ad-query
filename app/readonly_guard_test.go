@@ -35,7 +35,7 @@ func goReadFiles(t *testing.T, dir string) map[string]string {
 		t.Fatalf("walk %s: %v", dir, err)
 	}
 	if len(out) == 0 {
-		t.Fatalf("no .go files found under %s — guard would be vacuous", dir)
+		t.Fatalf("no .go files found under %s, guard would be vacuous", dir)
 	}
 	return out
 }
@@ -50,7 +50,7 @@ func TestNoLDAPWrites(t *testing.T) {
 	for path, src := range goReadFiles(t, "backend/ldap") {
 		for _, bad := range forbidden {
 			if strings.Contains(src, bad) {
-				t.Errorf("read-only violation: %s references %q — AD Query must never write to the directory", path, bad)
+				t.Errorf("read-only violation: %s references %q, AD Query must never write to the directory", path, bad)
 			}
 		}
 	}
@@ -65,12 +65,12 @@ func TestGraphIsGetOnly(t *testing.T) {
 		return string(b)
 	}
 
-	// graph.go is pure GET — no non-GET HTTP method at all. OAuth POSTs live in
+	// graph.go is pure GET, no non-GET HTTP method at all. OAuth POSTs live in
 	// auth.go / authcode.go (the sign-in flow), not the data layer.
 	graph := read("graph.go")
 	for _, bad := range []string{"http.MethodPost", "http.MethodPut", "http.MethodPatch", "http.MethodDelete"} {
 		if strings.Contains(graph, bad) {
-			t.Errorf("read-only violation: graph.go uses %q — Graph enrichment must be GET-only", bad)
+			t.Errorf("read-only violation: graph.go uses %q, Graph enrichment must be GET-only", bad)
 		}
 	}
 
@@ -80,12 +80,12 @@ func TestGraphIsGetOnly(t *testing.T) {
 	batch := read("batch.go")
 	for _, bad := range []string{"http.MethodPut", "http.MethodPatch", "http.MethodDelete"} {
 		if strings.Contains(batch, bad) {
-			t.Errorf("read-only violation: batch.go uses %q — must never mutate via Graph", bad)
+			t.Errorf("read-only violation: batch.go uses %q, must never mutate via Graph", bad)
 		}
 	}
 	for _, badSub := range []string{`Method: "POST"`, `Method: "PUT"`, `Method: "PATCH"`, `Method: "DELETE"`} {
 		if strings.Contains(batch, badSub) {
-			t.Errorf("read-only violation: batch.go builds a %s sub-request — $batch must carry GET only", badSub)
+			t.Errorf("read-only violation: batch.go builds a %s sub-request, $batch must carry GET only", badSub)
 		}
 	}
 	if !strings.Contains(batch, `Method: "GET"`) {
