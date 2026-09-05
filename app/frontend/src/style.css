@@ -514,3 +514,25 @@
   .ledger-map-node.is-quiet .ledger-map-name { font-weight: 400; fill: var(--color-ink-2); }
 }
 
+/* a page of the register: a main column and a side column on one grid */
+@layer components {
+  .ledger-page { display: grid; grid-template-columns: minmax(0, 7fr) minmax(280px, 4fr); flex: 1; min-height: 0; }
+  .ledger-page-main { padding: 20px 30px 30px 26px; min-width: 0; }
+  .ledger-page-side { padding: 20px 26px 30px 26px; border-left: 1px solid var(--color-line); min-width: 0; }
+  .ledger-page .ledger-h4:first-child { margin-top: 0; }
+  .ledger-page .ledger-h4 { margin-top: 26px; }
+  .ledger-page-main .ledger-flow-pol { font-size: 13px; }
+  .ledger-page-main .ledger-flow-fate { font-size: 12px; white-space: normal; max-width: 320px; }
+  .ledger-page .ledger-note { margin-top: 14px; }
+  .ledger-kv { display: grid; grid-template-columns: 150px minmax(0, 1fr); column-gap: 24px; row-gap: 0; font-size: 13px; }
+  .ledger-kv dt { color: var(--color-ink-3); padding: 7px 0; border-bottom: 1px solid var(--color-line); white-space: nowrap; }
+  .ledger-kv dd { color: var(--color-ink); padding: 7px 0; border-bottom: 1px solid var(--color-line); min-width: 0; }
+  .ledger-kv dd.mono { font-size: 12px; }
+  .ledger-kv dd.is-break { word-break: break-all; }
+  .ledger-kv dd .ledger-flag { margin: 0; }
+  .ledger-kind { font-size: 11px; color: var(--color-ink-3); }
+  .ledger-line-acts { display: flex; gap: 14px; }
+  .ledger-flow-pick.is-out { color: var(--color-ink-3); text-decoration: line-through; text-decoration-color: var(--color-line-strong); border-bottom: 0; }
+  .ledger-flow-pick:disabled { cursor: default; border-bottom: 0; }
+}
+
