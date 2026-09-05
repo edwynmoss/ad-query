@@ -239,6 +239,50 @@ export namespace gpo {
 		    return a;
 		}
 	}
+	export class Change {
+	    kind: string;
+	    policyDN: string;
+	    containerDN: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Change(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.policyDN = source["policyDN"];
+	        this.containerDN = source["containerDN"];
+	    }
+	}
+	export class Effect {
+	    containerDN: string;
+	    name: string;
+	    kind: string;
+	    loses: string[];
+	    gains: string[];
+	    reordered: string[];
+	    users: number;
+	    computers: number;
+	    root: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Effect(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.containerDN = source["containerDN"];
+	        this.name = source["name"];
+	        this.kind = source["kind"];
+	        this.loses = source["loses"];
+	        this.gains = source["gains"];
+	        this.reordered = source["reordered"];
+	        this.users = source["users"];
+	        this.computers = source["computers"];
+	        this.root = source["root"];
+	    }
+	}
 	
 	export class LinkPlace {
 	    somDN: string;
@@ -411,6 +455,45 @@ export namespace gpo {
 	
 	
 	
+	
+	export class WhatIf {
+	    change: Change;
+	    description: string;
+	    users: Effect[];
+	    computers: Effect[];
+	    notes: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new WhatIf(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.change = this.convertValues(source["change"], Change);
+	        this.description = source["description"];
+	        this.users = this.convertValues(source["users"], Effect);
+	        this.computers = this.convertValues(source["computers"], Effect);
+	        this.notes = source["notes"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 
 }
 

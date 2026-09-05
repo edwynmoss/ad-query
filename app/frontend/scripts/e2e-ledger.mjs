@@ -166,11 +166,23 @@ await step("policies register lists every policy and its links", async () => {
   if (!/Corporate Baseline\s*enforced, so it passes the block and applies\s*1/.test(trace)) throw new Error("enforced sentence: " + trace.slice(0, 800));
   await page.getByText(/\d[\d,]* users?, \d+ computers?/).waitFor({ timeout: 60000 });
   await shot(page, "l16-policies-trace-finance");
+  // What if Finance stopped blocking inheritance: it gains the screensaver and the domain policies.
+  await page.getByRole("button", { name: "Finance stopped blocking inheritance" }).click();
+  await page.locator(".ledger-whatif-result .ledger-headline").waitFor({ timeout: 60000 });
+  const wf = await page.locator(".ledger-whatif-result").innerText();
+  if (!/gain[\s\S]*People Screensaver/.test(wf)) throw new Error("unblock should gain the screensaver: " + wf.slice(0, 300));
+  await shot(page, "l16f-whatif-unblock");
   // Drill down: the policy's own page, then back.
-  await page.locator(".ledger-page-main").getByRole("button", { name: "Finance Lockdown" }).click();
+  await page.locator(".ledger-page-main").getByRole("button", { name: "Finance Lockdown", exact: true }).click();
   await page.getByText(/Finance Lockdown is linked at Finance/).waitFor({ timeout: 30000 });
   await page.locator("dt", { hasText: "SYSVOL path" }).waitFor({ timeout: 5000 });
   await shot(page, "l16b-policy-page");
+  // What if: switching the policy off empties Finance of it.
+  await page.getByRole("button", { name: "it were switched off" }).click();
+  await page.locator(".ledger-whatif-result .ledger-headline").waitFor({ timeout: 60000 });
+  const wi = await page.locator(".ledger-whatif-result").innerText();
+  if (!/\d+ users under Finance would lose Finance Lockdown/.test(wi)) throw new Error("what-if headline: " + wi.slice(0, 200));
+  await shot(page, "l16e-whatif-policy");
   await page.locator(".ledger-line").getByRole("button", { name: "Finance" }).first().click();
   await page.getByText(/Finance blocks inheritance from above/).waitFor({ timeout: 60000 });
   // Show on the tree: Finance is revealed, quiet branches are folded.

@@ -536,3 +536,17 @@
   .ledger-flow-pick:disabled { cursor: default; border-bottom: 0; }
 }
 
+/* what if */
+@layer components {
+  .ledger-whatif { margin-top: 26px; }
+  .ledger-whatif-options { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; }
+  .ledger-whatif-opt { color: var(--color-ink-2); border-bottom: 1px dotted var(--color-line-strong); cursor: pointer; text-align: left; }
+  .ledger-whatif-opt::before { content: "…"; color: var(--color-ink-3); margin-right: 4px; }
+  .ledger-whatif-opt:hover { color: var(--color-ink); border-bottom-color: var(--color-ink); }
+  .ledger-whatif-opt.is-on { color: var(--color-ink); border-bottom: 1.5px solid var(--color-ink); }
+  .ledger-whatif-result { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--color-line); }
+  .ledger-whatif-result .ledger-headline { font-size: 14px; }
+  .ledger-line.is-sub { padding-left: 18px; }
+  .ledger-line.is-sub .ledger-line-text { color: var(--color-ink-2); }
+}
+

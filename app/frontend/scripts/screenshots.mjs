@@ -70,6 +70,10 @@ const MOCK = `
       ];
       return Promise.resolve({ targetDN:dn, targetKind:'user', path, entries, notes:['Read from the directory only: WMI filters are not evaluated, loopback and slow-link processing happen on the client, and the settings inside each policy live in SYSVOL.'], names:{ 'S-1-5-21-1-1-1-1204':'Sales Team' } });
     },
+    WhatIf: (c) => Promise.resolve({ change: c, description: 'hypothetical',
+      users: c.kind === 'unblock' ? [{ containerDN:'OU=Finance,OU=People,DC=adquery,DC=test', name:'Finance', kind:'ou', loses:[], gains:['People Screensaver','VPN Client Settings','Default Domain Policy','Site Time Sync'], reordered:[], users:80, computers:0, root:true }]
+        : [{ containerDN:'OU=Sales,OU=People,DC=adquery,DC=test', name:'Sales', kind:'ou', loses:['Sales Drive Maps'], gains:[], reordered:[], users:150, computers:0, root:true }],
+      computers: [], notes: ['Worked out for containers, so links filtered by group membership count as arriving on both sides. Nothing was changed in the directory.'] }),
     CountUnder: (dn) => Promise.resolve({ dn, users: /Sales/.test(dn) ? 150 : /People/.test(dn) ? 500 : 503, computers: /People|Sales/.test(dn) ? 0 : 7, truncated: false }),
     ContainerChain: (dn, kind) => window.go.main.App.PolicyChain('CN=x,' + dn).then((c) => { c.targetDN = dn; c.targetKind = kind || 'user'; c.path = c.path.filter((s) => dn.toLowerCase().endsWith(s.dn.toLowerCase()) || s.kind === 'site' || s.kind === 'domain'); c.entries = c.entries.filter((e) => c.path.some((s) => s.dn === e.somDN)); c.notes = ['A container trace cannot know group membership, so links with security filtering are marked as depending on it. Open a row for the exact answer.']; return c; }),
     PolicyMap: () => {
@@ -262,8 +266,10 @@ async function main() {
     await page.getByText(/Users in Sales get/).waitFor();
     await page.getByText(/150 users/).waitFor();
     await shot(page, "19-policies-trace");
-    await page.locator(".ledger-page-main").getByRole("button", { name: "Sales Drive Maps" }).click();
+    await page.locator(".ledger-page-main").getByRole("button", { name: "Sales Drive Maps", exact: true }).click();
     await page.getByText(/Sales Drive Maps is linked at/).waitFor();
+    await page.getByRole("button", { name: "it were switched off" }).click();
+    await page.locator(".ledger-whatif-result .ledger-headline").waitFor();
     await shot(page, "22-policy-page");
     await page.locator(".ledger-page-side").getByRole("button", { name: "trace" }).first().click();
     await page.getByText(/Users in Sales get/).waitFor();

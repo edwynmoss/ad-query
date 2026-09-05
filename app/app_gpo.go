@@ -390,40 +390,11 @@ func (a *App) PolicyMap() (*gpo.Map, error) {
 		return nil, err
 	}
 	forgetPolicies()
-	m := &gpo.Map{}
-	domainParent := ""
-	if ss, err := sites(conn, cfg); err == nil && len(ss) == 1 {
-		m.Nodes = append(m.Nodes, gpo.MapNode{DN: ss[0].DN, Kind: "site", Name: ss[0].Name, Links: ss[0].Links})
-		domainParent = ss[0].DN
-	} else if err == nil && len(ss) > 1 {
-		m.Notes = append(m.Notes, fmt.Sprintf("The forest has %d sites; they are left off the map because the directory does not say which objects are in which.", len(ss)))
-	}
-	dom, err := somFor(conn, root, "domain")
+	nodes, mnotes, err := containers(conn, root, cfg)
 	if err != nil {
 		return nil, err
 	}
-	m.Nodes = append(m.Nodes, gpo.MapNode{DN: dom.DN, ParentDN: domainParent, Kind: "domain", Name: dom.Name, Links: dom.Links, BlockInheritance: dom.BlockInheritance})
-	ous, err := conn.Search(ldap.SearchRequest{BaseDN: root, Scope: ldap.ScopeSubtree, Filter: "(objectClass=organizationalUnit)", Attributes: []string{"gPLink", "gPOptions", "ou"}, PageSize: 1000})
-	if err != nil {
-		return nil, err
-	}
-	for _, e := range ous.Entries {
-		n := gpo.MapNode{DN: e.DN, ParentDN: gpo.ParentOf(e.DN), Kind: "ou", Name: gpo.NameOf(e.DN, "ou")}
-		if v := e.Attributes["gPLink"]; len(v) > 0 {
-			n.Links = gpo.ParseGPLink(v[0])
-		}
-		if v := e.Attributes["gPOptions"]; len(v) > 0 && strings.TrimSpace(v[0]) == "1" {
-			n.BlockInheritance = true
-		}
-		m.Nodes = append(m.Nodes, n)
-	}
-	gpo.SortNodes(m.Nodes)
-	gpo.MarkRelevant(m.Nodes)
-	for i := range m.Nodes {
-		if m.Nodes[i].Links == nil {
-			m.Nodes[i].Links = []gpo.Link{}
-		}
-	}
+	m := &gpo.Map{Nodes: nodes, Notes: mnotes}
 	set, notes := a.policies(conn, root)
 	m.Policies = set
 	m.Notes = append(m.Notes, notes...)
@@ -435,6 +406,97 @@ func (a *App) PolicyMap() (*gpo.Map, error) {
 	}
 	m.Names = sidNames(conn, root, sids)
 	return m, nil
+}
+
+// containers lists every container that can carry policy, sorted parents
+// first and marked for relevance: the site when there is one, the domain,
+// and every OU.
+func containers(conn *ldap.Conn, root, cfg string) ([]gpo.MapNode, []string, error) {
+	var nodes []gpo.MapNode
+	var notes []string
+	domainParent := ""
+	if ss, err := sites(conn, cfg); err == nil && len(ss) == 1 {
+		nodes = append(nodes, gpo.MapNode{DN: ss[0].DN, Kind: "site", Name: ss[0].Name, Links: ss[0].Links})
+		domainParent = ss[0].DN
+	} else if err == nil && len(ss) > 1 {
+		notes = append(notes, fmt.Sprintf("The forest has %d sites; they are left off the map because the directory does not say which objects are in which.", len(ss)))
+	}
+	dom, err := somFor(conn, root, "domain")
+	if err != nil {
+		return nil, nil, err
+	}
+	nodes = append(nodes, gpo.MapNode{DN: dom.DN, ParentDN: domainParent, Kind: "domain", Name: dom.Name, Links: dom.Links, BlockInheritance: dom.BlockInheritance})
+	ous, err := conn.Search(ldap.SearchRequest{BaseDN: root, Scope: ldap.ScopeSubtree, Filter: "(objectClass=organizationalUnit)", Attributes: []string{"gPLink", "gPOptions", "ou"}, PageSize: 1000})
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, e := range ous.Entries {
+		n := gpo.MapNode{DN: e.DN, ParentDN: gpo.ParentOf(e.DN), Kind: "ou", Name: gpo.NameOf(e.DN, "ou")}
+		if v := e.Attributes["gPLink"]; len(v) > 0 {
+			n.Links = gpo.ParseGPLink(v[0])
+		}
+		if v := e.Attributes["gPOptions"]; len(v) > 0 && strings.TrimSpace(v[0]) == "1" {
+			n.BlockInheritance = true
+		}
+		nodes = append(nodes, n)
+	}
+	gpo.SortNodes(nodes)
+	gpo.MarkRelevant(nodes)
+	for i := range nodes {
+		if nodes[i].Links == nil {
+			nodes[i].Links = []gpo.Link{}
+		}
+	}
+	return nodes, notes, nil
+}
+
+// WhatIf applies one hypothetical change in memory and reports which
+// containers would gain or lose policy, for users and for computers, with
+// subtree counts on the containers where the impact starts. The directory
+// is only read.
+func (a *App) WhatIf(change gpo.Change) (*gpo.WhatIf, error) {
+	conn, root, cfg, err := a.policyRoots()
+	if err != nil {
+		return nil, err
+	}
+	nodes, notes, err := containers(conn, root, cfg)
+	if err != nil {
+		return nil, err
+	}
+	set, pnotes := a.policies(conn, root)
+	notes = append(notes, pnotes...)
+	policyName := change.PolicyDN
+	if p, ok := set[strings.ToLower(change.PolicyDN)]; ok {
+		policyName = p.Name
+	}
+	containerName := gpo.NameOf(change.ContainerDN, "ou")
+	for _, n := range nodes {
+		if strings.EqualFold(n.DN, change.ContainerDN) {
+			containerName = n.Name
+		}
+	}
+	w := &gpo.WhatIf{Change: change, Description: change.Describe(policyName, containerName)}
+	w.Users = gpo.Evaluate(change, nodes, set, "user")
+	w.Computers = gpo.Evaluate(change, nodes, set, "computer")
+	// Count the accounts under each impact root, a dozen at most.
+	counted := 0
+	for _, list := range []*[]gpo.Effect{&w.Users, &w.Computers} {
+		for i := range *list {
+			e := &(*list)[i]
+			if !e.Root || counted >= 12 {
+				continue
+			}
+			if c, err := a.CountUnder(e.ContainerDN); err == nil {
+				e.Users, e.Computers = c.Users, c.Computers
+				counted++
+			}
+		}
+	}
+	if counted >= 12 {
+		notes = append(notes, "Counts were fetched for the first twelve containers where the impact starts; the rest are listed without counts.")
+	}
+	w.Notes = append(notes, "Worked out for containers, so links filtered by group membership count as arriving on both sides. Nothing was changed in the directory.")
+	return w, nil
 }
 
 // Counts is how many users and computers sit under a container.
