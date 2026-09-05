@@ -28,7 +28,7 @@ const REGISTER_BLURBS: Record<RegisterKey, string> = {
   stale: "Not seen in AD or Microsoft 365 for 90 days. Accurate last logon across every domain controller.",
   privileged: "Domain Admins and the other high-privilege groups, nested, with risk flags.",
   licences: "Microsoft 365 seats held by accounts dormant in AD and in the cloud.",
-  policies: "Every Group Policy Object, where it is linked and who it is filtered to. A row's Policies section shows what reaches one user or computer.",
+  policies: "Which policies reach a person, a computer or a container, and why. Browse the tree, or list every policy.",
   "all-users": "Every user account with the common attributes.",
   bulk: "Drop a CSV or Excel list of names or emails; get every row matched to the directory.",
   saved: "",

@@ -1,10 +1,15 @@
-// The Policies side of a row: how policy flows down the tree to this user
-// or computer, drawn by PolicyFlow.
+// The Policies side of a row: one sentence that answers the question, the
+// flow that shows the working, and the rules in ordinary words on request.
 import { useEffect, useState } from "react";
 import { PolicyChain } from "../../wailsjs/go/main/App";
 import type { gpo, ldap } from "../../wailsjs/go/models";
 import { ErrorBanner } from "@/components/ui/error-banner";
-import { PolicyFlow } from "./PolicyFlow";
+import { PolicyFlow, PolicyExplainer, headline } from "./PolicyFlow";
+
+export function labelOf(entry: ldap.Entry): string {
+  const a = entry.attributes ?? {};
+  return a.displayName?.[0] || a.cn?.[0] || a.name?.[0] || a.sAMAccountName?.[0] || entry.dn.split(",")[0].replace(/^[^=]+=/, "");
+}
 
 export function PoliciesSection({ entry, isAD }: { entry: ldap.Entry; isAD?: boolean }) {
   const dn = entry.dn;
@@ -32,14 +37,13 @@ export function PoliciesSection({ entry, isAD }: { entry: ldap.Entry; isAD?: boo
   if (status === "error") return <ErrorBanner error={error} />;
   if (!chain) return null;
 
-  const a = entry.attributes ?? {};
-  const label = a.displayName?.[0] || a.cn?.[0] || a.name?.[0] || a.sAMAccountName?.[0] || dn.split(",")[0].replace(/^[^=]+=/, "");
-
+  const label = labelOf(entry);
   return (
     <div>
-      <div className="ledger-h4">How policy flows down to this {chain.targetKind}</div>
+      <p className="ledger-headline">{headline(chain, label)}</p>
+      <div className="ledger-h4">How it gets there</div>
       <PolicyFlow chain={chain} targetLabel={label} targetKind={chain.targetKind} />
-      <p className="ledger-note" style={{ marginTop: 12 }}>Nearer wins, enforced wins over everything. {(chain.notes ?? []).join(" ")}</p>
+      <PolicyExplainer chain={chain} />
     </div>
   );
 }

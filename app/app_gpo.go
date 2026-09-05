@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	"app/backend/adtypes"
 	"app/backend/gpo"
@@ -11,9 +14,10 @@ import (
 )
 
 // Group Policy, read from the directory: which policies reach a user or
-// computer (PolicyChain) and where every policy is linked (PolicyInventory).
-// Both are read-only LDAP; see the gpo package for what they can and cannot
-// know.
+// computer (PolicyChain), the same for a container (ContainerChain), the
+// tree of containers for the map (PolicyMap), counts on demand (CountUnder)
+// and every policy with its links (PolicyInventory). All read-only LDAP;
+// see the gpo package for what they can and cannot know.
 
 func (a *App) policyRoots() (*ldap.Conn, string, string, error) {
 	a.mu.Lock()
@@ -29,45 +33,60 @@ func (a *App) policyRoots() (*ldap.Conn, string, string, error) {
 	return conn, root, "CN=Configuration," + root, nil
 }
 
-// loadPolicies reads every groupPolicyContainer under the domain, keyed by
-// lower-case DN. Security filtering is read per policy when withACL is set
-// (or only for the DNs in acl when given).
-func loadPolicies(conn *ldap.Conn, root string, acl map[string]bool) (map[string]gpo.Policy, []string) {
+func first(e ldap.Entry, attr string) string {
+	if v := e.Attributes[attr]; len(v) > 0 {
+		return v[0]
+	}
+	return ""
+}
+
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return one
+	}
+	return many
+}
+
+// loadPolicies reads every groupPolicyContainer under the domain in one
+// query, security descriptor included (DACL only, via the SD-flags control),
+// keyed by lower-case DN. WMI filter references are resolved to names.
+func loadPolicies(conn *ldap.Conn, root string) (map[string]gpo.Policy, []string) {
 	var notes []string
 	out := map[string]gpo.Policy{}
 	res, err := conn.Search(ldap.SearchRequest{
 		BaseDN: "CN=Policies,CN=System," + root, Scope: ldap.ScopeSubtree,
 		Filter:     "(objectClass=groupPolicyContainer)",
-		Attributes: []string{"displayName", "name", "flags", "versionNumber", "gPCFileSysPath", "gPCWQLFilter"},
-		PageSize:   500,
+		Attributes: []string{"displayName", "name", "flags", "versionNumber", "gPCFileSysPath", "gPCWQLFilter", "nTSecurityDescriptor"},
+		PageSize:   500, SDFlags: ldap.SDDACL,
 	})
 	if err != nil {
 		return out, []string{"The policy objects under CN=Policies could not be read: " + err.Error()}
 	}
-	first := func(e ldap.Entry, a string) string {
-		if v := e.Attributes[a]; len(v) > 0 {
-			return v[0]
-		}
-		return ""
-	}
+	wmi := wmiFilterNames(conn, root)
 	unreadable := 0
 	for _, e := range res.Entries {
 		p := gpo.Policy{DN: e.DN, GUID: first(e, "name"), Name: first(e, "displayName"), Path: first(e, "gPCFileSysPath"), WMIFilter: first(e, "gPCWQLFilter")}
 		if p.Name == "" {
 			p.Name = p.GUID
 		}
-		fmt.Sscanf(first(e, "versionNumber"), "%d", &p.Version)
-		p.UserDisabled, p.ComputerDisabled = gpo.ParseFlags(first(e, "flags"))
-		if acl == nil || acl[strings.ToLower(e.DN)] {
-			if raw, err := conn.FetchSecurityDescriptor(e.DN, ldap.SDDACL); err == nil {
-				if sd, err := adtypes.ParseSecurityDescriptor(raw); err == nil {
-					p.ApplyAllow, p.ApplyDeny = gpo.ApplyRights(sd)
-					p.ACLKnown = true
+		if p.WMIFilter != "" {
+			// [domain;{GUID};0]
+			if i := strings.Index(p.WMIFilter, "{"); i >= 0 {
+				if j := strings.Index(p.WMIFilter[i:], "}"); j > 0 {
+					p.WMIFilterName = wmi[strings.ToUpper(p.WMIFilter[i:i+j+1])]
 				}
 			}
-			if !p.ACLKnown {
-				unreadable++
+		}
+		fmt.Sscanf(first(e, "versionNumber"), "%d", &p.Version)
+		p.UserDisabled, p.ComputerDisabled = gpo.ParseFlags(first(e, "flags"))
+		if raw := e.RawValues["nTSecurityDescriptor"]; len(raw) > 0 && len(raw[0]) > 0 {
+			if sd, err := adtypes.ParseSecurityDescriptor(raw[0]); err == nil {
+				p.ApplyAllow, p.ApplyDeny = gpo.ApplyRights(sd)
+				p.ACLKnown = true
 			}
+		}
+		if !p.ACLKnown {
+			unreadable++
 		}
 		out[strings.ToLower(e.DN)] = p
 	}
@@ -77,11 +96,19 @@ func loadPolicies(conn *ldap.Conn, root string, acl map[string]bool) (map[string
 	return out, notes
 }
 
-func plural(n int, one, many string) string {
-	if n == 1 {
-		return one
+// wmiFilterNames maps WMI filter GUIDs to their names.
+func wmiFilterNames(conn *ldap.Conn, root string) map[string]string {
+	names := map[string]string{}
+	res, err := conn.Search(ldap.SearchRequest{BaseDN: "CN=SOM,CN=WMIPolicy,CN=System," + root, Scope: ldap.ScopeSubtree, Filter: "(objectClass=msWMI-Som)", Attributes: []string{"msWMI-ID", "msWMI-Name"}, PageSize: 500})
+	if err != nil {
+		return names
 	}
-	return many
+	for _, e := range res.Entries {
+		if id := first(e, "msWMI-ID"); id != "" {
+			names[strings.ToUpper(id)] = first(e, "msWMI-Name")
+		}
+	}
+	return names
 }
 
 // somFor reads gPLink and gPOptions on one container.
@@ -106,7 +133,7 @@ func somFor(conn *ldap.Conn, dn, kind string) (gpo.SOM, error) {
 
 // sites lists the sites in the configuration partition with their links.
 func sites(conn *ldap.Conn, cfg string) ([]gpo.SOM, error) {
-	res, err := conn.Search(ldap.SearchRequest{BaseDN: "CN=Sites," + cfg, Scope: ldap.ScopeSubtree, Filter: "(objectClass=site)", Attributes: []string{"gPLink", "gPOptions", "name"}, PageSize: 200})
+	res, err := conn.Search(ldap.SearchRequest{BaseDN: "CN=Sites," + cfg, Scope: ldap.ScopeSubtree, Filter: "(objectClass=site)", Attributes: []string{"gPLink", "gPOptions", "name"}, PageSize: 500})
 	if err != nil {
 		return nil, err
 	}
@@ -124,45 +151,138 @@ func sites(conn *ldap.Conn, cfg string) ([]gpo.SOM, error) {
 	return out, nil
 }
 
-// sidNames resolves group and account SIDs to names in one query.
+// subnets lists CN=Subnets with the site each maps to.
+func subnets(conn *ldap.Conn, cfg string) []gpo.Subnet {
+	res, err := conn.Search(ldap.SearchRequest{BaseDN: "CN=Subnets,CN=Sites," + cfg, Scope: ldap.ScopeSubtree, Filter: "(objectClass=subnet)", Attributes: []string{"cn", "siteObject"}, PageSize: 1000})
+	if err != nil {
+		return nil
+	}
+	var out []gpo.Subnet
+	for _, e := range res.Entries {
+		if s, ok := gpo.ParseSubnet(first(e, "cn"), first(e, "siteObject")); ok && s.SiteDN != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// siteForComputer places a computer the way it places itself: resolve its
+// DNS name and match the address against the subnets, longest prefix wins.
+func siteForComputer(conn *ldap.Conn, cfg, dnsHostName string, all []gpo.SOM) (gpo.SOM, string) {
+	if dnsHostName == "" {
+		return gpo.SOM{}, "The computer has no DNS name recorded, so its site is unknown."
+	}
+	ips, err := net.LookupIP(dnsHostName)
+	if err != nil || len(ips) == 0 {
+		return gpo.SOM{}, "The computer's name " + dnsHostName + " did not resolve from here, so its site is unknown."
+	}
+	subs := subnets(conn, cfg)
+	for _, ip := range ips {
+		if siteDN := gpo.SiteForIP(ip, subs); siteDN != "" {
+			for _, s := range all {
+				if strings.EqualFold(s.DN, siteDN) {
+					return s, ""
+				}
+			}
+		}
+	}
+	return gpo.SOM{}, "The computer's address " + ips[0].String() + " is in no subnet the directory knows, so its site is unknown."
+}
+
+// sidNames resolves group and account SIDs to names, fifty per query.
 func sidNames(conn *ldap.Conn, root string, sids map[string]bool) map[string]string {
 	names := map[string]string{}
-	var parts []string
+	var pending []string
 	for s := range sids {
 		if n := adtypes.FriendlySID(s); n != s {
 			names[s] = n
 			continue
 		}
-		parts = append(parts, "(objectSid="+s+")")
+		pending = append(pending, s)
 	}
-	if len(parts) == 0 {
-		return names
-	}
-	sort.Strings(parts)
-	res, err := conn.Search(ldap.SearchRequest{BaseDN: root, Scope: ldap.ScopeSubtree, Filter: "(|" + strings.Join(parts, "") + ")", Attributes: []string{"sAMAccountName", "name", "objectSid"}, PageSize: 500})
-	if err != nil {
-		return names
-	}
-	for _, e := range res.Entries {
-		raw := e.RawValues["objectSid"]
-		if len(raw) == 0 {
-			continue
+	sort.Strings(pending)
+	for len(pending) > 0 {
+		n := 50
+		if len(pending) < n {
+			n = len(pending)
 		}
-		sid, err := adtypes.SIDToString(raw[0])
+		var parts []string
+		for _, s := range pending[:n] {
+			parts = append(parts, "(objectSid="+s+")")
+		}
+		pending = pending[n:]
+		res, err := conn.Search(ldap.SearchRequest{BaseDN: root, Scope: ldap.ScopeSubtree, Filter: "(|" + strings.Join(parts, "") + ")", Attributes: []string{"sAMAccountName", "name", "objectSid"}, PageSize: 500})
 		if err != nil {
 			continue
 		}
-		n := ""
-		if v := e.Attributes["sAMAccountName"]; len(v) > 0 {
-			n = v[0]
-		} else if v := e.Attributes["name"]; len(v) > 0 {
-			n = v[0]
-		}
-		if n != "" {
-			names[strings.ToUpper(sid)] = n
+		for _, e := range res.Entries {
+			raw := e.RawValues["objectSid"]
+			if len(raw) == 0 {
+				continue
+			}
+			sid, err := adtypes.SIDToString(raw[0])
+			if err != nil {
+				continue
+			}
+			if v := first(e, "sAMAccountName"); v != "" {
+				names[strings.ToUpper(sid)] = v
+			} else if v := first(e, "name"); v != "" {
+				names[strings.ToUpper(sid)] = v
+			}
 		}
 	}
 	return names
+}
+
+func trusteeNames(conn *ldap.Conn, root string, entries []gpo.Entry) map[string]string {
+	sids := map[string]bool{}
+	for _, e := range entries {
+		for _, s := range append(e.Policy.ApplyAllow, e.Policy.ApplyDeny...) {
+			sids[s] = true
+		}
+	}
+	return sidNames(conn, root, sids)
+}
+
+// pathFor reads the containers above an object (or including a container,
+// when the DN is one) and picks the site when it can be known.
+func (a *App) pathFor(conn *ldap.Conn, root, cfg, dn string, isContainer bool, kind string, dnsHostName string) ([]gpo.SOM, []string) {
+	var notes []string
+	var path []gpo.SOM
+	if ss, err := sites(conn, cfg); err == nil {
+		switch {
+		case len(ss) == 1:
+			path = append(path, ss[0])
+		case len(ss) > 1 && kind == "computer" && !isContainer:
+			s, why := siteForComputer(conn, cfg, dnsHostName, ss)
+			if why == "" {
+				path = append(path, s)
+			} else {
+				notes = append(notes, why+" Site-linked policies are left out.")
+			}
+		case len(ss) > 1 && isContainer:
+			notes = append(notes, fmt.Sprintf("The forest has %d sites. A container trace leaves site-linked policies out; trace a computer to include its site.", len(ss)))
+		case len(ss) > 1:
+			notes = append(notes, fmt.Sprintf("The forest has %d sites. A user's site is wherever they sign in, which the directory does not record, so site-linked policies are left out.", len(ss)))
+		}
+	}
+	probe := dn
+	if isContainer {
+		probe = "CN=x," + dn
+	}
+	for _, cdn := range gpo.PathFromDN(probe, root) {
+		k := "ou"
+		if strings.EqualFold(cdn, root) {
+			k = "domain"
+		}
+		s, err := somFor(conn, cdn, k)
+		if err != nil {
+			notes = append(notes, "Could not read "+cdn+": "+err.Error())
+			continue
+		}
+		path = append(path, s)
+	}
+	return path, notes
 }
 
 // PolicyChain lays out which Group Policy Objects reach one user or computer,
@@ -172,8 +292,7 @@ func (a *App) PolicyChain(dn string) (*gpo.Chain, error) {
 	if err != nil {
 		return nil, err
 	}
-	// The target: what it is and what it presents to security filtering.
-	res, err := conn.Search(ldap.SearchRequest{BaseDN: dn, Scope: ldap.ScopeBase, Filter: "(objectClass=*)", Attributes: []string{"objectClass", "objectSid", "tokenGroups"}, PageSize: 1})
+	res, err := conn.Search(ldap.SearchRequest{BaseDN: dn, Scope: ldap.ScopeBase, Filter: "(objectClass=*)", Attributes: []string{"objectClass", "objectSid", "tokenGroups", "dNSHostName"}, PageSize: 1})
 	if err != nil {
 		return nil, err
 	}
@@ -205,99 +324,17 @@ func (a *App) PolicyChain(dn string) (*gpo.Chain, error) {
 			groups = append(groups, s)
 		}
 	}
-	token := gpo.Token(own, groups)
-
-	var notes []string
-	var path []gpo.SOM
-	// Site: only certain when the forest has exactly one.
-	if ss, err := sites(conn, cfg); err == nil {
-		switch len(ss) {
-		case 0:
-		case 1:
-			path = append(path, ss[0])
-		default:
-			notes = append(notes, fmt.Sprintf("The forest has %d sites and the directory does not record which one this object is in, so site-linked policies are left out.", len(ss)))
-		}
-	}
-	for _, cdn := range gpo.PathFromDN(dn, root) {
-		kind := "ou"
-		if strings.EqualFold(cdn, root) {
-			kind = "domain"
-		}
-		s, err := somFor(conn, cdn, kind)
-		if err != nil {
-			notes = append(notes, "Could not read "+cdn+": "+err.Error())
-			continue
-		}
-		path = append(path, s)
-	}
-	linked := map[string]bool{}
-	for _, s := range path {
-		for _, l := range s.Links {
-			linked[strings.ToLower(l.PolicyDN)] = true
-		}
-	}
-	policies, pnotes := loadPolicies(conn, root, linked)
+	path, notes := a.pathFor(conn, root, cfg, dn, false, kind, first(t, "dNSHostName"))
+	policies, pnotes := a.policies(conn, root)
 	notes = append(notes, pnotes...)
-
-	chain := gpo.Resolve(dn, kind, path, policies, token)
+	chain := gpo.Resolve(dn, kind, path, policies, gpo.Token(own, groups))
 	chain.Notes = append(notes, "Read from the directory only: WMI filters are not evaluated, loopback and slow-link processing happen on the client, and the settings inside each policy live in SYSVOL.")
-	sids := map[string]bool{}
-	for _, e := range chain.Entries {
-		for _, s := range append(e.Policy.ApplyAllow, e.Policy.ApplyDeny...) {
-			sids[s] = true
-		}
-	}
-	chain.Names = sidNames(conn, root, sids)
+	chain.Names = trusteeNames(conn, root, chain.Entries)
 	return chain, nil
 }
 
-// PolicyInventory lists every policy in the domain and where it is linked.
-func (a *App) PolicyInventory() (*gpo.Inventory, error) {
-	conn, root, cfg, err := a.policyRoots()
-	if err != nil {
-		return nil, err
-	}
-	policies, notes := loadPolicies(conn, root, nil)
-	var soms []gpo.SOM
-	if ss, err := sites(conn, cfg); err == nil {
-		soms = append(soms, ss...)
-	}
-	res, err := conn.Search(ldap.SearchRequest{BaseDN: root, Scope: ldap.ScopeSubtree, Filter: "(gPLink=*)", Attributes: []string{"gPLink", "gPOptions", "objectClass"}, PageSize: 1000})
-	if err != nil {
-		return nil, err
-	}
-	for _, e := range res.Entries {
-		kind := "ou"
-		for _, c := range e.Attributes["objectClass"] {
-			if strings.EqualFold(c, "domainDNS") || strings.EqualFold(c, "domain") {
-				kind = "domain"
-			}
-		}
-		s := gpo.SOM{DN: e.DN, Kind: kind, Name: gpo.NameOf(e.DN, kind)}
-		if v := e.Attributes["gPLink"]; len(v) > 0 {
-			s.Links = gpo.ParseGPLink(v[0])
-		}
-		if v := e.Attributes["gPOptions"]; len(v) > 0 && strings.TrimSpace(v[0]) == "1" {
-			s.BlockInheritance = true
-		}
-		soms = append(soms, s)
-	}
-	inv := gpo.BuildInventory(policies, soms)
-	inv.Notes = notes
-	sids := map[string]bool{}
-	for _, p := range inv.Policies {
-		for _, s := range append(p.Policy.ApplyAllow, p.Policy.ApplyDeny...) {
-			sids[s] = true
-		}
-	}
-	inv.Names = sidNames(conn, root, sids)
-	return inv, nil
-}
-
 // ContainerChain traces policy into a container (the domain or an OU) for
-// users or computers in general, rather than one account. Links whose
-// security filtering depends on group membership come back as "depends".
+// users or computers in general, rather than one account.
 func (a *App) ContainerChain(containerDN string, kind string) (*gpo.Chain, error) {
 	conn, root, cfg, err := a.policyRoots()
 	if err != nil {
@@ -306,55 +343,53 @@ func (a *App) ContainerChain(containerDN string, kind string) (*gpo.Chain, error
 	if kind != "computer" {
 		kind = "user"
 	}
-	var notes []string
-	var path []gpo.SOM
-	if ss, err := sites(conn, cfg); err == nil && len(ss) == 1 {
-		path = append(path, ss[0])
-	} else if err == nil && len(ss) > 1 {
-		notes = append(notes, fmt.Sprintf("The forest has %d sites; site-linked policies are left out of a container trace.", len(ss)))
-	}
-	// PathFromDN lists the containers above an object, so ask for a
-	// pretend child of the container to include the container itself.
-	for _, cdn := range gpo.PathFromDN("CN=x,"+containerDN, root) {
-		k := "ou"
-		if strings.EqualFold(cdn, root) {
-			k = "domain"
-		}
-		s, err := somFor(conn, cdn, k)
-		if err != nil {
-			notes = append(notes, "Could not read "+cdn+": "+err.Error())
-			continue
-		}
-		path = append(path, s)
-	}
-	linked := map[string]bool{}
-	for _, s := range path {
-		for _, l := range s.Links {
-			linked[strings.ToLower(l.PolicyDN)] = true
-		}
-	}
-	policies, pnotes := loadPolicies(conn, root, linked)
+	path, notes := a.pathFor(conn, root, cfg, containerDN, true, kind, "")
+	policies, pnotes := a.policies(conn, root)
 	notes = append(notes, pnotes...)
 	chain := gpo.Resolve(containerDN, kind, path, policies, nil)
-	chain.Notes = append(notes, "A container trace cannot know group membership, so links with security filtering are marked as depending on it. Open a row for the exact answer.")
-	sids := map[string]bool{}
-	for _, e := range chain.Entries {
-		for _, s := range append(e.Policy.ApplyAllow, e.Policy.ApplyDeny...) {
-			sids[s] = true
-		}
-	}
-	chain.Names = sidNames(conn, root, sids)
+	chain.Notes = append(notes, "A container trace cannot know group membership, so links with security filtering are marked as depending on it. Trace a person for the exact answer.")
+	chain.Names = trusteeNames(conn, root, chain.Entries)
 	return chain, nil
 }
 
+// policyCache keeps the policy set for a minute so a map, a trace and a
+// list opened together read CN=Policies once.
+type policyCache struct {
+	mu    sync.Mutex
+	root  string
+	at    time.Time
+	set   map[string]gpo.Policy
+	notes []string
+}
+
+var policySet policyCache
+
+func (a *App) policies(conn *ldap.Conn, root string) (map[string]gpo.Policy, []string) {
+	policySet.mu.Lock()
+	defer policySet.mu.Unlock()
+	if policySet.root == root && time.Since(policySet.at) < time.Minute && policySet.set != nil {
+		return policySet.set, policySet.notes
+	}
+	set, notes := loadPolicies(conn, root)
+	policySet.root, policySet.at, policySet.set, policySet.notes = root, time.Now(), set, notes
+	return set, notes
+}
+
+func forgetPolicies() {
+	policySet.mu.Lock()
+	policySet.at = time.Time{}
+	policySet.mu.Unlock()
+}
+
 // PolicyMap returns every container that can carry policy (site when there
-// is one, the domain, every OU) with its links and the accounts directly in
-// it, so the frontend can draw the tree.
+// is one, the domain, every OU) with its links, marked for relevance. No
+// counts: those come from CountUnder when a container is picked.
 func (a *App) PolicyMap() (*gpo.Map, error) {
 	conn, root, cfg, err := a.policyRoots()
 	if err != nil {
 		return nil, err
 	}
+	forgetPolicies()
 	m := &gpo.Map{}
 	domainParent := ""
 	if ss, err := sites(conn, cfg); err == nil && len(ss) == 1 {
@@ -382,41 +417,112 @@ func (a *App) PolicyMap() (*gpo.Map, error) {
 		}
 		m.Nodes = append(m.Nodes, n)
 	}
-	// Direct counts: users and computers bucketed onto the nearest container.
-	index := map[string]int{}
-	known := map[string]bool{}
-	for i, n := range m.Nodes {
-		index[strings.ToLower(n.DN)] = i
-		known[strings.ToLower(n.DN)] = true
-	}
-	count := func(filter string, bump func(*gpo.MapNode)) {
-		res, err := conn.Search(ldap.SearchRequest{BaseDN: root, Scope: ldap.ScopeSubtree, Filter: filter, Attributes: []string{"objectClass"}, PageSize: 1000})
-		if err != nil {
-			m.Notes = append(m.Notes, "Could not count accounts: "+err.Error())
-			return
-		}
-		for _, e := range res.Entries {
-			c := gpo.NearestContainer(e.DN, known)
-			if i, ok := index[strings.ToLower(c)]; ok {
-				bump(&m.Nodes[i])
-			}
-		}
-	}
-	count("(&(objectCategory=person)(objectClass=user))", func(n *gpo.MapNode) { n.Users++ })
-	count("(objectCategory=computer)", func(n *gpo.MapNode) { n.Computers++ })
 	gpo.SortNodes(m.Nodes)
+	gpo.MarkRelevant(m.Nodes)
 	for i := range m.Nodes {
 		if m.Nodes[i].Links == nil {
 			m.Nodes[i].Links = []gpo.Link{}
 		}
 	}
-	m.Policies, m.Notes = loadPolicies(conn, root, nil)
+	set, notes := a.policies(conn, root)
+	m.Policies = set
+	m.Notes = append(m.Notes, notes...)
 	sids := map[string]bool{}
-	for _, p := range m.Policies {
+	for _, p := range set {
 		for _, s := range append(p.ApplyAllow, p.ApplyDeny...) {
 			sids[s] = true
 		}
 	}
 	m.Names = sidNames(conn, root, sids)
 	return m, nil
+}
+
+// Counts is how many users and computers sit under a container.
+type Counts struct {
+	DN        string `json:"dn"`
+	Users     int    `json:"users"`
+	Computers int    `json:"computers"`
+	Truncated bool   `json:"truncated"`
+}
+
+var countCache = struct {
+	mu sync.Mutex
+	m  map[string]Counts
+	at map[string]time.Time
+}{m: map[string]Counts{}, at: map[string]time.Time{}}
+
+// CountUnder counts the users and computers in a container's subtree. DN-only
+// pages keep it cheap; the answer is kept for five minutes.
+func (a *App) CountUnder(dn string) (*Counts, error) {
+	conn, _, _, err := a.policyRoots()
+	if err != nil {
+		return nil, err
+	}
+	key := strings.ToLower(dn)
+	countCache.mu.Lock()
+	if c, ok := countCache.m[key]; ok && time.Since(countCache.at[key]) < 5*time.Minute {
+		countCache.mu.Unlock()
+		return &c, nil
+	}
+	countCache.mu.Unlock()
+	c := Counts{DN: dn}
+	for _, q := range []struct {
+		filter string
+		into   *int
+	}{{"(&(objectCategory=person)(objectClass=user))", &c.Users}, {"(objectCategory=computer)", &c.Computers}} {
+		res, err := conn.Search(ldap.SearchRequest{BaseDN: dn, Scope: ldap.ScopeSubtree, Filter: q.filter, Attributes: []string{"1.1"}, PageSize: 1000, SizeLimit: 100000})
+		if err != nil {
+			return nil, err
+		}
+		*q.into = res.Count
+		c.Truncated = c.Truncated || res.Truncated
+	}
+	countCache.mu.Lock()
+	countCache.m[key], countCache.at[key] = c, time.Now()
+	countCache.mu.Unlock()
+	return &c, nil
+}
+
+// PolicyInventory lists every policy in the domain and where it is linked.
+func (a *App) PolicyInventory() (*gpo.Inventory, error) {
+	conn, root, cfg, err := a.policyRoots()
+	if err != nil {
+		return nil, err
+	}
+	forgetPolicies()
+	set, notes := a.policies(conn, root)
+	var soms []gpo.SOM
+	if ss, err := sites(conn, cfg); err == nil {
+		soms = append(soms, ss...)
+	}
+	res, err := conn.Search(ldap.SearchRequest{BaseDN: root, Scope: ldap.ScopeSubtree, Filter: "(gPLink=*)", Attributes: []string{"gPLink", "gPOptions", "objectClass"}, PageSize: 1000})
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range res.Entries {
+		kind := "ou"
+		for _, c := range e.Attributes["objectClass"] {
+			if strings.EqualFold(c, "domainDNS") || strings.EqualFold(c, "domain") {
+				kind = "domain"
+			}
+		}
+		s := gpo.SOM{DN: e.DN, Kind: kind, Name: gpo.NameOf(e.DN, kind)}
+		if v := e.Attributes["gPLink"]; len(v) > 0 {
+			s.Links = gpo.ParseGPLink(v[0])
+		}
+		if v := e.Attributes["gPOptions"]; len(v) > 0 && strings.TrimSpace(v[0]) == "1" {
+			s.BlockInheritance = true
+		}
+		soms = append(soms, s)
+	}
+	inv := gpo.BuildInventory(set, soms)
+	inv.Notes = notes
+	sids := map[string]bool{}
+	for _, p := range inv.Policies {
+		for _, s := range append(p.Policy.ApplyAllow, p.Policy.ApplyDeny...) {
+			sids[s] = true
+		}
+	}
+	inv.Names = sidNames(conn, root, sids)
+	return inv, nil
 }

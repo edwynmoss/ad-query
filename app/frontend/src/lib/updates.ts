@@ -29,6 +29,7 @@ export async function appVersion(): Promise<string> {
 
 /** Check once. `manual` reports "up to date" too; automatic checks stay silent unless there is news. */
 export async function offerUpdate(manual: boolean): Promise<void> {
+  if (!manual && /dev/.test(await appVersion())) return; // a dev build is never behind
   if (installing || !hasRuntime()) {
     if (manual && !hasRuntime()) toast.info("Updates are checked in the installed app.");
     return;

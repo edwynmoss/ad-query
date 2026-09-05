@@ -101,13 +101,14 @@ await step("row: login, risk and security sections", async () => {
   await page.waitForTimeout(300);
   await shot(page, "l06d-row-security");
   await page.locator(".ledger-record-switch").getByRole("tab", { name: "Policies" }).click();
-  await page.getByText(/How policy flows down/).waitFor({ timeout: 30000 });
+  await page.locator(".ledger-headline").waitFor({ timeout: 30000 });
   await page.locator(".ledger-flow-result").waitFor({ timeout: 30000 });
   const chain = await page.locator(".ledger-record-body").innerText();
-  if (!/Corporate Baseline\s*enforced\s*applies\s*1/i.test(chain)) throw new Error("Corporate Baseline should apply first: " + chain.slice(0, 300));
-  if (!/VPN Client Settings\s*denied to Sales Team/i.test(chain)) throw new Error("VPN Client Settings should be denied to Sales Team: " + chain.slice(0, 500));
-  if (!/Sales Printers\s*link disabled/i.test(chain)) throw new Error("Sales Printers should be link disabled");
-  if (!/Terry Wong\s*user/i.test(chain)) throw new Error("target station missing");
+  if (!/Terry Wong gets \d+ policies\. \d+ more are linked above them but never arrive\./.test(chain)) throw new Error("headline: " + chain.slice(0, 200));
+  if (!/Corporate Baseline\s*enforced, applies\s*1/i.test(chain)) throw new Error("Corporate Baseline should apply first: " + chain.slice(0, 400));
+  if (!/VPN Client Settings\s*would apply, but Sales Team is denied it/i.test(chain)) throw new Error("VPN Client Settings sentence: " + chain.slice(0, 600));
+  if (!/Sales Printers\s*the link is switched off on Sales/i.test(chain)) throw new Error("Sales Printers sentence");
+  if (!/How this is worked out/.test(chain)) throw new Error("explainer missing");
   await shot(page, "l06e-row-policies");
   await page.getByRole("tab", { name: "Attributes" }).click();
 });
@@ -153,25 +154,38 @@ await step("licences register asks for 365", async () => {
 
 await step("policies register lists every policy and its links", async () => {
   await page.locator(".ledger-tabs").getByRole("tab", { name: "Policies" }).click();
+  await page.getByPlaceholder("A person, a computer or a container").waitFor({ timeout: 10000 });
+  await shot(page, "l15-policies-home");
+  // Ask about Finance: a container trace with the block.
+  await page.getByPlaceholder("A person, a computer or a container").fill("Finance");
+  await page.locator(".ledger-line", { hasText: "Finance" }).first().waitFor({ timeout: 30000 });
+  await page.locator(".ledger-line", { hasText: "Finance" }).first().click();
+  await page.getByText(/Finance blocks inheritance from above/).waitFor({ timeout: 60000 });
+  const trace = await page.locator(".ledger-qhead, .ledger-trace").allInnerTexts().then((t) => t.join("\n"));
+  if (!/Users in Finance get 2 policies\./.test(trace)) throw new Error("finance headline: " + trace.slice(0, 300));
+  if (!/Corporate Baseline\s*enforced, so it passes the block and applies\s*1/.test(trace)) throw new Error("enforced sentence: " + trace.slice(0, 800));
+  await page.getByText(/\d[\d,]* users?, \d+ computers?/).waitFor({ timeout: 60000 });
+  await shot(page, "l16-policies-trace-finance");
+  // Show on the tree: Finance is revealed, quiet branches are folded.
+  await page.getByRole("button", { name: "Show on the tree" }).click();
   await page.locator(".ledger-map").waitFor({ timeout: 60000 });
-  await page.locator(".ledger-map-side .ledger-flow-result").waitFor({ timeout: 60000 });
   const svg = await page.locator(".ledger-map").evaluate((el) => el.textContent || "");
   for (const n of ["adquery.test", "People", "Sales", "Finance", "Workstations", "Corporate Baseline", "Finance Lockdown"]) if (!svg.includes(n)) throw new Error("map missing " + n);
-  await page.waitForTimeout(300);
-  await shot(page, "l15-policies-map");
-  // Trace into Finance: the block shows and the enforced link passes it.
-  await page.locator(".ledger-map-node", { hasText: "Finance" }).first().locator("circle").click();
-  await page.getByText(/Finance blocks inheritance from above/).waitFor({ timeout: 30000 });
-  const side = await page.locator(".ledger-map-side").innerText();
-  if (!/Corporate Baseline[\s\S]*passes the block/.test(side)) throw new Error("enforced link should pass the block: " + side.slice(0, 400));
-  await shot(page, "l16-policies-map-finance");
-  // The list view still has the orphan and the filtering names.
-  await page.getByRole("tab", { name: "List" }).click();
+  const drawn = await page.locator(".ledger-map-node").count();
+  const meta = await page.locator(".ledger-meta").innerText();
+  log("     map nodes drawn:", drawn, "|", meta.replace(/\s+/g, " ").slice(0, 80));
+  if (/of (\d+) containers/.test(meta) && Number(meta.match(/of (\d+) containers/)[1]) > 100 && drawn > 80) throw new Error("the map should fold quiet branches on a large tree: drawn " + drawn);
+  if (!/more containers with nothing linked/.test(svg) && Number((meta.match(/of (\d+) containers/) || [0, 0])[1]) > 100) throw new Error("no fold shown on a large tree");
+  await shot(page, "l17-policies-map");
+  // A person from the tree page: back to the question, then the list.
+  await page.getByRole("button", { name: "Policies" }).first().click();
+  await page.locator(".ledger-line", { hasText: "All policies" }).click();
   await page.locator(".ledger-table").waitFor({ timeout: 60000 });
   const body = await page.locator(".ledger-register-body").innerText();
-  if (!/Legacy Proxy[\s\S]*not linked/.test(body)) throw new Error("orphan not flagged");
+  if (!/Legacy Proxy[\s\S]*linked nowhere/.test(body)) throw new Error("orphan not flagged");
   if (!/IT Admin Tools[\s\S]*IT Team/.test(body)) throw new Error("security filtering names missing");
-  await shot(page, "l17-policies-list");
+  if (!/never edited/.test(body)) throw new Error("empty policies should be flagged");
+  await shot(page, "l18-policies-list");
 });
 
 await step("bulk lookup from a CSV", async () => {
