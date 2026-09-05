@@ -46,7 +46,7 @@ func LookupUser(doer Doer, token string, identity string) User {
 	id := parseGraphUser(body, &u)
 	u.Exists = true
 
-	// Licenses (best-effort — a permission gap here shouldn't fail the row).
+	// Licenses (best-effort, a permission gap here shouldn't fail the row).
 	if id != "" {
 		lbody, lstatus, lerr := graphGet(doer, token, "/users/"+url.PathEscape(id)+"/licenseDetails?$select=skuPartNumber")
 		if lerr == nil && lstatus == http.StatusOK {

@@ -1,6 +1,6 @@
 package ldap
 
-// Ad-hoc scale benchmark (not part of the normal suite — guarded by RUN_SCALE).
+// Ad-hoc scale benchmark (not part of the normal suite, guarded by RUN_SCALE).
 // Measures the full path the app's App.Search uses against the 25k OpenLDAP:
 // paged search → build SearchResult → JSON-marshal it (what crosses the Wails
 // bridge to the webview). Run with:

@@ -38,7 +38,7 @@ export function SidePane({ mode, onMode, entries, columns, factsColumn, onPickCo
           ? <ColumnFacts key={col} column={col} columns={columns} entries={entries} onPickColumn={onPickColumn} onFilterValue={onFilterValue} onSort={onSort} onHide={onHide} onCopy={onCopy} />
           : <p className="ledger-note p-4">Pick some columns to see facts about them.</p>)}
         {mode === "row" && (selected
-          ? <InspectorBody key={selected.dn} entry={selected} isAD={isAD} onClose={onClearRow} embedded />
+          ? <InspectorBody key={selected.dn} entry={selected} isAD={isAD} onClose={onClearRow} />
           : <p className="ledger-note p-4">Click a line in the ledger to read the whole record here. Use the arrow keys to move between lines.</p>)}
       </div>
     </aside>

@@ -170,10 +170,10 @@ func (a *App) accessToken() (string, error) {
 			a.mu.Unlock()
 			return fresh.AccessToken, nil
 		}
-		// refresh failed — fall through to whatever we have (may still be valid)
+		// refresh failed, fall through to whatever we have (may still be valid)
 	}
 	if !tok.Valid() {
-		return "", fmt.Errorf("Microsoft 365 session expired — sign in again")
+		return "", fmt.Errorf("Microsoft 365 session expired, sign in again")
 	}
 	return tok.AccessToken, nil
 }
@@ -354,7 +354,7 @@ func (a *App) Connect(opts ldap.ConnectOptions) (*ldap.ServerInfo, error) {
 }
 
 // AccurateLastLogon queries every domain controller for the user's (non-
-// replicated) lastLogon and returns the newest — the reliable "last login".
+// replicated) lastLogon and returns the newest, the reliable "last login".
 // Falls back to the connected host if DC enumeration isn't possible.
 func (a *App) AccurateLastLogon(dn string) (*ldap.LastLogonReport, error) {
 	a.mu.Lock()
@@ -366,7 +366,7 @@ func (a *App) AccurateLastLogon(dn string) (*ldap.LastLogonReport, error) {
 	}
 	dcs, err := conn.DomainControllers()
 	if err != nil || len(dcs) == 0 {
-		dcs = []string{opts.Host} // not AD / can't enumerate — use the connected server
+		dcs = []string{opts.Host} // not AD / can't enumerate, use the connected server
 	}
 	return ldap.AccurateLastLogon(opts, dcs, dn), nil
 }

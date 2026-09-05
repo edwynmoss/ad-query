@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thanks for testing. Please don't paste screenshots or exports that
-        contain real user data — a description of the problem is enough.
+        contain real user data, a description of the problem is enough.
   - type: textarea
     id: what-you-did
     attributes:

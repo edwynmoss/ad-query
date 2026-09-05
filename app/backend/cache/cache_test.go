@@ -89,7 +89,7 @@ func TestEncryptionAtRest(t *testing.T) {
 	// The plaintext marker must not appear anywhere in the on-disk database.
 	for _, f := range []string{path, path + "-wal"} {
 		if b, err := os.ReadFile(f); err == nil && bytes.Contains(b, []byte(marker)) {
-			t.Fatalf("plaintext %q found in %s — not encrypted at rest", marker, f)
+			t.Fatalf("plaintext %q found in %s, not encrypted at rest", marker, f)
 		}
 	}
 

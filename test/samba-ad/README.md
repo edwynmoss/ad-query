@@ -1,17 +1,17 @@
 # Samba AD test directory
 
 A **real Active Directory domain controller** (Samba, with a Kerberos KDC) for
-validating AD Query's "AD mode" features and the SSO/Kerberos auth path — the
+validating AD Query's "AD mode" features and the SSO/Kerberos auth path, the
 things OpenLDAP can't exercise:
 
-- `nTSecurityDescriptor` (ACLs) — the SD-flags control fetch + the security-descriptor parser
+- `nTSecurityDescriptor` (ACLs), the SD-flags control fetch + the security-descriptor parser
 - `userAccountControl` flags, `sAMAccountName`, `objectCategory`
 - AD object-type filters, the AD subschema, RootDSE AD detection
 - **Kerberos / GSSAPI bind** against a live KDC (port 88)
 
-> Image: [`diegogslomp/samba-ad-dc`](https://hub.docker.com/r/diegogslomp/samba-ad-dc) — a full Samba AD DC.
+> Image: [`diegogslomp/samba-ad-dc`](https://hub.docker.com/r/diegogslomp/samba-ad-dc), a full Samba AD DC.
 > Runs a KDC, so the GSSAPI/Kerberos bind is testable with explicit credentials. (True zero-prompt
-> Windows SSPI SSO still requires a domain-joined host — no container can supply the host's ticket.)
+> Windows SSPI SSO still requires a domain-joined host, no container can supply the host's ticket.)
 > The image already sets `ldap server require strong auth = No`, so plain-LDAP simple binds work for dev.
 
 ## Usage
@@ -31,7 +31,7 @@ docker compose down -v       # wipe
 | Base DN | `dc=adquery,dc=test` |
 | Bind | `administrator@adquery.test` |
 | Password | `AdminPass123!` |
-| Sample users | `jdoe`, `ckent`, `llane` (disabled) — password `Passw0rd!` |
+| Sample users | `jdoe`, `ckent`, `llane` (disabled), password `Passw0rd!` |
 
 Ports (1389/1636) differ from the OpenLDAP stack (3389/6636) so both can run at once.
 The KDC is on **88** (tcp+udp) and kpasswd on **464**.
@@ -46,9 +46,9 @@ KDC:     127.0.0.1:88         Service principal: ldap/dc1.adquery.test
 
 ## Validated by
 
-- `app/backend/ldap/samba_integration_test.go` — AD detection, AD-mode user filter,
+- `app/backend/ldap/samba_integration_test.go`, AD detection, AD-mode user filter,
   and parsing a **real** `nTSecurityDescriptor`.
-- `app/backend/ldap/samba_kerberos_test.go` — a real **SASL GSSAPI / Kerberos bind**
+- `app/backend/ldap/samba_kerberos_test.go`, a real **SASL GSSAPI / Kerberos bind**
   against the KDC, then an authenticated search.
 
 Run: `go test ./backend/ldap/ -run Samba -count=1`

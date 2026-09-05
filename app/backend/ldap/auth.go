@@ -11,7 +11,7 @@ import (
 
 // kerberosBind performs a SASL GSSAPI bind using explicit Kerberos credentials
 // via a pure-Go client (gokrb5). This works cross-platform and, unlike SSPI,
-// does not require the host to be domain-joined — it talks to the KDC directly,
+// does not require the host to be domain-joined, it talks to the KDC directly,
 // which is what makes it testable against the Samba AD container.
 func kerberosBind(conn *goldap.Conn, opts ConnectOptions) error {
 	realm := strings.ToUpper(opts.Realm)
@@ -45,7 +45,7 @@ func kerberosBind(conn *goldap.Conn, opts ConnectOptions) error {
 
 // writeKrb5Conf writes a minimal krb5.conf pointing at a single KDC. TCP is
 // forced (udp_preference_limit = 1) because AD tickets are large and UDP can
-// fragment — also more reliable across Docker port mapping.
+// fragment, also more reliable across Docker port mapping.
 func writeKrb5Conf(realm, kdc string) (path string, cleanup func(), err error) {
 	conf := fmt.Sprintf(`[libdefaults]
   default_realm = %s
