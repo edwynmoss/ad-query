@@ -204,6 +204,8 @@
   .ledger-tab.is-on { color: var(--color-ink); font-weight: 500; }
   .ledger-tab.is-on::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1.5px; background: var(--color-ink); }
   .ledger-tab-count { margin-left: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-3); }
+  .ledger-tab.is-unavailable { color: var(--color-line-strong); }
+  .ledger-tab.is-unavailable:hover { color: var(--color-ink-3); }
 
   /* heading of a query */
   .ledger-qhead { padding: 22px 26px 14px; border-bottom: 1px solid var(--color-line); flex-shrink: 0; }

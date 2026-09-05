@@ -227,12 +227,12 @@ function App() {
 
       {/* The sheet */}
       <main className="ledger-sheet">
-        <Registers active={register} onChange={openRegister} savedCount={saved.length} />
+        <Registers active={register} onChange={openRegister} savedCount={saved.length} isAD={isAD} />
 
         {register === "stale" ? (
           <Suspense fallback={null}><StaleRegister isAD={isAD} baseDN={req.baseDN} signedIn365={m365.signedIn} onOpen={openQuery} /></Suspense>
         ) : register === "privileged" ? (
-          <Suspense fallback={null}><PrivilegedRegister baseDN={req.baseDN} /></Suspense>
+          <Suspense fallback={null}><PrivilegedRegister baseDN={req.baseDN} isAD={isAD} /></Suspense>
         ) : register === "licences" ? (
           <Suspense fallback={null}><LicencesRegister isAD={isAD} baseDN={req.baseDN} signedIn365={m365.signedIn} onConnect365={() => setShow365(true)} /></Suspense>
         ) : register === "bulk" ? (
