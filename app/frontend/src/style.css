@@ -299,6 +299,8 @@
   .ledger-facts-dl { display: grid; grid-template-columns: 1fr auto; gap: 5px 12px; margin-top: 16px; font-size: 12.5px; }
   .ledger-facts-dl dt { color: var(--color-ink-2); }
   .ledger-facts-dl dd { text-align: right; color: var(--color-ink); font-size: 12px; }
+  .ledger-facts-dl.is-wide { grid-template-columns: max-content 1fr; gap: 6px 24px; }
+  .ledger-facts-dl.is-wide dd { text-align: left; }
   .ledger-facts .ledger-h4 { margin-top: 22px; }
   .ledger-leaders { display: flex; flex-direction: column; }
   .ledger-leader { display: grid; grid-template-columns: minmax(0, auto) 1fr auto 34px; align-items: baseline; gap: 6px; padding: 4px 0; font-size: 12.5px; text-align: left; color: var(--color-ink); cursor: pointer; }
@@ -482,6 +484,7 @@
   .ledger-map-pol { font-size: 11.5px; color: var(--color-ink-2); white-space: nowrap; }
   .ledger-map-pol.is-out { color: var(--color-ink-3); text-decoration: line-through; }
   .ledger-map-pol.is-warn { color: var(--color-warning); }
+  .ledger-map-pol.is-link:hover { color: var(--color-brand); text-decoration: underline; text-decoration-color: var(--color-line-strong); text-underline-offset: 3px; }
   .ledger-map-fold { font-size: 11.5px; color: var(--color-ink-3); text-decoration: underline; text-decoration-color: var(--color-line-strong); text-underline-offset: 3px; cursor: pointer; padding: 3px 0 3px 19px; white-space: nowrap; }
   .ledger-map-fold:hover { color: var(--color-ink); }
   .ledger-map-layout { display: flex; min-height: 0; flex: 1; }

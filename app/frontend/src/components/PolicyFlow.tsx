@@ -86,9 +86,10 @@ interface Props {
   targetLabel: string;
   targetKind: string;
   onPickStation?: (dn: string) => void;
+  onPickPolicy?: (dn: string) => void;
 }
 
-export function PolicyFlow({ chain, targetLabel, targetKind, onPickStation }: Props) {
+export function PolicyFlow({ chain, targetLabel, targetKind, onPickStation, onPickPolicy }: Props) {
   const path = chain.path ?? [];
   const entries = chain.entries ?? [];
   const byStation = new Map<string, gpo.Entry[]>();
@@ -120,7 +121,9 @@ export function PolicyFlow({ chain, targetLabel, targetKind, onPickStation }: Pr
                   const fate = fateOf(e, chain);
                   return (
                     <div key={e.policy.dn + e.verdict} className={"ledger-flow-pol" + (out ? " is-out" : "")} title={e.policy.dn}>
-                      <span className="ledger-flow-who">{e.policy.name}</span>
+                      <span className="ledger-flow-who">{onPickPolicy && e.verdict !== "not-found"
+                        ? <button className="ledger-flow-pick" onClick={() => onPickPolicy(e.policy.dn)}>{e.policy.name}</button>
+                        : e.policy.name}</span>
                       <span className={"ledger-flow-fate" + (fate.tone ? " is-" + fate.tone : "")}>
                         {fate.text}{e.precedence > 0 && <b className="mono"> {e.precedence}{e.verdict === "depends" ? "?" : ""}</b>}
                       </span>

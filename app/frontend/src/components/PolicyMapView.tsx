@@ -16,10 +16,11 @@ interface Props {
   revealDN?: string | null;       // a container to show even if folded away
   selectedDN?: string | null;
   onSelect: (dn: string) => void;
+  onPickPolicy?: (dn: string) => void;
   showAll?: boolean;
 }
 
-type ContainerData = { node: gpo.MapNode; lines: string[]; onPath: boolean; selected: boolean; kindLabel: string; policies: { text: string; off: boolean }[] };
+type ContainerData = { node: gpo.MapNode; lines: string[]; onPath: boolean; selected: boolean; kindLabel: string; policies: { text: string; off: boolean; dn: string }[]; onPickPolicy?: (dn: string) => void };
 type FoldData = { parentDN: string; count: number; open: boolean };
 
 const LINE = 18;
@@ -43,7 +44,10 @@ function ContainerNode({ data }: NodeProps<Node<ContainerData>>) {
           <Handle type="source" position={Position.Right} className="ledger-map-handle" style={{ right: -14, top: "50%", left: "auto" }} />
         </div>
         {n.blockInheritance && <div className="ledger-map-pol is-warn">blocks inheritance from above</div>}
-        {data.policies.map((p, i) => <div key={i} className={"ledger-map-pol" + (p.off ? " is-out" : "")}>{p.text}</div>)}
+        {data.policies.map((p, i) => (
+          <div key={i} className={"ledger-map-pol" + (p.off ? " is-out" : "") + (data.onPickPolicy ? " is-link" : "")}
+            onClick={data.onPickPolicy ? (ev) => { ev.stopPropagation(); data.onPickPolicy!(p.dn); } : undefined}>{p.text}</div>
+        ))}
       </div>
     </div>
   );
@@ -68,7 +72,7 @@ export function PolicyMapView(props: Props) {
   );
 }
 
-function Tree({ map, expanded, onToggle, revealDN, selectedDN, onSelect, showAll }: Props) {
+function Tree({ map, expanded, onToggle, revealDN, selectedDN, onSelect, onPickPolicy, showAll }: Props) {
   const { fitView } = useReactFlow();
 
   const { nodes, edges } = useMemo(() => {
@@ -106,13 +110,13 @@ function Tree({ map, expanded, onToggle, revealDN, selectedDN, onSelect, showAll
 
     const walk = (n: gpo.MapNode) => {
       const key = n.dn.toLowerCase();
-      const policies = (n.links ?? []).map((l) => ({ text: cut(policyName(l.policyDN), 30) + (l.enforced ? ", enforced" : "") + (l.disabled ? ", link switched off" : ""), off: l.disabled }));
+      const policies = (n.links ?? []).map((l) => ({ text: cut(policyName(l.policyDN), 30) + (l.enforced ? ", enforced" : "") + (l.disabled ? ", link switched off" : ""), off: l.disabled, dn: l.policyDN }));
       const lines = 1 + policies.length + (n.blockInheritance ? 1 : 0);
       const height = 10 + lines * LINE + 6;
       const kindLabel = n.kind === "ou" ? "" : n.kind;
       const width = widthOf(cut(n.name, 26), kindLabel, policies.map((p) => p.text), n.blockInheritance);
       g.setNode(key, { width, height });
-      rfNodes.push({ id: key, type: "container", position: { x: 0, y: 0 }, width, height, data: { node: n, lines: [], onPath: onPath.has(key), selected: selectedDN?.toLowerCase() === key, kindLabel, policies } as ContainerData, draggable: false, selectable: false });
+      rfNodes.push({ id: key, type: "container", position: { x: 0, y: 0 }, width, height, data: { node: n, lines: [], onPath: onPath.has(key), selected: selectedDN?.toLowerCase() === key, kindLabel, policies, onPickPolicy } as ContainerData, draggable: false, selectable: false });
       const children = (kids.get(key) ?? []).slice().sort((a, b) => a.name.localeCompare(b.name));
       const shown = children.filter(visible);
       const hidden = children.length - shown.length;
@@ -148,7 +152,7 @@ function Tree({ map, expanded, onToggle, revealDN, selectedDN, onSelect, showAll
       n.position = { x: rankLeft.get(Math.round(p.x)) ?? p.x - (n.width ?? 200) / 2, y: p.y - (n.height ?? 24) / 2 };
     }
     return { nodes: rfNodes, edges: rfEdges };
-  }, [map, expanded, revealDN, selectedDN, showAll]);
+  }, [map, expanded, revealDN, selectedDN, showAll, onPickPolicy]);
 
   // Fit once the nodes have been measured; a second pass catches late layout.
   const shape = nodes.map((n) => n.id).join("|");

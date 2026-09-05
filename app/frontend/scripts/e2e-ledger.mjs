@@ -166,6 +166,13 @@ await step("policies register lists every policy and its links", async () => {
   if (!/Corporate Baseline\s*enforced, so it passes the block and applies\s*1/.test(trace)) throw new Error("enforced sentence: " + trace.slice(0, 800));
   await page.getByText(/\d[\d,]* users?, \d+ computers?/).waitFor({ timeout: 60000 });
   await shot(page, "l16-policies-trace-finance");
+  // Drill down: the policy's own page, then back.
+  await page.locator(".ledger-trace-flow").getByRole("button", { name: "Finance Lockdown" }).click();
+  await page.getByText(/Finance Lockdown is linked at Finance/).waitFor({ timeout: 30000 });
+  await page.locator("dt", { hasText: "SYSVOL path" }).waitFor({ timeout: 5000 });
+  await shot(page, "l16b-policy-page");
+  await page.locator(".ledger-line").getByRole("button", { name: "Finance" }).first().click();
+  await page.getByText(/Finance blocks inheritance from above/).waitFor({ timeout: 60000 });
   // Show on the tree: Finance is revealed, quiet branches are folded.
   await page.getByRole("button", { name: "Show on the tree" }).click();
   await page.locator(".ledger-map").waitFor({ timeout: 60000 });
@@ -178,6 +185,23 @@ await step("policies register lists every policy and its links", async () => {
   if (!/more containers with nothing linked/.test(svg) && Number((meta.match(/of (\d+) containers/) || [0, 0])[1]) > 100) throw new Error("no fold shown on a large tree");
   await shot(page, "l17-policies-map");
   // A person from the tree page: back to the question, then the list.
+  await page.getByRole("button", { name: "Policies" }).first().click();
+  await page.locator(".ledger-line", { hasText: "All policies" }).click();
+  await page.locator(".ledger-table").waitFor({ timeout: 60000 });
+  await page.locator(".ledger-table").getByRole("button", { name: "IT Admin Tools" }).click();
+  await page.getByText(/IT Admin Tools is linked at IT\. It applies to IT Team\./).waitFor({ timeout: 30000 });
+  await page.getByRole("button", { name: "people here" }).click();
+  await page.locator(".ledger-meta b").waitFor({ timeout: 60000 });
+  const eyebrow = await page.locator(".ledger-eyebrow").first().innerText();
+  if (!/Users\s+in\s+IT/i.test(eyebrow)) throw new Error("people-in should open Search in IT: " + eyebrow);
+  await shot(page, "l16c-people-in-it");
+  // Row → full page.
+  await page.locator(".ledger-row").first().click();
+  await page.locator(".ledger-record-switch").getByRole("tab", { name: "Policies" }).click();
+  await page.getByRole("button", { name: "Open as a page" }).click();
+  await page.getByText(/gets \d+ policies/).waitFor({ timeout: 60000 });
+  await page.getByRole("button", { name: "Open the row" }).waitFor({ timeout: 5000 });
+  await shot(page, "l16d-row-as-page");
   await page.getByRole("button", { name: "Policies" }).first().click();
   await page.locator(".ledger-line", { hasText: "All policies" }).click();
   await page.locator(".ledger-table").waitFor({ timeout: 60000 });
