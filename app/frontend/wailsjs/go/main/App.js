@@ -86,6 +86,14 @@ export function M365StartSignIn(arg1, arg2) {
   return window['go']['main']['App']['M365StartSignIn'](arg1, arg2);
 }
 
+export function PolicyChain(arg1) {
+  return window['go']['main']['App']['PolicyChain'](arg1);
+}
+
+export function PolicyInventory() {
+  return window['go']['main']['App']['PolicyInventory']();
+}
+
 export function SchemaAttributes() {
   return window['go']['main']['App']['SchemaAttributes']();
 }

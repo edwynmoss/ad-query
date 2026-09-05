@@ -9,12 +9,14 @@ import { formatValue } from "../lib/format";
 import { assessRisk, RISK_ATTRS } from "../lib/risk";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { labelFor } from "@/lib/attrLabels";
+import { PoliciesSection } from "./PoliciesSection";
 
-type Section = "attrs" | "login" | "risk" | "acl";
+type Section = "attrs" | "login" | "risk" | "policies" | "acl";
 const SECTIONS: Array<{ key: Section; label: string }> = [
   { key: "attrs", label: "Attributes" },
   { key: "login", label: "Login" },
   { key: "risk", label: "Risk" },
+  { key: "policies", label: "Policies" },
   { key: "acl", label: "Security" },
 ];
 
@@ -56,6 +58,7 @@ export function InspectorBody({ entry, isAD, onClose }: { entry: ldap.Entry; isA
         )}
         {section === "login" && <LoginSection entry={entry} isAD={isAD} />}
         {section === "risk" && <RiskSection dn={entry.dn} />}
+        {section === "policies" && <PoliciesSection dn={entry.dn} isAD={isAD} />}
         {section === "acl" && <AclSection dn={entry.dn} />}
       </div>
     </div>

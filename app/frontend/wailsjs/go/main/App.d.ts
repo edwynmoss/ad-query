@@ -5,6 +5,7 @@ import {update} from '../models';
 import {sysenv} from '../models';
 import {adtypes} from '../models';
 import {m365} from '../models';
+import {gpo} from '../models';
 import {main} from '../models';
 
 export function AccurateLastLogon(arg1:string):Promise<ldap.LastLogonReport>;
@@ -48,6 +49,10 @@ export function M365SignOut():Promise<void>;
 export function M365SignedIn():Promise<boolean>;
 
 export function M365StartSignIn(arg1:string,arg2:string):Promise<m365.DeviceCode>;
+
+export function PolicyChain(arg1:string):Promise<gpo.Chain>;
+
+export function PolicyInventory():Promise<gpo.Inventory>;
 
 export function SchemaAttributes():Promise<Array<string>>;
 

@@ -28,6 +28,7 @@ const M365Dialog = lazy(() => import("./components/M365Dialog").then((m) => ({ d
 const StaleRegister = lazy(() => import("./components/registers/StaleRegister").then((m) => ({ default: m.StaleRegister })));
 const PrivilegedRegister = lazy(() => import("./components/registers/PrivilegedRegister").then((m) => ({ default: m.PrivilegedRegister })));
 const LicencesRegister = lazy(() => import("./components/registers/LicencesRegister").then((m) => ({ default: m.LicencesRegister })));
+const PoliciesRegister = lazy(() => import("./components/registers/PoliciesRegister").then((m) => ({ default: m.PoliciesRegister })));
 const BulkRegister = lazy(() => import("./components/registers/BulkRegister").then((m) => ({ default: m.BulkRegister })));
 
 const LIC_COL = "Microsoft 365 licenses";
@@ -235,6 +236,8 @@ function App() {
           <Suspense fallback={null}><PrivilegedRegister baseDN={req.baseDN} isAD={isAD} /></Suspense>
         ) : register === "licences" ? (
           <Suspense fallback={null}><LicencesRegister isAD={isAD} baseDN={req.baseDN} signedIn365={m365.signedIn} onConnect365={() => setShow365(true)} /></Suspense>
+        ) : register === "policies" ? (
+          <Suspense fallback={null}><PoliciesRegister isAD={isAD} /></Suspense>
         ) : register === "bulk" ? (
           <Suspense fallback={null}><BulkRegister req={req} signedIn365={m365.signedIn} onPickColumns={() => { setRegister("search"); requestPicker("columns"); }} /></Suspense>
         ) : register === "saved" ? (

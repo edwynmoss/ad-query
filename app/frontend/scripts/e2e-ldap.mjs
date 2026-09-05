@@ -38,7 +38,7 @@ await shot(page, "p01-opening");
 
 await step("opening sheet marks the AD registers", async () => {
   const lines = await page.locator(".ledger-lines").last().innerText();
-  if ((lines.match(/needs Active Directory/g) ?? []).length !== 2) throw new Error("expected two AD notes, got: " + lines);
+  if ((lines.match(/needs Active Directory/g) ?? []).length !== 3) throw new Error("expected three AD notes, got: " + lines);
 });
 
 await step("users search runs on plain LDAP", async () => {

@@ -50,6 +50,45 @@ const MOCK = `
     // Newer App methods the shell calls; the mock answers like a fresh, current install.
     SearchCached: (req) => window.go.main.App.Search(req).then((result) => ({ result, fetchedAt: Math.floor(Date.now()/1000), fromCache: false })),
     ClearCache: () => Promise.resolve(),
+    PolicyChain: (dn) => {
+      const pol = (name, extra) => Object.assign({ dn:'CN={'+name+'},CN=Policies,CN=System,DC=adquery,DC=test', guid:'{'+name.replace(/\s+/g,'-').toUpperCase()+'}', name, version:3, path:'', userDisabled:false, computerDisabled:false, wmiFilter:'', applyAllow:['S-1-5-11'], applyDeny:[], aclKnown:true }, extra||{});
+      const ou = (dn.match(/OU=([^,]+)/)||[])[1] || 'People';
+      const path = [
+        { dn:'CN=Default-First-Site-Name,CN=Sites,CN=Configuration,DC=adquery,DC=test', kind:'site', name:'Default-First-Site-Name', links:[], blockInheritance:false },
+        { dn:'DC=adquery,DC=test', kind:'domain', name:'adquery.test', links:[], blockInheritance:false },
+        { dn:'OU=People,DC=adquery,DC=test', kind:'ou', name:'People', links:[], blockInheritance:false },
+        { dn:'OU='+ou+',OU=People,DC=adquery,DC=test', kind:'ou', name:ou, links:[], blockInheritance:false },
+      ];
+      const entries = [
+        { precedence:1, policy:pol('Corporate Baseline'), somDN:path[1].dn, somKind:'domain', somName:'adquery.test', enforced:true, verdict:'applies', reason:'', wmiUnknown:false },
+        { precedence:2, policy:pol(ou+' Drive Maps'), somDN:path[3].dn, somKind:'ou', somName:ou, enforced:false, verdict:'applies', reason:'', wmiUnknown:false },
+        { precedence:3, policy:pol('People Screensaver', { computerDisabled:true }), somDN:path[2].dn, somKind:'ou', somName:'People', enforced:false, verdict:'applies', reason:'', wmiUnknown:false },
+        { precedence:4, policy:pol('Default Domain Policy'), somDN:path[1].dn, somKind:'domain', somName:'adquery.test', enforced:false, verdict:'applies', reason:'', wmiUnknown:false },
+        { precedence:5, policy:pol('Site Time Sync', { wmiFilter:'[adquery.test;{1};0]' }), somDN:path[0].dn, somKind:'site', somName:'Default-First-Site-Name', enforced:false, verdict:'applies', reason:'Has a WMI filter, which only the client can evaluate.', wmiUnknown:true },
+        { precedence:0, policy:pol('VPN Client Settings', { applyDeny:['S-1-5-21-1-1-1-1204'] }), somDN:path[1].dn, somKind:'domain', somName:'adquery.test', enforced:false, verdict:'denied', reason:'Apply Group Policy is denied to S-1-5-21-1-1-1-1204.', wmiUnknown:false },
+        { precedence:0, policy:pol(ou+' Printers'), somDN:path[3].dn, somKind:'ou', somName:ou, enforced:false, verdict:'link-disabled', reason:'The link is disabled on '+ou+'.', wmiUnknown:false },
+      ];
+      return Promise.resolve({ targetDN:dn, targetKind:'user', path, entries, notes:['Read from the directory only: WMI filters are not evaluated, loopback and slow-link processing happen on the client, and the settings inside each policy live in SYSVOL.'], names:{ 'S-1-5-21-1-1-1-1204':'Sales Team' } });
+    },
+    PolicyInventory: () => {
+      const pol = (name, extra) => Object.assign({ dn:'CN={'+name+'},CN=Policies,CN=System,DC=adquery,DC=test', guid:'{'+name.replace(/\s+/g,'-').toUpperCase().slice(0,12)+'-0000-0000-0000-000000000000}', name, version:3, path:'', userDisabled:false, computerDisabled:false, wmiFilter:'', applyAllow:['S-1-5-11'], applyDeny:[], aclKnown:true }, extra||{});
+      const at = (name, kind, extra) => Object.assign({ somDN:name, somKind:kind, somName:name, enforced:false, disabled:false, order:1 }, extra||{});
+      return Promise.resolve({ names:{ 'S-1-5-21-1-1-1-1204':'Sales Team', 'S-1-5-21-1-1-1-1205':'IT Team' }, notes:[], policies:[
+        { policy:pol('Corporate Baseline'), links:[at('adquery.test','domain',{enforced:true})] },
+        { policy:pol('Default Domain Controllers Policy'), links:[at('Domain Controllers','ou')] },
+        { policy:pol('Default Domain Policy'), links:[at('adquery.test','domain')] },
+        { policy:pol('Finance Lockdown'), links:[at('Finance','ou')] },
+        { policy:pol('IT Admin Tools', { applyAllow:['S-1-5-21-1-1-1-1205'] }), links:[at('IT','ou')] },
+        { policy:pol('People Screensaver', { computerDisabled:true }), links:[at('People','ou')] },
+        { policy:pol('Sales Drive Maps'), links:[at('Sales','ou')] },
+        { policy:pol('Sales Printers'), links:[at('Sales','ou',{disabled:true, order:2})] },
+        { policy:pol('Server Config', { userDisabled:true }), links:[at('Servers','ou')] },
+        { policy:pol('Site Time Sync'), links:[at('Default-First-Site-Name','site')] },
+        { policy:pol('VPN Client Settings', { applyDeny:['S-1-5-21-1-1-1-1204'] }), links:[at('adquery.test','domain')] },
+        { policy:pol('Workstation Hardening', { wmiFilter:'[adquery.test;{1};0]' }), links:[at('Workstations','ou')] },
+        { policy:pol('Legacy Proxy'), links:[] },
+      ] });
+    },
     AppVersion: () => Promise.resolve('1.0.0'),
     CheckForUpdate: () => Promise.resolve(null),
     Search: (req) => {
@@ -157,6 +196,9 @@ async function main() {
     await page.getByRole("tab", { name: "Risk" }).click();
     await page.getByText(/Overall/).waitFor();
     await shot(page, "08-risk");
+    await page.locator(".ledger-record-switch").getByRole("tab", { name: "Policies" }).click();
+    await page.getByText("Applies, in order of precedence").waitFor();
+    await shot(page, "17-row-policies");
     await page.getByRole("tab", { name: "Security" }).click();
     await page.getByRole("button", { name: "Read it" }).click();
     await page.getByText(/Access control/).waitFor();
@@ -178,6 +220,10 @@ async function main() {
     await page.getByRole("tab", { name: "Licences" }).click();
     await page.locator(".ledger-table").waitFor();
     await shot(page, "13-licences");
+
+    await page.locator(".ledger-tabs").getByRole("tab", { name: "Policies" }).click();
+    await page.locator(".ledger-table").waitFor();
+    await shot(page, "18-policies");
 
     await page.getByRole("tab", { name: "Bulk lookup" }).click();
     await page.locator('input[type="file"]').setInputFiles(csvPath);

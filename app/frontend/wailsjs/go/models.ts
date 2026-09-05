@@ -63,6 +63,276 @@ export namespace adtypes {
 
 }
 
+export namespace gpo {
+	
+	export class Policy {
+	    dn: string;
+	    guid: string;
+	    name: string;
+	    version: number;
+	    path: string;
+	    userDisabled: boolean;
+	    computerDisabled: boolean;
+	    wmiFilter: string;
+	    applyAllow: string[];
+	    applyDeny: string[];
+	    aclKnown: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Policy(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dn = source["dn"];
+	        this.guid = source["guid"];
+	        this.name = source["name"];
+	        this.version = source["version"];
+	        this.path = source["path"];
+	        this.userDisabled = source["userDisabled"];
+	        this.computerDisabled = source["computerDisabled"];
+	        this.wmiFilter = source["wmiFilter"];
+	        this.applyAllow = source["applyAllow"];
+	        this.applyDeny = source["applyDeny"];
+	        this.aclKnown = source["aclKnown"];
+	    }
+	}
+	export class Entry {
+	    precedence: number;
+	    policy: Policy;
+	    somDN: string;
+	    somKind: string;
+	    somName: string;
+	    enforced: boolean;
+	    verdict: string;
+	    reason: string;
+	    wmiUnknown: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Entry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.precedence = source["precedence"];
+	        this.policy = this.convertValues(source["policy"], Policy);
+	        this.somDN = source["somDN"];
+	        this.somKind = source["somKind"];
+	        this.somName = source["somName"];
+	        this.enforced = source["enforced"];
+	        this.verdict = source["verdict"];
+	        this.reason = source["reason"];
+	        this.wmiUnknown = source["wmiUnknown"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Link {
+	    policyDN: string;
+	    enforced: boolean;
+	    disabled: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Link(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.policyDN = source["policyDN"];
+	        this.enforced = source["enforced"];
+	        this.disabled = source["disabled"];
+	    }
+	}
+	export class SOM {
+	    dn: string;
+	    kind: string;
+	    name: string;
+	    links: Link[];
+	    blockInheritance: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new SOM(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dn = source["dn"];
+	        this.kind = source["kind"];
+	        this.name = source["name"];
+	        this.links = this.convertValues(source["links"], Link);
+	        this.blockInheritance = source["blockInheritance"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Chain {
+	    targetDN: string;
+	    targetKind: string;
+	    path: SOM[];
+	    entries: Entry[];
+	    notes: string[];
+	    names: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new Chain(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.targetDN = source["targetDN"];
+	        this.targetKind = source["targetKind"];
+	        this.path = this.convertValues(source["path"], SOM);
+	        this.entries = this.convertValues(source["entries"], Entry);
+	        this.notes = source["notes"];
+	        this.names = source["names"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class LinkPlace {
+	    somDN: string;
+	    somKind: string;
+	    somName: string;
+	    enforced: boolean;
+	    disabled: boolean;
+	    order: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new LinkPlace(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.somDN = source["somDN"];
+	        this.somKind = source["somKind"];
+	        this.somName = source["somName"];
+	        this.enforced = source["enforced"];
+	        this.disabled = source["disabled"];
+	        this.order = source["order"];
+	    }
+	}
+	export class PolicyLinks {
+	    policy: Policy;
+	    links: LinkPlace[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PolicyLinks(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.policy = this.convertValues(source["policy"], Policy);
+	        this.links = this.convertValues(source["links"], LinkPlace);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Inventory {
+	    policies: PolicyLinks[];
+	    notes: string[];
+	    names: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new Inventory(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.policies = this.convertValues(source["policies"], PolicyLinks);
+	        this.notes = source["notes"];
+	        this.names = source["names"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
+	
+
+}
+
 export namespace ldap {
 	
 	export class ConnectOptions {

@@ -1,13 +1,14 @@
 // The thumb tabs along the sheet's top edge. One register is open at a time;
 // Saved sits on the right because it is a list of things you made, not a
 // report the app made.
-export type RegisterKey = "search" | "stale" | "privileged" | "licences" | "all-users" | "bulk" | "saved";
+export type RegisterKey = "search" | "stale" | "privileged" | "licences" | "policies" | "all-users" | "bulk" | "saved";
 
 export const REGISTERS: Array<{ key: RegisterKey; label: string; needs365?: boolean; needsAD?: boolean }> = [
   { key: "search", label: "Search" },
   { key: "stale", label: "Stale accounts", needsAD: true },
   { key: "privileged", label: "Privileged access", needsAD: true },
   { key: "licences", label: "Licences", needs365: true },
+  { key: "policies", label: "Policies", needsAD: true },
   { key: "all-users", label: "All users" },
   { key: "bulk", label: "Bulk lookup" },
 ];
