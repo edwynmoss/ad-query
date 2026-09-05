@@ -202,7 +202,8 @@ async function main() {
 
   // --- Light: the journey -----------------------------------------------------
   await session("light", "", async (page) => {
-    await page.getByRole("heading", { name: "Open a directory" }).waitFor();
+    await page.getByRole("heading", { name: "AD Query" }).waitFor();
+    await page.getByRole("button", { name: /Connect to CORP/ }).waitFor();
     await shot(page, "01-connect");
 
     await connect(page);

@@ -402,6 +402,13 @@
   .ledger-radio { display: flex; gap: 18px; margin-top: 2px; font-size: 13px; }
   .ledger-radio .ledger-tab { padding: 6px 0 5px; }
   .ledger-connect-acts { display: flex; align-items: center; gap: 18px; margin-top: 26px; font-size: 12.5px; }
+  .ledger-connect-options { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 18px; margin-top: 22px; font-size: 12.5px; color: var(--color-ink-2); }
+  .ledger-connect-options .ledger-inline-input { width: 160px; }
+  .ledger-connect-dev { margin-top: 18px; font-size: 11.5px; text-align: right; }
+  .ledger-help { display: inline-block; width: 14px; height: 14px; line-height: 13px; text-align: center; border: 1px solid var(--color-line-strong); border-radius: 50%; font-size: 9.5px; font-weight: 600; letter-spacing: 0; color: var(--color-ink-3); margin-left: 4px; cursor: help; vertical-align: 1px; }
+  .ledger-help:hover { color: var(--color-ink); border-color: var(--color-ink); }
+  .ledger-connect .ledger-field { margin-top: 20px; }
+  .ledger-connect .ledger-lede { margin-top: 6px; }
 }
 
 @layer components {
