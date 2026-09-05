@@ -60,8 +60,10 @@ jobs:
         run: |
           go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
           choco install nsis -y --no-progress
-          echo "/c/Program Files (x86)/NSIS" >> "$GITHUB_PATH"
-          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+          # GITHUB_PATH wants Windows paths; a /c/... entry is invisible to Go's exec.LookPath.
+          echo "C:\Program Files (x86)\NSIS" >> "$GITHUB_PATH"
+          echo "C:\Program Files (x86)\NSIS\Bin" >> "$GITHUB_PATH"
+          cygpath -w "$HOME/go/bin" >> "$GITHUB_PATH"
 
       - name: Frontend dependencies
         working-directory: app/frontend
@@ -77,6 +79,7 @@ jobs:
       - name: Build installer
         working-directory: app
         run: |
+          makensis -VERSION
           wails build -nsis -clean -ldflags "-X main.Version=${{ steps.version.outputs.version }}"
           ls -la build/bin
           mv "build/bin/AD Query-amd64-installer.exe" "build/bin/ADQuery-${{ steps.version.outputs.version }}-x64-setup.exe"
