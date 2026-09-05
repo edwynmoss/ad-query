@@ -98,7 +98,18 @@ wails dev
 
 Grab `ADQuery-x.y.z-x64-setup.exe` from the [latest release](https://github.com/edwynmoss/ad-query/releases/latest). It installs for your account only (no administrator prompt) and adds a Start menu entry. From 1.0.0 the app checks for a newer release a few seconds after launch and while it stays open, and offers it in a toast; **Check for updates** is in the Tools menu. Installers are signed with the project's release key and verified before they run.
 
-The installer is not yet code-signed for Windows SmartScreen, so expect a prompt on first launch.
+### Windows will warn you the first time
+
+The installer is not code-signed, and it is not going to be: a certificate costs
+real money every year and this is a free tool. So Windows SmartScreen shows
+"Windows protected your PC" on the first run. Click **More info**, then **Run
+anyway**.
+
+That warning is about who published the installer, not about whether it has been
+tampered with. Every release is signed with the project's own key, and the app
+checks that signature before it runs an update, so an installer that has been
+altered in transit is refused. If you would rather verify by hand, each release
+carries a `.sig` next to the installer and the public key is in `app/app.go`.
 
 ## Build a release locally
 
