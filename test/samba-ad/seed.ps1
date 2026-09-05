@@ -122,3 +122,6 @@ Write-Output "`n== Done. Counts: =="
 $nu = @((docker exec $C samba-tool user list 2>&1 | Out-String) -split "`n" | Where-Object { $_.Trim() }).Count
 $ng = @((docker exec $C samba-tool computer list 2>&1 | Out-String) -split "`n" | Where-Object { $_.Trim() }).Count
 Write-Output "  users (incl. built-ins): $nu ; computers: $ng"
+
+# Group Policy: links, inheritance, filtering. Separate so it can be re-run alone.
+& "$PSScriptRoot/seed-gpo.ps1"

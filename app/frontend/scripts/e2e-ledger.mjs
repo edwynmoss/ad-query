@@ -100,6 +100,13 @@ await step("row: login, risk and security sections", async () => {
   await page.getByText(/Access control/).waitFor({ timeout: 30000 });
   await page.waitForTimeout(300);
   await shot(page, "l06d-row-security");
+  await page.locator(".ledger-record-switch").getByRole("tab", { name: "Policies" }).click();
+  await page.getByText("Applies, in order of precedence").waitFor({ timeout: 30000 });
+  const chain = await page.locator(".ledger-record-body").innerText();
+  if (!/1\s*Corporate Baseline/.test(chain)) throw new Error("Corporate Baseline should be first: " + chain.slice(0, 200));
+  if (!/denied\s*VPN Client Settings/i.test(chain)) throw new Error("VPN Client Settings should be denied: " + chain.slice(0, 400));
+  if (!/blocks inheritance|Sales/.test(chain)) throw new Error("strip missing");
+  await shot(page, "l06e-row-policies");
   await page.getByRole("tab", { name: "Attributes" }).click();
 });
 
@@ -140,6 +147,15 @@ await step("licences register asks for 365", async () => {
   await page.getByRole("tab", { name: "Licences" }).click();
   await page.getByText(/needs Microsoft 365/).waitFor({ timeout: 5000 });
   await shot(page, "l13-licences");
+});
+
+await step("policies register lists every policy and its links", async () => {
+  await page.locator(".ledger-tabs").getByRole("tab", { name: "Policies" }).click();
+  await page.locator(".ledger-table").waitFor({ timeout: 60000 });
+  const body = await page.locator(".ledger-register-body").innerText();
+  if (!/Legacy Proxy[\s\S]*not linked/.test(body)) throw new Error("orphan not flagged");
+  if (!/IT Admin Tools[\s\S]*IT Team/.test(body)) throw new Error("security filtering names missing");
+  await shot(page, "l15-policies");
 });
 
 await step("bulk lookup from a CSV", async () => {
