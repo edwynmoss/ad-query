@@ -7,9 +7,11 @@
 // With `tryIt`, each line carries quiet controls to try a change in place;
 // with `baseline`, the flow marks what would start or stop arriving
 // compared with what is real.
+import { useState } from "react";
 import type { gpo } from "../../wailsjs/go/models";
 
-export type Hypothetical = { kind: string; policyDN?: string; containerDN?: string; label: string };
+export type Hypothetical = { kind: string; policyDN?: string; containerDN?: string; groupSID?: string; label: string };
+export type ContainerHit = { dn: string; name: string };
 
 export function nameSids(text: string, names: Record<string, string> | undefined): string {
   if (!names) return text;
@@ -102,11 +104,73 @@ interface Props {
   tryIt?: (h: Hypothetical) => void;
   /** What is real, when `chain` is a hypothetical; lines that change are marked. */
   baseline?: gpo.Chain | null;
+  /** A trace of one account, so group membership and a move can be tried too. */
+  person?: { name: string; findContainers?: (q: string) => Promise<ContainerHit[]> };
+}
+
+const EVERYONE = new Set(["S-1-1-0", "S-1-5-11"]);
+
+/** Joining or leaving the groups that decide this policy's filtering. */
+function membershipOptions(e: gpo.Entry, chain: gpo.Chain, who: string): Hypothetical[] {
+  const inToken = new Set((chain.tokenSIDs ?? []).map((s) => s.toUpperCase()));
+  const name = (sid: string) => chain.names?.[sid.toUpperCase()] ?? sid;
+  const out: Hypothetical[] = [];
+  for (const sid of e.policy.applyDeny ?? []) {
+    if (inToken.has(sid.toUpperCase())) out.push({ kind: "leave", groupSID: sid, label: `${who} leaves ${name(sid)}` });
+  }
+  for (const sid of e.policy.applyAllow ?? []) {
+    if (EVERYONE.has(sid.toUpperCase()) || inToken.has(sid.toUpperCase())) continue;
+    out.push({ kind: "join", groupSID: sid, label: `${who} joins ${name(sid)}` });
+  }
+  return out;
+}
+
+/** The trace as plain text, for a ticket. */
+export function traceAsText(chain: gpo.Chain, label: string, targetKind: string): string {
+  const lines: string[] = [`Policy for ${label} (${targetKind})`, chain.targetDN, ""];
+  for (const s of chain.path ?? []) {
+    if (s.blockInheritance) lines.push(`  -- ${s.name} blocks inheritance from above; only enforced links pass --`);
+    lines.push(`${s.name} [${s.kind}]`);
+    const here = (chain.entries ?? []).filter((e) => e.somDN === s.dn).sort((a, b) => (a.precedence || 999) - (b.precedence || 999));
+    if (here.length === 0) lines.push("    (nothing linked here)");
+    for (const e of here) lines.push(`    ${e.policy.name} — ${fateOf(e, chain).text}${e.precedence > 0 ? ` [${e.precedence}]` : ""}`);
+  }
+  const arrives = (chain.entries ?? []).filter((e) => e.precedence > 0).sort((a, b) => a.precedence - b.precedence);
+  lines.push("", "Arrives, strongest first:");
+  arrives.forEach((e) => lines.push(`  ${e.precedence}. ${e.policy.name} (from ${e.somName})`));
+  if (arrives.length === 0) lines.push("  nothing");
+  lines.push("", ...(chain.notes ?? []));
+  return lines.join("\n");
+}
+
+/** "try: move to…", with an inline find. */
+function MoveControl({ person, tryIt }: { person: NonNullable<Props["person"]>; tryIt: (h: Hypothetical) => void }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<ContainerHit[]>([]);
+  if (!person.findContainers) return null;
+  const search = async (v: string) => {
+    setQ(v);
+    if (v.trim().length < 2) { setHits([]); return; }
+    try { setHits(await person.findContainers!(v)); } catch { setHits([]); }
+  };
+  if (!open) return <button className="ledger-try" onClick={() => setOpen(true)}>try: move to another container</button>;
+  return (
+    <span className="ledger-move">
+      <span className="ledger-controls-word">move to</span>
+      <input className="ledger-inline-input" autoFocus value={q} onChange={(e) => search(e.target.value)} placeholder="a container by name" aria-label="move to which container" />
+      {hits.map((h) => (
+        <button key={h.dn} className="ledger-link" title={h.dn} onClick={() => { setOpen(false); setQ(""); setHits([]); tryIt({ kind: "move", containerDN: h.dn, label: `${person.name} moves to ${h.name}` }); }}>{h.name}</button>
+      ))}
+      {q.trim().length >= 2 && hits.length === 0 && <span className="is-dim">no container by that name</span>}
+      <button className="ledger-link" onClick={() => { setOpen(false); setQ(""); setHits([]); }}>cancel</button>
+    </span>
+  );
 }
 
 type Line = { e: gpo.Entry; mark: "" | "starts" | "stops" | "gone" };
 
-export function PolicyFlow({ chain, targetLabel, targetKind, onPickStation, onPickPolicy, tryIt, baseline }: Props) {
+export function PolicyFlow({ chain, targetLabel, targetKind, onPickStation, onPickPolicy, tryIt, baseline, person }: Props) {
   const path = chain.path ?? [];
   const entries = chain.entries ?? [];
   const key = (e: gpo.Entry) => e.policy.dn.toLowerCase() + "|" + e.somDN.toLowerCase();
@@ -177,6 +241,9 @@ export function PolicyFlow({ chain, targetLabel, targetKind, onPickStation, onPi
                               ? <button className="ledger-try" onClick={() => tryIt({ kind: "unenforce", policyDN: e.policy.dn, containerDN: e.somDN, label: `${e.policy.name} no longer enforced on ${e.somName}` })}>stop enforcing</button>
                               : <button className="ledger-try" onClick={() => tryIt({ kind: "enforce", policyDN: e.policy.dn, containerDN: e.somDN, label: `${e.policy.name} enforced on ${e.somName}` })}>enforce</button>}
                             <button className="ledger-try" onClick={() => tryIt({ kind: "policy-off", policyDN: e.policy.dn, label: `${e.policy.name} switched off` })}>switch off</button>
+                            {person && membershipOptions(e, chain, person.name).map((h) => (
+                              <button key={h.kind + h.groupSID} className="ledger-try" onClick={() => tryIt(h)}>{h.kind === "leave" ? "leave" : "join"} {(chain.names?.[(h.groupSID ?? "").toUpperCase()] ?? h.groupSID)}</button>
+                            ))}
                           </span>
                         )}
                       </span>
@@ -193,7 +260,10 @@ export function PolicyFlow({ chain, targetLabel, targetKind, onPickStation, onPi
           );
         })}
         <div className="ledger-flow-stn is-target">
-          <div className="ledger-flow-stn-name"><span>{targetLabel}</span><small>{targetKind}</small></div>
+          <div className="ledger-flow-stn-name">
+            <span>{targetLabel}</span><small>{targetKind}</small>
+            {tryIt && person && <MoveControl person={person} tryIt={tryIt} />}
+          </div>
         </div>
       </div>
       <div className="ledger-flow-result">

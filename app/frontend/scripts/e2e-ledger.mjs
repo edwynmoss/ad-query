@@ -13,7 +13,9 @@ const shot = (page, name) => page.screenshot({ path: path.join(OUT, `${name}.png
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1360, height: 860 }, deviceScaleFactor: 1 });
+// Headless Chromium blocks the clipboard unless the context grants it.
+const context = await browser.newContext({ viewport: { width: 1360, height: 860 }, deviceScaleFactor: 1, permissions: ["clipboard-read", "clipboard-write"] });
+const page = await context.newPage();
 page.on("console", (m) => { if (m.type() === "error") console.log("  [console.error]", m.text().slice(0, 200)); });
 page.on("pageerror", (e) => console.log("  [pageerror]", String(e.stack ?? e).slice(0, 400)));
 let failed = false;
@@ -231,6 +233,41 @@ await step("policies register lists every policy and its links", async () => {
   if (!/IT Admin Tools[\s\S]*IT Team/.test(body)) throw new Error("security filtering names missing");
   if (!/never edited/.test(body)) throw new Error("empty policies should be flagged");
   await shot(page, "l18-policies-list");
+});
+
+// Terry Wong is in Sales Team, which is denied VPN Client Settings. Leaving
+// the group should let it through; moving him should change his whole path.
+await step("what if this person left a group, or moved", async () => {
+  await page.getByRole("button", { name: "Policies" }).first().click();
+  await page.getByPlaceholder("A person, a computer or a container").fill("Terry");
+  await page.locator(".ledger-line", { hasText: "Terry Wong" }).first().click();
+  await page.getByText(/Terry Wong gets \d+ policies/).waitFor({ timeout: 60000 });
+
+  await page.locator(".ledger-flow-pol", { hasText: "VPN Client Settings" }).getByRole("button", { name: /^leave Sales Team$/ }).click({ force: true });
+  await page.locator(".ledger-hypo").waitFor({ timeout: 5000 });
+  await page.locator(".ledger-flow-pol.is-starts").first().waitFor({ timeout: 60000 });
+  const t = await page.locator(".ledger-page-main").innerText();
+  if (!/VPN Client Settings[\s\S]{0,120}?would start arriving/.test(t)) throw new Error("leaving Sales Team should let the VPN policy through: " + t.slice(0, 400));
+  const head = await page.locator(".ledger-qhead").innerText();
+  if (!/would get \d+ policies instead of \d+/.test(head)) throw new Error("headline should compare: " + head.slice(0, 200));
+  const side = await page.locator(".ledger-page-side").innerText();
+  if (!/only this account/i.test(side)) throw new Error("a membership change affects nobody else: " + side.slice(0, 200));
+  await shot(page, "l19-whatif-leave-group");
+
+  // Stack a move on top; the path itself changes.
+  await page.getByRole("button", { name: "try: move to another container" }).click({ force: true });
+  await page.getByPlaceholder("a container by name").fill("Finance");
+  await page.locator(".ledger-move").getByRole("button", { name: "Finance", exact: true }).first().click();
+  await page.getByText(/Finance blocks inheritance from above/).waitFor({ timeout: 60000 });
+  const hypo = await page.locator(".ledger-hypo").innerText();
+  if (!/leaves Sales Team[\s\S]*moves to Finance/.test(hypo)) throw new Error("both changes should be listed: " + hypo);
+  await shot(page, "l20-whatif-move");
+
+  // The trace copies as text for a ticket.
+  await page.getByRole("button", { name: "Copy as text" }).click();
+  await page.getByText(/Trace copied/).waitFor({ timeout: 10000 });
+  await page.getByRole("button", { name: "Back to what is real" }).click();
+  await page.locator(".ledger-hypo").waitFor({ state: "hidden", timeout: 10000 });
 });
 
 await step("bulk lookup from a CSV", async () => {

@@ -15,7 +15,7 @@ import { escapeLdapValue, newCondition } from "../../lib/filterBuilder";
 import { OBJECT_TYPES, filterFor, defaultAttributesFor } from "../../lib/objectTypes";
 import { RegisterFrame, InlineCheck } from "./RegisterFrame";
 import { PolicyMapView } from "../PolicyMapView";
-import { PolicyFlow, PolicyExplainer, headline, fateOf } from "../PolicyFlow";
+import { PolicyFlow, PolicyExplainer, headline, fateOf, traceAsText, type ContainerHit } from "../PolicyFlow";
 import { HypotheticalBar, ImpactList, toChanges, type Hypothetical } from "../WhatIfPanel";
 
 export type Target = { dn: string; kind: "user" | "computer" | "container"; label: string };
@@ -23,6 +23,7 @@ export type PolicyPage = { name: "home" } | { name: "trace"; target: Target } | 
 
 interface Props {
   isAD: boolean;
+  /** The domain root: this register always searches the whole domain, wherever Search is pointed. */
   baseDN: string;
   /** A page to open, set from elsewhere (a row's "Open as a page"). */
   start?: { page: PolicyPage; nonce: number } | null;
@@ -216,6 +217,20 @@ function TracePage({ target, onBack, onMap, onTrace, onPolicy, onPeople, onRow }
   const parentDN = target.dn.split(",").slice(1).join(",");
   const tryIt = (h: Hypothetical) => setChanges((cs) => (cs.some((c) => JSON.stringify(c) === JSON.stringify(h)) ? cs : [...cs, h]));
 
+  // Containers to move an account to, for the "move to…" control.
+  const findContainers = async (q: string): Promise<ContainerHit[]> => {
+    const res = await Search(ldap.SearchRequest.createFrom({
+      baseDN: target.dn.split(",").filter((p) => /^(dc)=/i.test(p)).join(","), scope: 2, pageSize: 8, sizeLimit: 8,
+      filter: `(&(objectClass=organizationalUnit)(ou=*${escapeLdapValue(q.trim())}*))`, attributes: ["ou", "name"],
+    }));
+    return (res.entries ?? []).map((e) => ({ dn: e.dn, name: e.attributes?.ou?.[0] || e.attributes?.name?.[0] || e.dn }));
+  };
+  const copyTrace = async () => {
+    if (!shown) return;
+    try { await navigator.clipboard.writeText(traceAsText(shown, target.label, target.kind === "container" ? `container${changes.length ? ", hypothetical" : ""}` : shown.targetKind)); toast.success("Trace copied"); }
+    catch { toast.error("Couldn't copy"); }
+  };
+
   return (
     <RegisterFrame
       eyebrow="Trace"
@@ -228,6 +243,7 @@ function TracePage({ target, onBack, onMap, onTrace, onPolicy, onPeople, onRow }
       meta={<>
         <span className="mono is-dim" title={target.dn}>{target.dn.length > 90 ? target.dn.slice(0, 89) + "…" : target.dn}</span>
         <span className="flex-1" />
+        <button className="ledger-link" onClick={copyTrace} disabled={!shown}>Copy as text</button>
         {target.kind === "container"
           ? <button className="ledger-link" onClick={() => onPeople(target.dn)}>People in {target.label}</button>
           : <button className="ledger-link" onClick={() => onRow(target.dn)}>Open the row</button>}
@@ -241,11 +257,16 @@ function TracePage({ target, onBack, onMap, onTrace, onPolicy, onPeople, onRow }
           <section className="ledger-page-main">
             <div className="ledger-h4">{tried ? "How it would get there" : "How it gets there"}<span className="ledger-h4-hint">hover a line to try a change</span></div>
             <PolicyFlow chain={shown} baseline={tried ? chain : null} targetLabel={bottom} targetKind={target.kind === "container" ? `in ${target.label}` : shown.targetKind}
-              onPickStation={(dn) => onTrace(containerTarget(dn))} onPickPolicy={onPolicy} tryIt={tryIt} />
+              onPickStation={(dn) => onTrace(containerTarget(dn))} onPickPolicy={onPolicy} tryIt={tryIt}
+              person={target.kind === "container" ? undefined : { name: target.label, findContainers }} />
             <PolicyExplainer chain={shown} />
           </section>
           <section className="ledger-page-side">
-            {tried ? <ImpactList changes={changes} onTrace={(dn) => onTrace(containerTarget(dn))} title="And who else" /> : <Outcome chain={shown} onPolicy={onPolicy} />}
+            {tried
+              ? (changes.some((c) => c.kind !== "join" && c.kind !== "leave" && c.kind !== "move")
+                  ? <ImpactList changes={changes} onTrace={(dn) => onTrace(containerTarget(dn))} title="And who else" />
+                  : <><div className="ledger-h4">Only this account</div><p className="ledger-note">Group membership and a move change what this account receives. Nothing about the directory's links changes, so nobody else is affected.</p></>)
+              : <Outcome chain={shown} onPolicy={onPolicy} />}
           </section>
         </div>
       )}

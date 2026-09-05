@@ -91,7 +91,8 @@ type Chain struct {
 	Path       []SOM             `json:"path"`       // site (if known), domain, OUs from the top down
 	Entries    []Entry           `json:"entries"`    // applying entries first in precedence order, then the rest
 	Notes      []string          `json:"notes"`
-	Names      map[string]string `json:"names"` // SID to account name, for the trustees in security filtering
+	Names      map[string]string `json:"names"`     // SID to account name, for the trustees in security filtering
+	TokenSIDs  []string          `json:"tokenSIDs"` // the groups this account presents to filtering, for "what if they left"
 }
 
 var linkRe = regexp.MustCompile(`\[([^;\]]+);(\d+)\]`)

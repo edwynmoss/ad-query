@@ -243,7 +243,7 @@ function App() {
         ) : register === "licences" ? (
           <Suspense fallback={null}><LicencesRegister isAD={isAD} baseDN={req.baseDN} signedIn365={m365.signedIn} onConnect365={() => setShow365(true)} /></Suspense>
         ) : register === "policies" ? (
-          <Suspense fallback={null}><PoliciesRegister isAD={isAD} baseDN={req.baseDN} start={policyStart} onOpenQuery={openQuery} /></Suspense>
+          <Suspense fallback={null}><PoliciesRegister isAD={isAD} baseDN={server.defaultNamingContext || req.baseDN} start={policyStart} onOpenQuery={openQuery} /></Suspense>
         ) : register === "bulk" ? (
           <Suspense fallback={null}><BulkRegister req={req} signedIn365={m365.signedIn} onPickColumns={() => { setRegister("search"); requestPicker("columns"); }} /></Suspense>
         ) : register === "saved" ? (

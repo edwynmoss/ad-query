@@ -328,15 +328,37 @@ func (a *App) PolicyChainWith(dn string, changes []gpo.Change) (*gpo.Chain, erro
 			groups = append(groups, s)
 		}
 	}
-	path, notes := a.pathFor(conn, root, cfg, dn, false, kind, first(t, "dNSHostName"))
+	// A move traces the same account from a different container.
+	pathDN, isContainer := dn, false
+	if dest := gpo.MoveTo(changes); dest != "" {
+		pathDN, isContainer = dest, true
+	}
+	path, notes := a.pathFor(conn, root, cfg, pathDN, isContainer, kind, first(t, "dNSHostName"))
 	policies, pnotes := a.policies(conn, root)
 	notes = append(notes, pnotes...)
+	token := gpo.Token(own, groups)
 	if len(changes) > 0 {
 		path, policies = gpo.ApplyToPath(changes, path, policies)
+		token = gpo.ApplyToToken(changes, token)
 	}
-	chain := gpo.Resolve(dn, kind, path, policies, gpo.Token(own, groups))
+	chain := gpo.Resolve(dn, kind, path, policies, token)
+	for sid := range token {
+		if sid != own && sid != "S-1-1-0" && sid != "S-1-5-11" {
+			chain.TokenSIDs = append(chain.TokenSIDs, sid)
+		}
+	}
+	sort.Strings(chain.TokenSIDs)
 	chain.Notes = append(notes, "Read from the directory only: WMI filters are not evaluated, loopback and slow-link processing happen on the client, and the settings inside each policy live in SYSVOL.")
-	chain.Names = trusteeNames(conn, root, chain.Entries)
+	sids := map[string]bool{}
+	for _, e := range chain.Entries {
+		for _, s := range append(e.Policy.ApplyAllow, e.Policy.ApplyDeny...) {
+			sids[s] = true
+		}
+	}
+	for _, s := range chain.TokenSIDs {
+		sids[s] = true
+	}
+	chain.Names = sidNames(conn, root, sids)
 	return chain, nil
 }
 

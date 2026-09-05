@@ -565,3 +565,12 @@
   .ledger-line.is-sub .ledger-line-text { color: var(--color-ink-2); }
 }
 
+
+
+/* moving an account, hypothetically */
+@layer components {
+  .ledger-move { display: inline-flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-left: 10px; font-size: 12px; }
+  .ledger-move .ledger-inline-input { width: 150px; font-size: 12px; }
+  .ledger-flow-stn.is-target .ledger-try { opacity: 1; }
+}
+\n
