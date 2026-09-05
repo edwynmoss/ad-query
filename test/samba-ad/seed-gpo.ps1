@@ -78,6 +78,9 @@ foreach ($p in $policies) {
 
   if ($p.block) { St gpo setinheritance $p.link block | Out-Null; $notes += 'inheritance blocked there' }
 
+  if ($p.n -ne 'Legacy Proxy') {
+    if (LdbMod "dn: $dn`nchangetype: modify`nreplace: versionNumber`nversionNumber: 65539`n") { $notes += 'edited' }
+  }
   if ($p.flags) {
     if (LdbMod "dn: $dn`nchangetype: modify`nreplace: flags`nflags: $($p.flags)`n") { $notes += "flags=$($p.flags)" }
   }

@@ -34,6 +34,10 @@ type SearchRequest struct {
 	Attributes []string `json:"attributes"` // empty => all user attributes
 	PageSize   uint32   `json:"pageSize"`   // 0 => 1000
 	SizeLimit  int      `json:"sizeLimit"`  // 0 => server default; total cap across pages
+	// SDFlags, when set, attaches the SD-flags control so nTSecurityDescriptor
+	// comes back with just those parts (SDDACL alone avoids needing the SACL
+	// privilege). Only meaningful when nTSecurityDescriptor is requested.
+	SDFlags int `json:"sdFlags"`
 }
 
 // Entry is one directory object. Values are kept as raw strings (caller decodes
@@ -47,9 +51,9 @@ type Entry struct {
 
 // SearchResult is the outcome of a (possibly paged) search.
 type SearchResult struct {
-	Entries  []Entry `json:"entries"`
-	Count    int     `json:"count"`
-	Truncated bool   `json:"truncated"` // SizeLimit was hit
+	Entries   []Entry `json:"entries"`
+	Count     int     `json:"count"`
+	Truncated bool    `json:"truncated"` // SizeLimit was hit
 }
 
 // Validate checks a request before it is sent: the filter must be well-formed,
@@ -100,6 +104,9 @@ func (c *Conn) Search(req SearchRequest) (*SearchResult, error) {
 		req.Attributes,
 		nil,
 	)
+	if req.SDFlags > 0 && req.SDFlags <= 0xff {
+		search.Controls = append(search.Controls, goldap.NewControlString(sdFlagsControlOID, true, string([]byte{0x30, 0x03, 0x02, 0x01, byte(req.SDFlags)})))
+	}
 
 	res, err := c.conn.SearchWithPaging(search, pageSize)
 	if err != nil {

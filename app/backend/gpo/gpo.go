@@ -65,6 +65,7 @@ type Policy struct {
 	UserDisabled     bool     `json:"userDisabled"`
 	ComputerDisabled bool     `json:"computerDisabled"`
 	WMIFilter        string   `json:"wmiFilter"`
+	WMIFilterName    string   `json:"wmiFilterName"`
 	ApplyAllow       []string `json:"applyAllow"` // SIDs granted Apply Group Policy
 	ApplyDeny        []string `json:"applyDeny"`  // SIDs denied it
 	ACLKnown         bool     `json:"aclKnown"`   // false when the descriptor could not be read

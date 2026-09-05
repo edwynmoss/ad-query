@@ -6,17 +6,19 @@ import type { ReactNode } from "react";
 
 interface Props {
   title: string;
+  eyebrow?: string;
+  back?: { label: string; onClick: () => void };
   lede?: ReactNode;
   controls?: ReactNode;
   meta?: ReactNode;
   children: ReactNode;
 }
 
-export function RegisterFrame({ title, lede, controls, meta, children }: Props) {
+export function RegisterFrame({ title, eyebrow, back, lede, controls, meta, children }: Props) {
   return (
     <>
       <div className="ledger-qhead">
-        <div className="ledger-eyebrow">Register</div>
+        <div className="ledger-eyebrow">{back ? <><button className="ledger-eyebrow-link" onClick={back.onClick}>{back.label}</button><span className="ledger-eyebrow-sep">›</span></> : null}{eyebrow ?? "Register"}</div>
         <h2 className="ledger-title">{title}</h2>
         {lede && <p className="ledger-lede">{lede}</p>}
         {controls && <div className="ledger-controls">{controls}</div>}

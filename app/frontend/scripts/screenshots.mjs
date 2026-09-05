@@ -70,6 +70,7 @@ const MOCK = `
       ];
       return Promise.resolve({ targetDN:dn, targetKind:'user', path, entries, notes:['Read from the directory only: WMI filters are not evaluated, loopback and slow-link processing happen on the client, and the settings inside each policy live in SYSVOL.'], names:{ 'S-1-5-21-1-1-1-1204':'Sales Team' } });
     },
+    CountUnder: (dn) => Promise.resolve({ dn, users: /Sales/.test(dn) ? 150 : /People/.test(dn) ? 500 : 503, computers: /People|Sales/.test(dn) ? 0 : 7, truncated: false }),
     ContainerChain: (dn, kind) => window.go.main.App.PolicyChain('CN=x,' + dn).then((c) => { c.targetDN = dn; c.targetKind = kind || 'user'; c.path = c.path.filter((s) => dn.toLowerCase().endsWith(s.dn.toLowerCase()) || s.kind === 'site' || s.kind === 'domain'); c.entries = c.entries.filter((e) => c.path.some((s) => s.dn === e.somDN)); c.notes = ['A container trace cannot know group membership, so links with security filtering are marked as depending on it. Open a row for the exact answer.']; return c; }),
     PolicyMap: () => {
       const pol = (name) => ({ dn:'CN={'+name+'},CN=Policies,CN=System,DC=adquery,DC=test', guid:'{'+name+'}', name, version:3, path:'', userDisabled:false, computerDisabled:false, wmiFilter:'', applyAllow:['S-1-5-11'], applyDeny:[], aclKnown:true });
@@ -89,6 +90,9 @@ const MOCK = `
         { dn: 'OU=IT,'+people, parentDN: people, kind:'ou', name:'IT', links:[L('IT Admin Tools',0)], blockInheritance:false, users:90, computers:0 },
         { dn: 'OU=Sales,'+people, parentDN: people, kind:'ou', name:'Sales', links:[L('Sales Printers',1), L('Sales Drive Maps',0)], blockInheritance:false, users:150, computers:0 },
       ];
+      for (const n of nodes) n.relevant = n.links.length > 0 || n.blockInheritance || n.kind !== 'ou' || n.name === 'People';
+      for (let i = 1; i <= 14; i++) nodes.push({ dn: 'OU=Branch '+i+',OU=Engineering,'+people, parentDN: 'OU=Engineering,'+people, kind:'ou', name:'Branch '+i, links:[], blockInheritance:false, relevant:false });
+      nodes.find((n) => n.name === 'Engineering').relevant = false;
       return Promise.resolve({ nodes, policies, names:{ 'S-1-5-21-1-1-1-1204':'Sales Team', 'S-1-5-21-1-1-1-1205':'IT Team' }, notes:[] });
     },
     PolicyInventory: () => {
@@ -113,6 +117,13 @@ const MOCK = `
     AppVersion: () => Promise.resolve('1.0.0'),
     CheckForUpdate: () => Promise.resolve(null),
     Search: (req) => {
+      if (req && req.filter && req.filter.indexOf('anr=') >= 0) { // the Policies question box
+        return Promise.resolve({ count: 3, truncated: false, entries: [
+          { dn: 'CN=User2,OU=Sales,OU=People,DC=adquery,DC=test', attributes: { displayName: ['User 2'], sAMAccountName: ['user2'], objectClass: ['top','person','organizationalPerson','user'] } },
+          { dn: 'CN=WS-SALES-01,OU=Workstations,DC=adquery,DC=test', attributes: { name: ['WS-SALES-01'], dNSHostName: ['ws-sales-01.adquery.test'], objectClass: ['top','computer'] } },
+          { dn: 'OU=Sales,OU=People,DC=adquery,DC=test', attributes: { ou: ['Sales'], objectClass: ['top','organizationalUnit'] } },
+        ] });
+      }
       if (req && req.scope === 0) { // base-scope = the Risk tab fetching one user's posture
         return Promise.resolve({ count:1, truncated:false, entries:[{ dn: req.baseDN, attributes:{ userAccountControl:['66048'], memberOf:['CN=Domain Admins,CN=Users,DC=adquery,DC=test'], lastLogonTimestamp:[oldFt], servicePrincipalName:[], manager:[], department:[] } }] });
       }
@@ -243,13 +254,20 @@ async function main() {
     await shot(page, "13-licences");
 
     await page.locator(".ledger-tabs").getByRole("tab", { name: "Policies" }).click();
-    await page.locator(".ledger-map").waitFor();
-    await page.locator(".ledger-map-node", { hasText: "Sales" }).first().locator("circle").click();
-    await page.locator(".ledger-map-side .ledger-flow-result").waitFor();
+    await page.getByPlaceholder("A person, a computer or a container").fill("sales");
+    await page.locator(".ledger-line", { hasText: "Sales" }).first().waitFor();
     await shot(page, "18-policies");
-    await page.getByRole("tab", { name: "List" }).click();
+    await page.locator(".ledger-line", { hasText: "organizational unit" }).first().click();
+    await page.getByText(/Users in Sales get/).waitFor();
+    await page.getByText(/150 users/).waitFor();
+    await shot(page, "19-policies-trace");
+    await page.getByRole("button", { name: "Show on the tree" }).click();
+    await page.locator(".ledger-map").waitFor();
+    await shot(page, "20-policies-tree");
+    await page.getByRole("button", { name: "Policies" }).first().click();
+    await page.locator(".ledger-line", { hasText: "All policies" }).click();
     await page.locator(".ledger-table").waitFor();
-    await shot(page, "19-policies-list");
+    await shot(page, "21-policies-list");
 
     await page.getByRole("tab", { name: "Bulk lookup" }).click();
     await page.locator('input[type="file"]').setInputFiles(csvPath);

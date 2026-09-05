@@ -3,10 +3,10 @@
 import {ldap} from '../models';
 import {update} from '../models';
 import {gpo} from '../models';
+import {main} from '../models';
 import {sysenv} from '../models';
 import {adtypes} from '../models';
 import {m365} from '../models';
-import {main} from '../models';
 
 export function AccurateLastLogon(arg1:string):Promise<ldap.LastLogonReport>;
 
@@ -19,6 +19,8 @@ export function ClearCache():Promise<void>;
 export function Connect(arg1:ldap.ConnectOptions):Promise<ldap.ServerInfo>;
 
 export function ContainerChain(arg1:string,arg2:string):Promise<gpo.Chain>;
+
+export function CountUnder(arg1:string):Promise<main.Counts>;
 
 export function DeleteSecret(arg1:string):Promise<void>;
 

@@ -436,7 +436,8 @@
   .ledger-flow-pol:last-child { border-bottom: 0; }
   .ledger-flow-who { color: var(--color-ink); }
   .ledger-flow-pol.is-out .ledger-flow-who { color: var(--color-ink-3); text-decoration: line-through; text-decoration-color: var(--color-line-strong); }
-  .ledger-flow-fate { font-size: 11px; color: var(--color-ink-3); white-space: nowrap; text-align: right; }
+  .ledger-flow-fate { font-size: 11px; color: var(--color-ink-3); white-space: normal; text-align: right; max-width: 58%; line-height: 1.35; }
+  .ledger-flow-who { min-width: 0; overflow-wrap: anywhere; }
   .ledger-flow-fate b { font-weight: 400; color: var(--color-ink); font-size: 11px; }
   .ledger-flow-fate.is-warn { color: var(--color-warning); }
   .ledger-flow-fate.is-crit { color: var(--color-critical); }
@@ -467,3 +468,27 @@
   .ledger-map-side { width: 400px; flex-shrink: 0; border-left: 1px solid var(--color-line); overflow: auto; padding: 18px 22px 24px; }
   .ledger-map-side .ledger-h4:first-child { margin-top: 0; }
 }
+
+/* policies: the question, the answer, the tree */
+@layer components {
+  .ledger-headline { font-size: 15px; line-height: 1.5; color: var(--color-ink); margin: 2px 0 6px; }
+  .ledger-link.is-strong { color: var(--color-ink); text-decoration-color: var(--color-ink); }
+  .ledger-trace { display: flex; gap: 40px; padding: 20px 26px 30px; align-items: flex-start; }
+  .ledger-trace-flow { flex: 1; min-width: 0; max-width: 720px; }
+  .ledger-trace-flow .ledger-h4 { margin-top: 0; }
+  .ledger-trace-flow .ledger-flow-pol { font-size: 13px; }
+  .ledger-trace-flow .ledger-flow-fate { font-size: 12px; white-space: normal; max-width: 320px; }
+  .ledger-trace-side { width: 320px; flex-shrink: 0; }
+  .ledger-explain { margin-top: 18px; font-size: 12.5px; color: var(--color-ink-2); line-height: 1.55; }
+  .ledger-explain summary { cursor: pointer; color: var(--color-ink-2); text-decoration: underline; text-decoration-color: var(--color-line-strong); text-underline-offset: 3px; list-style: none; }
+  .ledger-explain summary::-webkit-details-marker { display: none; }
+  .ledger-explain[open] summary { color: var(--color-ink); margin-bottom: 8px; }
+  .ledger-explain p { margin: 0 0 8px; }
+  .ledger-explain b { color: var(--color-ink); font-weight: 600; }
+  .ledger-map-fold text { font-size: 11.5px; fill: var(--color-ink-3); text-decoration: underline; text-decoration-color: var(--color-line-strong); }
+  .ledger-map-fold:hover text { fill: var(--color-ink); }
+  .ledger-map-edge.is-fold { stroke-dasharray: 2 3; }
+  .ledger-map-node.is-quiet .ledger-map-name { font-weight: 400; fill: var(--color-ink-2); }
+  .ledger-map-scroll { padding-bottom: 20px; }
+}
+

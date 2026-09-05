@@ -1,6 +1,7 @@
 package gpo
 
 import (
+	"net"
 	"strings"
 	"testing"
 )
@@ -198,6 +199,41 @@ func TestMapHelpers(t *testing.T) {
 	SortNodes(ns)
 	if ns[0].Kind != "site" || ns[1].Kind != "domain" || ns[2].Name != "People" || ns[3].Name != "Sales" {
 		t.Errorf("order: %v %v %v %v", ns[0].Name, ns[1].Name, ns[2].Name, ns[3].Name)
+	}
+}
+
+func TestMarkRelevantAndSites(t *testing.T) {
+	ns := []MapNode{
+		{DN: "DC=x", Kind: "domain", Name: "x"},
+		{DN: "OU=People,DC=x", ParentDN: "DC=x", Kind: "ou", Name: "People"},
+		{DN: "OU=Sales,OU=People,DC=x", ParentDN: "OU=People,DC=x", Kind: "ou", Name: "Sales", Links: []Link{{PolicyDN: "CN={A},DC=x"}}},
+		{DN: "OU=Quiet,OU=People,DC=x", ParentDN: "OU=People,DC=x", Kind: "ou", Name: "Quiet"},
+		{DN: "OU=Deep,OU=Quiet,OU=People,DC=x", ParentDN: "OU=Quiet,OU=People,DC=x", Kind: "ou", Name: "Deep"},
+	}
+	MarkRelevant(ns)
+	want := map[string]bool{"x": true, "People": true, "Sales": true, "Quiet": false, "Deep": false}
+	for _, n := range ns {
+		if n.Relevant != want[n.Name] {
+			t.Errorf("%s relevant = %v", n.Name, n.Relevant)
+		}
+	}
+	var subs []Subnet
+	for name, site := range map[string]string{"10.0.0.0/8": "CN=HQ", "10.20.0.0/16": "CN=Branch", "bogus": "CN=Nope"} {
+		if s, ok := ParseSubnet(name, site); ok {
+			subs = append(subs, s)
+		}
+	}
+	if len(subs) != 2 {
+		t.Fatalf("want 2 parsed subnets, got %d", len(subs))
+	}
+	if SiteForIP(net.ParseIP("10.20.5.5"), subs) != "CN=Branch" {
+		t.Error("longest prefix should win")
+	}
+	if SiteForIP(net.ParseIP("10.9.9.9"), subs) != "CN=HQ" {
+		t.Error("fallback to the wider subnet")
+	}
+	if SiteForIP(net.ParseIP("192.168.1.1"), subs) != "" {
+		t.Error("no match means no site")
 	}
 }
 

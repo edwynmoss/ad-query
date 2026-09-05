@@ -74,6 +74,7 @@ export namespace gpo {
 	    userDisabled: boolean;
 	    computerDisabled: boolean;
 	    wmiFilter: string;
+	    wmiFilterName: string;
 	    applyAllow: string[];
 	    applyDeny: string[];
 	    aclKnown: boolean;
@@ -92,6 +93,7 @@ export namespace gpo {
 	        this.userDisabled = source["userDisabled"];
 	        this.computerDisabled = source["computerDisabled"];
 	        this.wmiFilter = source["wmiFilter"];
+	        this.wmiFilterName = source["wmiFilterName"];
 	        this.applyAllow = source["applyAllow"];
 	        this.applyDeny = source["applyDeny"];
 	        this.aclKnown = source["aclKnown"];
@@ -335,8 +337,7 @@ export namespace gpo {
 	    name: string;
 	    links: Link[];
 	    blockInheritance: boolean;
-	    users: number;
-	    computers: number;
+	    relevant: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new MapNode(source);
@@ -350,8 +351,7 @@ export namespace gpo {
 	        this.name = source["name"];
 	        this.links = this.convertValues(source["links"], Link);
 	        this.blockInheritance = source["blockInheritance"];
-	        this.users = source["users"];
-	        this.computers = source["computers"];
+	        this.relevant = source["relevant"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -533,6 +533,7 @@ export namespace ldap {
 	    attributes: string[];
 	    pageSize: number;
 	    sizeLimit: number;
+	    sdFlags: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new SearchRequest(source);
@@ -546,6 +547,7 @@ export namespace ldap {
 	        this.attributes = source["attributes"];
 	        this.pageSize = source["pageSize"];
 	        this.sizeLimit = source["sizeLimit"];
+	        this.sdFlags = source["sdFlags"];
 	    }
 	}
 	export class SearchResult {
@@ -717,6 +719,24 @@ export namespace main {
 		    }
 		    return a;
 		}
+	}
+	export class Counts {
+	    dn: string;
+	    users: number;
+	    computers: number;
+	    truncated: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Counts(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dn = source["dn"];
+	        this.users = source["users"];
+	        this.computers = source["computers"];
+	        this.truncated = source["truncated"];
+	    }
 	}
 
 }

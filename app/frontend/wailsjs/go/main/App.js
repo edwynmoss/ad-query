@@ -26,6 +26,10 @@ export function ContainerChain(arg1, arg2) {
   return window['go']['main']['App']['ContainerChain'](arg1, arg2);
 }
 
+export function CountUnder(arg1) {
+  return window['go']['main']['App']['CountUnder'](arg1);
+}
+
 export function DeleteSecret(arg1) {
   return window['go']['main']['App']['DeleteSecret'](arg1);
 }

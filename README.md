@@ -30,11 +30,15 @@ Registers are pages of the same sheet: stale accounts across AD and Microsoft 36
 |---|---|---|---|---|
 | ![Stale](docs/screenshots/11-stale.png) | ![Privileged](docs/screenshots/12-privileged.png) | ![Licences](docs/screenshots/13-licences.png) | ![Bulk](docs/screenshots/14-bulk.png) | ![365](docs/screenshots/15-m365-signin.png) |
 
-Group Policy, as far as the directory can tell. A row's Policies section draws how policy flows down the tree to that user or computer: every link on the way with its fate, blocked inheritance as a dashed rule, and what arrives in precedence order. The Policies register is a map of the containers with policies pinned where they are linked; pick one to trace what flows into it, or switch to the list.
+Group Policy, as far as the directory can tell. A row's Policies section answers in a sentence ("Terry Wong gets 5 policies. 2 more are linked above them but never arrive.") and then shows the working: policy flowing down the tree, each link with its fate in plain words, blocked inheritance as a dashed rule only enforced links pass. The Policies register opens on the question: trace policy to a person, a computer or a container; browse the tree, which folds branches with nothing linked; or list every policy.
 
-| Flow to a row | Policy map | Policies as a list |
+| Flow to a row | The question | A container trace |
 |---|---|---|
-| ![Row policies](docs/screenshots/17-row-policies.png) | ![Policy map](docs/screenshots/18-policies.png) | ![Policies list](docs/screenshots/19-policies-list.png) |
+| ![Row policies](docs/screenshots/17-row-policies.png) | ![Policies](docs/screenshots/18-policies.png) | ![Trace](docs/screenshots/19-policies-trace.png) |
+
+| The tree | Every policy |
+|---|---|
+| ![Tree](docs/screenshots/20-policies-tree.png) | ![Policies list](docs/screenshots/21-policies-list.png) |
 
 > Regenerate with `cd app/frontend && npm run shots` (builds the app, serves it, and drives the journey through Playwright into `docs/screenshots/`). `node scripts/e2e-ledger.mjs` drives the real backend through `wails dev` against the Samba AD container in `test/samba-ad`.
 
