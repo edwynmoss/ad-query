@@ -25,7 +25,7 @@ function nameOf(entry: ldap.Entry): string {
   return a.displayName?.[0] || a.cn?.[0] || a.name?.[0] || a.sAMAccountName?.[0] || entry.dn.split(",")[0].replace(/^[^=]+=/, "");
 }
 
-export function InspectorBody({ entry, isAD, onClose }: { entry: ldap.Entry; isAD?: boolean; onClose: () => void }) {
+export function InspectorBody({ entry, isAD, onClose, onOpenPolicyPage }: { entry: ldap.Entry; isAD?: boolean; onClose: () => void; onOpenPolicyPage?: (dn: string, kind: string, label: string) => void }) {
   const [section, setSection] = useState<Section>("attrs");
   const attrs = Object.keys(entry.attributes ?? {}).sort();
 
@@ -58,7 +58,7 @@ export function InspectorBody({ entry, isAD, onClose }: { entry: ldap.Entry; isA
         )}
         {section === "login" && <LoginSection entry={entry} isAD={isAD} />}
         {section === "risk" && <RiskSection dn={entry.dn} />}
-        {section === "policies" && <PoliciesSection entry={entry} isAD={isAD} />}
+        {section === "policies" && <PoliciesSection entry={entry} isAD={isAD} onOpenPage={onOpenPolicyPage} />}
         {section === "acl" && <AclSection dn={entry.dn} />}
       </div>
     </div>

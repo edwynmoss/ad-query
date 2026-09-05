@@ -21,9 +21,10 @@ interface Props {
   selected: ldap.Entry | null;
   onClearRow: () => void;
   isAD: boolean;
+  onOpenPolicyPage?: (dn: string, kind: string, label: string) => void;
 }
 
-export function SidePane({ mode, onMode, entries, columns, factsColumn, onPickColumn, onFilterValue, onSort, onHide, onCopy, selected, onClearRow, isAD }: Props) {
+export function SidePane({ mode, onMode, entries, columns, factsColumn, onPickColumn, onFilterValue, onSort, onHide, onCopy, selected, onClearRow, isAD, onOpenPolicyPage }: Props) {
   const col = factsColumn && columns.includes(factsColumn) ? factsColumn : columns[0] ?? null;
   return (
     <aside className="ledger-pane" aria-label="Details">
@@ -38,7 +39,7 @@ export function SidePane({ mode, onMode, entries, columns, factsColumn, onPickCo
           ? <ColumnFacts key={col} column={col} columns={columns} entries={entries} onPickColumn={onPickColumn} onFilterValue={onFilterValue} onSort={onSort} onHide={onHide} onCopy={onCopy} />
           : <p className="ledger-note p-4">Pick some columns to see facts about them.</p>)}
         {mode === "row" && (selected
-          ? <InspectorBody key={selected.dn} entry={selected} isAD={isAD} onClose={onClearRow} />
+          ? <InspectorBody key={selected.dn} entry={selected} isAD={isAD} onClose={onClearRow} onOpenPolicyPage={onOpenPolicyPage} />
           : <p className="ledger-note p-4">Click a line in the ledger to read the whole record here. Use the arrow keys to move between lines.</p>)}
       </div>
     </aside>

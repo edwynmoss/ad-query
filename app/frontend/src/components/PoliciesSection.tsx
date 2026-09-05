@@ -11,7 +11,7 @@ export function labelOf(entry: ldap.Entry): string {
   return a.displayName?.[0] || a.cn?.[0] || a.name?.[0] || a.sAMAccountName?.[0] || entry.dn.split(",")[0].replace(/^[^=]+=/, "");
 }
 
-export function PoliciesSection({ entry, isAD }: { entry: ldap.Entry; isAD?: boolean }) {
+export function PoliciesSection({ entry, isAD, onOpenPage }: { entry: ldap.Entry; isAD?: boolean; onOpenPage?: (dn: string, kind: string, label: string) => void }) {
   const dn = entry.dn;
   const [status, setStatus] = useState<"loading" | "ok" | "error" | "na">("loading");
   const [chain, setChain] = useState<gpo.Chain | null>(null);
@@ -41,6 +41,7 @@ export function PoliciesSection({ entry, isAD }: { entry: ldap.Entry; isAD?: boo
   return (
     <div>
       <p className="ledger-headline">{headline(chain, label)}</p>
+      {onOpenPage && <p className="ledger-note" style={{ marginBottom: 6 }}><button className="ledger-link" onClick={() => onOpenPage(dn, chain.targetKind, label)}>Open as a page</button> for the wide flow and the rules.</p>}
       <div className="ledger-h4">How it gets there</div>
       <PolicyFlow chain={chain} targetLabel={label} targetKind={chain.targetKind} />
       <PolicyExplainer chain={chain} />

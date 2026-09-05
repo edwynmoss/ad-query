@@ -11,6 +11,7 @@ import { QueryState, effectiveFilter, DirLocation } from "./components/QueryBar"
 import { QueryHeading, type Picker } from "./components/QueryHeading";
 import { OpeningSheet } from "./components/OpeningSheet";
 import { Registers, type RegisterKey } from "./components/Registers";
+import type { PolicyPage } from "./components/registers/PoliciesRegister";
 import { LedgerGrid, sortEntries, type SortState } from "./components/LedgerGrid";
 import { SidePane, type PaneMode } from "./components/SidePane";
 import { ExportDialog } from "./components/ExportDialog";
@@ -65,6 +66,7 @@ function App() {
   const [saved, setSaved] = useState<SavedQuery[]>(() => loadSavedQueries());
   const [picker, setPicker] = useState<{ kind: Picker; nonce: number } | null>(null);
   const [composing, setComposing] = useState(false); // heading shown before any result, to use a picker
+  const [policyStart, setPolicyStart] = useState<{ page: PolicyPage; nonce: number } | null>(null);
 
   useEffect(() => {
     appVersion().then(setVersion);
@@ -180,6 +182,10 @@ function App() {
   async function copyText(text: string) {
     try { await navigator.clipboard.writeText(text); toast.success("Copied"); } catch { toast.error("Couldn't copy"); }
   }
+  function openPolicyPage(dn: string, kind: string, label: string) {
+    setRegister("policies"); setPicker(null);
+    setPolicyStart({ page: { name: "trace", target: { dn, kind: kind === "computer" ? "computer" : "user", label } }, nonce: Date.now() });
+  }
   function requestPicker(kind: Picker) { setComposing(true); setPicker({ kind, nonce: Date.now() }); }
   function selectRow(e: ldap.Entry) { setSelected(e); setPaneMode("row"); }
   function inspectColumn(col: string) { setFactsColumn(col); setPaneMode("column"); }
@@ -237,7 +243,7 @@ function App() {
         ) : register === "licences" ? (
           <Suspense fallback={null}><LicencesRegister isAD={isAD} baseDN={req.baseDN} signedIn365={m365.signedIn} onConnect365={() => setShow365(true)} /></Suspense>
         ) : register === "policies" ? (
-          <Suspense fallback={null}><PoliciesRegister isAD={isAD} baseDN={req.baseDN} /></Suspense>
+          <Suspense fallback={null}><PoliciesRegister isAD={isAD} baseDN={req.baseDN} start={policyStart} onOpenQuery={openQuery} /></Suspense>
         ) : register === "bulk" ? (
           <Suspense fallback={null}><BulkRegister req={req} signedIn365={m365.signedIn} onPickColumns={() => { setRegister("search"); requestPicker("columns"); }} /></Suspense>
         ) : register === "saved" ? (
@@ -279,7 +285,7 @@ function App() {
               )}
               {result && (
                 <SidePane mode={paneMode} onMode={setPaneMode} entries={sorted} columns={columns} factsColumn={factsColumn} onPickColumn={setFactsColumn}
-                  onFilterValue={filterValue} onSort={toggleSort} onHide={hideColumn} onCopy={copyText} selected={selected} onClearRow={() => setSelected(null)} isAD={isAD} />
+                  onFilterValue={filterValue} onSort={toggleSort} onHide={hideColumn} onCopy={copyText} selected={selected} onClearRow={() => setSelected(null)} isAD={isAD} onOpenPolicyPage={openPolicyPage} />
               )}
             </div>
           </>
