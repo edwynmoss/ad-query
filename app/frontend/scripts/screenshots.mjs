@@ -262,6 +262,11 @@ async function main() {
     await page.getByText(/Users in Sales get/).waitFor();
     await page.getByText(/150 users/).waitFor();
     await shot(page, "19-policies-trace");
+    await page.locator(".ledger-page-main").getByRole("button", { name: "Sales Drive Maps" }).click();
+    await page.getByText(/Sales Drive Maps is linked at/).waitFor();
+    await shot(page, "22-policy-page");
+    await page.locator(".ledger-page-side").getByRole("button", { name: "trace" }).first().click();
+    await page.getByText(/Users in Sales get/).waitFor();
     await page.getByRole("button", { name: "Show on the tree" }).click();
     await page.locator(".ledger-map").waitFor();
     await shot(page, "20-policies-tree");

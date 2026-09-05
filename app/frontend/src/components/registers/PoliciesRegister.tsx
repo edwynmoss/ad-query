@@ -15,7 +15,7 @@ import { escapeLdapValue, newCondition } from "../../lib/filterBuilder";
 import { OBJECT_TYPES, filterFor, defaultAttributesFor } from "../../lib/objectTypes";
 import { RegisterFrame, InlineCheck } from "./RegisterFrame";
 import { PolicyMapView } from "../PolicyMapView";
-import { PolicyFlow, PolicyExplainer, headline } from "../PolicyFlow";
+import { PolicyFlow, PolicyExplainer, headline, fateOf } from "../PolicyFlow";
 
 export type Target = { dn: string; kind: "user" | "computer" | "container"; label: string };
 export type PolicyPage = { name: "home" } | { name: "trace"; target: Target } | { name: "map"; reveal?: string } | { name: "list" } | { name: "policy"; dn: string };
@@ -220,18 +220,53 @@ function TracePage({ target, onBack, onMap, onTrace, onPolicy, onPeople, onRow }
     >
       {error && <div className="p-6"><ErrorBanner error={error} /></div>}
       {chain && (
-        <div className="ledger-trace">
-          <div className="ledger-trace-flow">
+        <div className="ledger-page">
+          <section className="ledger-page-main">
             <div className="ledger-h4">How it gets there</div>
             <PolicyFlow chain={chain} targetLabel={bottom} targetKind={target.kind === "container" ? `in ${target.label}` : chain.targetKind}
               onPickStation={(dn) => onTrace(containerTarget(dn))} onPickPolicy={onPolicy} />
-          </div>
-          <div className="ledger-trace-side">
             <PolicyExplainer chain={chain} />
-          </div>
+          </section>
+          <section className="ledger-page-side">
+            <Outcome chain={chain} onPolicy={onPolicy} />
+          </section>
         </div>
       )}
     </RegisterFrame>
+  );
+}
+
+/** The answer without the working: what arrives, strongest first, and what does not. */
+function Outcome({ chain, onPolicy }: { chain: gpo.Chain; onPolicy: (dn: string) => void }) {
+  const entries = chain.entries ?? [];
+  const arrives = entries.filter((e) => e.precedence > 0).sort((a, b) => a.precedence - b.precedence);
+  const not = entries.filter((e) => e.precedence === 0);
+  return (
+    <>
+      <div className="ledger-h4">Arrives, strongest first</div>
+      {arrives.length === 0 && <p className="ledger-note">Nothing.</p>}
+      <div className="ledger-lines">
+        {arrives.map((e) => (
+          <div key={e.policy.dn} className="ledger-line is-static">
+            <span className="ledger-line-text"><span className="mono ledger-chain-num">{e.precedence}</span><button className="ledger-flow-pick" onClick={() => onPolicy(e.policy.dn)}>{e.policy.name}</button>{e.verdict === "depends" && <span className="ledger-flag warn">depends on group</span>}</span>
+            <span className="ledger-line-desc">from {e.somName}{e.enforced ? ", enforced" : ""}{e.wmiUnknown ? ", if its WMI filter passes" : ""}</span>
+          </div>
+        ))}
+      </div>
+      {not.length > 0 && (
+        <>
+          <div className="ledger-h4">Linked above, does not arrive</div>
+          <div className="ledger-lines">
+            {not.map((e) => (
+              <div key={e.policy.dn + e.somDN + e.verdict} className="ledger-line is-static">
+                <span className="ledger-line-text"><button className="ledger-flow-pick is-out" onClick={() => onPolicy(e.policy.dn)} disabled={e.verdict === "not-found"}>{e.policy.name}</button></span>
+                <span className="ledger-line-desc">{fateOf(e, chain).text}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </>
   );
 }
 
@@ -266,37 +301,42 @@ function PolicyDetailPage({ dn, onBack, onTrace, onPeople, onMap }: { dn: string
       </> : null}>
       {error && <div className="p-6"><ErrorBanner error={error} /></div>}
       {p && (
-        <div className="ledger-trace">
-          <div className="ledger-trace-flow">
-            <div className="ledger-h4">Where it is linked</div>
-            {links.length === 0 && <p className="ledger-note">Nowhere. The policy exists but no site, domain or organizational unit links it, so it reaches no one.</p>}
-            <div className="ledger-lines">
-              {links.map((l, i) => (
-                <div key={l.somDN + i} className="ledger-line is-register" style={{ gridTemplateColumns: "1fr auto auto" }}>
-                  <span className="ledger-line-name">
-                    <button className="ledger-link" onClick={() => onTrace(containerTarget(l.somDN))} title={l.somDN}>{l.somName}</button>
-                    <span className="is-dim" style={{ fontWeight: 400 }}> {l.somKind === "ou" ? "organizational unit" : l.somKind}, link {l.order}</span>
-                    {l.enforced && <span className="ledger-flag">enforced</span>}
-                    {l.disabled && <span className="ledger-flag warn">link switched off</span>}
-                  </span>
-                  <button className="ledger-link ledger-line-meta" onClick={() => onPeople(l.somDN)}>people here</button>
-                  <button className="ledger-link ledger-line-meta" onClick={() => onMap(l.somDN)}>on the tree</button>
-                </div>
-              ))}
-            </div>
+        <div className="ledger-page">
+          <section className="ledger-page-main">
             <div className="ledger-h4">Facts</div>
-            <dl className="ledger-facts-dl is-wide" style={{ marginTop: 6, maxWidth: 640 }}>
+            <dl className="ledger-kv">
               <dt>Applies to</dt><dd>{appliesTo(p, inv?.names)}</dd>
               <dt>User settings</dt><dd>{p.userDisabled ? <span className="ledger-flag warn">switched off</span> : "on"}</dd>
               <dt>Computer settings</dt><dd>{p.computerDisabled ? <span className="ledger-flag warn">switched off</span> : "on"}</dd>
               <dt>WMI filter</dt><dd>{p.wmiFilter ? (p.wmiFilterName || <span className="mono">{p.wmiFilter}</span>) : "none"}</dd>
-              <dt>Version</dt><dd className="mono">{p.version === 0 ? <span className="ledger-flag warn">never edited</span> : `${p.version & 0xffff} user, ${p.version >>> 16} computer`}</dd>
-              <dt>SYSVOL path</dt><dd className="mono selectable" style={{ wordBreak: "break-all" }}>{p.path || "unknown"}</dd>
+              <dt>Version</dt><dd>{p.version === 0 ? <span className="ledger-flag warn">never edited</span> : <><span className="mono">{p.version & 0xffff}</span> user, <span className="mono">{p.version >>> 16}</span> computer</>}</dd>
+              <dt>GUID</dt><dd className="mono selectable">{p.guid}</dd>
+              <dt>SYSVOL path</dt><dd className="mono selectable is-break">{p.path || "unknown"}</dd>
             </dl>
-          </div>
-          <div className="ledger-trace-side">
-            <p className="ledger-note">The version counts how many times each half has been saved; the settings themselves live at the SYSVOL path and are not read here. To see who actually receives this policy, open the people in a linked container and trace one of them.</p>
-          </div>
+            <p className="ledger-note">The version counts how many times each half has been saved. The settings themselves live at the SYSVOL path and are not read here.</p>
+          </section>
+          <section className="ledger-page-side">
+            <div className="ledger-h4">Linked at</div>
+            {links.length === 0 && <p className="ledger-note">Nowhere. The policy exists but no site, domain or organizational unit links it, so it reaches no one.</p>}
+            <div className="ledger-lines">
+              {links.map((l, i) => (
+                <div key={l.somDN + i} className="ledger-line is-static">
+                  <span className="ledger-line-text">
+                    <button className="ledger-flow-pick" onClick={() => onTrace(containerTarget(l.somDN))} title={l.somDN}>{l.somName}</button>
+                    <small className="ledger-kind">{l.somKind === "ou" ? "organizational unit" : l.somKind}, link {l.order}</small>
+                    {l.enforced && <span className="ledger-flag">enforced</span>}
+                    {l.disabled && <span className="ledger-flag warn">link switched off</span>}
+                  </span>
+                  <span className="ledger-line-desc ledger-line-acts">
+                    <button className="ledger-link" onClick={() => onTrace(containerTarget(l.somDN))}>trace</button>
+                    <button className="ledger-link" onClick={() => onPeople(l.somDN)}>people</button>
+                    <button className="ledger-link" onClick={() => onMap(l.somDN)}>on the tree</button>
+                  </span>
+                </div>
+              ))}
+            </div>
+            {links.length > 0 && <p className="ledger-note">To see who actually receives this policy, open the people at a link and trace one of them.</p>}
+          </section>
         </div>
       )}
     </RegisterFrame>

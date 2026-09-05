@@ -161,13 +161,13 @@ await step("policies register lists every policy and its links", async () => {
   await page.locator(".ledger-line", { hasText: "Finance" }).first().waitFor({ timeout: 30000 });
   await page.locator(".ledger-line", { hasText: "Finance" }).first().click();
   await page.getByText(/Finance blocks inheritance from above/).waitFor({ timeout: 60000 });
-  const trace = await page.locator(".ledger-qhead, .ledger-trace").allInnerTexts().then((t) => t.join("\n"));
+  const trace = await page.locator(".ledger-qhead, .ledger-page").allInnerTexts().then((t) => t.join("\n"));
   if (!/Users in Finance get 2 policies\./.test(trace)) throw new Error("finance headline: " + trace.slice(0, 300));
   if (!/Corporate Baseline\s*enforced, so it passes the block and applies\s*1/.test(trace)) throw new Error("enforced sentence: " + trace.slice(0, 800));
   await page.getByText(/\d[\d,]* users?, \d+ computers?/).waitFor({ timeout: 60000 });
   await shot(page, "l16-policies-trace-finance");
   // Drill down: the policy's own page, then back.
-  await page.locator(".ledger-trace-flow").getByRole("button", { name: "Finance Lockdown" }).click();
+  await page.locator(".ledger-page-main").getByRole("button", { name: "Finance Lockdown" }).click();
   await page.getByText(/Finance Lockdown is linked at Finance/).waitFor({ timeout: 30000 });
   await page.locator("dt", { hasText: "SYSVOL path" }).waitFor({ timeout: 5000 });
   await shot(page, "l16b-policy-page");
@@ -190,7 +190,7 @@ await step("policies register lists every policy and its links", async () => {
   await page.locator(".ledger-table").waitFor({ timeout: 60000 });
   await page.locator(".ledger-table").getByRole("button", { name: "IT Admin Tools" }).click();
   await page.getByText(/IT Admin Tools is linked at IT\. It applies to IT Team\./).waitFor({ timeout: 30000 });
-  await page.getByRole("button", { name: "people here" }).click();
+  await page.getByRole("button", { name: "people", exact: true }).first().click();
   await page.locator(".ledger-meta b").waitFor({ timeout: 60000 });
   const eyebrow = await page.locator(".ledger-eyebrow").first().innerText();
   if (!/Users\s+in\s+IT/i.test(eyebrow)) throw new Error("people-in should open Search in IT: " + eyebrow);
