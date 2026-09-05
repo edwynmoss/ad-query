@@ -29,6 +29,8 @@ await page.waitForTimeout(800);
 await step("connect to Samba AD with a password", async () => {
   const different = page.getByRole("button", { name: /different directory/i });
   if (await different.count()) await different.first().click();
+  await page.getByPlaceholder("dc01.contoso.com").waitFor({ timeout: 10000 });
+  await shot(page, "l00-connect");
   await page.getByPlaceholder("dc01.contoso.com").fill("localhost:1389");
   const pw = page.getByRole("radio", { name: /Username & password/ });
   if (await pw.count()) await pw.first().click();
@@ -112,6 +114,43 @@ await step("sort by a column and save the query", async () => {
   await page.locator(".ledger-line-name", { hasText: "Sales people" }).waitFor({ timeout: 5000 });
 });
 await shot(page, "l07-saved");
+
+await step("stale register, then preview in the ledger", async () => {
+  await page.getByRole("tab", { name: "Stale accounts" }).click();
+  await page.getByRole("heading", { name: "Stale accounts" }).waitFor({ timeout: 5000 });
+  await shot(page, "l10-stale");
+  await page.getByRole("button", { name: "Preview in the ledger" }).click();
+  await page.locator(".ledger-meta b").waitFor({ timeout: 60000 });
+  await page.getByRole("button", { name: /last logon is at most|last logon is empty|add a condition|\+ condition/ }).first().waitFor({ timeout: 5000 }).catch(() => {});
+  await page.waitForTimeout(400);
+  await shot(page, "l11-stale-preview");
+});
+
+await step("privileged register scans nested membership", async () => {
+  await page.getByRole("tab", { name: "Privileged access" }).click();
+  await page.locator(".ledger-table, .ledger-prose").first().waitFor({ timeout: 60000 });
+  await page.waitForTimeout(400);
+  const body = await page.locator(".ledger-register-body").innerText();
+  if (!/privileged/i.test(await page.locator(".ledger-qhead").innerText())) throw new Error("no privileged heading");
+  log("     privileged:", body.split("\n").slice(0, 2).join(" | ").slice(0, 100));
+  await shot(page, "l12-privileged");
+});
+
+await step("licences register asks for 365", async () => {
+  await page.getByRole("tab", { name: "Licences" }).click();
+  await page.getByText(/needs Microsoft 365/).waitFor({ timeout: 5000 });
+  await shot(page, "l13-licences");
+});
+
+await step("bulk lookup from a CSV", async () => {
+  await page.getByRole("tab", { name: "Bulk lookup" }).click();
+  await page.getByRole("heading", { name: "Bulk lookup" }).waitFor({ timeout: 5000 });
+  await page.locator('input[type="file"]').setInputFiles({ name: "people.csv", mimeType: "text/csv", buffer: Buffer.from("name,email\nJane,jdoe@adquery.test\nBob,bsmith@adquery.test\nNobody,nobody@adquery.test\n") });
+  await page.getByRole("button", { name: /Look up 3/ }).click();
+  await page.getByText(/Needs attention/).waitFor({ timeout: 60000 });
+  await page.waitForTimeout(300);
+  await shot(page, "l14-bulk");
+});
 
 await step("recent queries on the opening sheet after reload", async () => {
   await page.reload({ waitUntil: "networkidle" });

@@ -229,7 +229,7 @@
   .ledger-rule-hint { font-size: 11px; color: var(--color-ink-3); white-space: nowrap; }
   .ledger-icon { color: var(--color-ink-3); display: inline-flex; padding: 2px; cursor: pointer; }
   .ledger-icon:hover { color: var(--color-ink); }
-  .ledger-run { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 12px; border-radius: 4px; background: var(--color-ink); color: var(--color-surface); font-size: 12px; font-weight: 500; cursor: pointer; }
+  .ledger-run { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex-shrink: 0; height: 26px; padding: 0 12px; border-radius: 4px; background: var(--color-ink); color: var(--color-surface); font-size: 12px; font-weight: 500; cursor: pointer; }
   .ledger-run:hover { background: var(--color-ink-2); }
   .ledger-run:disabled { opacity: .5; cursor: default; }
 
@@ -339,4 +339,69 @@
   .ledger-line.is-static { grid-template-columns: 1fr; gap: 2px; cursor: default; }
   .ledger-line.is-static .ledger-line-text { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; }
   .ledger-line.is-static:hover .ledger-line-text { color: inherit; }
+}
+
+/* registers as pages of the sheet, and the first page */
+@layer components {
+  .ledger-title { margin-top: 6px; font-size: 22px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; color: var(--color-ink); }
+  .ledger-title.is-large { font-size: 26px; margin-top: 18px; }
+  .ledger-lede { margin-top: 8px; font-size: 14px; line-height: 1.6; color: var(--color-ink-2); max-width: 720px; }
+  .ledger-lede b { color: var(--color-ink); font-weight: 600; }
+  .ledger-controls { margin-top: 12px; }
+  .ledger-controls-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12.5px; color: var(--color-ink-2); }
+  .ledger-controls-word { color: var(--color-ink-3); }
+  .ledger-register-body { flex: 1; min-width: 0; overflow: auto; }
+  .ledger-prose { padding: 20px 26px; max-width: 720px; font-size: 13px; line-height: 1.6; color: var(--color-ink-2); }
+  .ledger-prose p + p { margin-top: 10px; }
+  .ledger-prose b { color: var(--color-ink); font-weight: 600; }
+  .ledger-prose .ledger-note { margin-top: 14px; }
+  .ledger-prose .ledger-h4 { margin-top: 24px; }
+
+  .ledger-inline-num { width: 44px; text-align: center; background: transparent; border: 0; border-bottom: 1px solid var(--color-ink); font-size: inherit; color: var(--color-ink); padding: 0 2px; }
+  .ledger-inline-num:disabled { border-bottom-color: var(--color-line-strong); color: var(--color-ink-3); }
+  .ledger-inline-num::-webkit-inner-spin-button { opacity: 1; }
+  .ledger-inline-check { display: inline-flex; align-items: baseline; gap: 6px; cursor: pointer; color: inherit; }
+  .ledger-inline-check input { width: 12px; height: 12px; margin: 0; position: relative; top: 1px; }
+  .ledger-inline-check.is-disabled { color: var(--color-ink-3); cursor: default; }
+  .ledger-inline-input { background: transparent; border: 0; border-bottom: 1px solid var(--color-ink); font-size: 12.5px; padding: 2px 0; width: 180px; color: var(--color-ink); }
+  .ledger-select { background: transparent; border: 0; border-bottom: 1px solid var(--color-ink); font: inherit; font-size: 12.5px; color: var(--color-ink); padding: 2px 0; max-width: 220px; }
+  .ledger-file { display: inline-flex; align-items: baseline; gap: 10px; cursor: pointer; border-bottom: 1px solid var(--color-ink); padding: 4px 0; }
+  .ledger-file input { display: none; }
+  .ledger-file-name { color: var(--color-ink); font-size: 13px; }
+  .ledger-file-meta { font-size: 11px; color: var(--color-ink-3); }
+  .ledger-run.is-large { height: 32px; padding: 0 18px; font-size: 13px; }
+  .is-warn { color: var(--color-warning); }
+
+  .ledger-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .ledger-table th { position: sticky; top: 0; background: var(--color-surface); text-align: left; padding: 7px 10px; font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--color-ink-3); border-bottom: 1px solid var(--color-ink); white-space: nowrap; }
+  .ledger-table td { padding: 6px 10px; border-bottom: 1px solid var(--color-line); vertical-align: baseline; color: var(--color-ink); }
+  .ledger-table .is-num { width: 44px; text-align: right; color: var(--color-ink-3); font-size: 11px; border-right: 1px solid var(--color-line); padding-right: 8px; }
+  .ledger-table th.is-num { font-family: var(--font-mono); }
+  .ledger-table .is-right { text-align: right; }
+  .ledger-table .is-2 { color: var(--color-ink-2); }
+  .ledger-table .is-empty { padding: 24px 10px; color: var(--color-ink-3); }
+  .ledger-table td .mono { font-size: 12px; }
+  .ledger-table tr:first-child td { padding-top: 8px; }
+  .ledger-tally { padding: 16px 26px 6px; max-width: 480px; }
+  .ledger-tally .ledger-h4 { margin-top: 0; }
+  .ledger-leader.is-static { cursor: default; grid-template-columns: minmax(0, auto) 1fr auto; }
+  .ledger-leader.is-static:hover .ledger-leader-label { color: inherit; }
+
+  /* first page */
+  .ledger-connect { height: 100%; overflow: auto; background: var(--color-page); display: flex; justify-content: center; padding: 8vh 22px 40px; }
+  .ledger-connect-sheet { width: 480px; max-width: 100%; align-self: flex-start; background: var(--color-surface); border: 1px solid var(--color-line); border-radius: 6px; padding: 26px 30px 30px; }
+  .ledger-connect .ledger-lede { font-size: 13.5px; }
+  .ledger-connect .ledger-h4 { margin-top: 22px; }
+  .ledger-field { margin-top: 18px; }
+  .ledger-field input { display: block; width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--color-line-strong); padding: 6px 0; font: inherit; font-size: 14px; color: var(--color-ink); outline: 0; }
+  .ledger-field input:focus { border-bottom-color: var(--color-ink); }
+  .ledger-field input::placeholder { color: var(--color-ink-3); }
+  .ledger-field .ledger-note { margin-top: 5px; }
+  .ledger-radio { display: flex; gap: 18px; margin-top: 2px; font-size: 13px; }
+  .ledger-radio .ledger-tab { padding: 6px 0 5px; }
+  .ledger-connect-acts { display: flex; align-items: center; gap: 18px; margin-top: 26px; font-size: 12.5px; }
+}
+
+@layer components {
+  .ledger-dialog-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
 }

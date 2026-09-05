@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Loader2, Cloud } from "lucide-react";
 import { M365LicenseReport } from "../../wailsjs/go/main/App";
 import type { m365 } from "../../wailsjs/go/models";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -31,7 +30,7 @@ export function License365Dialog({
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-[560px]">
         <DialogHeader>
-          <DialogTitle><span className="flex items-center gap-2"><Cloud size={16} className="text-brand" /><span className="display text-[16px] font-semibold">Check Microsoft 365 licences</span></span></DialogTitle>
+          <DialogTitle className="ledger-dialog-title">Check Microsoft 365 licences</DialogTitle>
           <DialogDescription className="text-[12px] text-ink-3">
             Keep only the {count.toLocaleString()} queried users who hold the selected licence(s), and add licence + last-sign-in columns.
           </DialogDescription>
@@ -39,14 +38,14 @@ export function License365Dialog({
 
         <div className="py-4">
           {loading
-            ? <div className="flex items-center gap-2 text-[12.5px] text-ink-2"><Loader2 size={14} className="animate-spin" /> Detecting licences…</div>
+            ? <div className="flex items-center gap-2 text-[12.5px] text-ink-2">Detecting licences…</div>
             : <LicensePicker skus={skus} selected={selected} onChange={setSelected} />}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button className="px-5" disabled={busy || loading} onClick={() => onApply(selected)}>
-            {busy ? <Loader2 size={14} className="animate-spin" /> : <Cloud size={14} />} Check {count.toLocaleString()} users
+            {busy ? "Checking…" : `Check ${count.toLocaleString()} users`}
           </Button>
         </DialogFooter>
       </DialogContent>

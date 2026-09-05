@@ -25,10 +25,10 @@ import { newCondition } from "./lib/filterBuilder";
 import { labelFor } from "./lib/attrLabels";
 
 const M365Dialog = lazy(() => import("./components/M365Dialog").then((m) => ({ default: m.M365Dialog })));
-const StaleReportDialog = lazy(() => import("./components/StaleReportDialog").then((m) => ({ default: m.StaleReportDialog })));
-const PrivilegedDialog = lazy(() => import("./components/PrivilegedDialog").then((m) => ({ default: m.PrivilegedDialog })));
-const ReclaimDialog = lazy(() => import("./components/ReclaimDialog").then((m) => ({ default: m.ReclaimDialog })));
-const BulkImportDialog = lazy(() => import("./components/BulkImportDialog").then((m) => ({ default: m.BulkImportDialog })));
+const StaleRegister = lazy(() => import("./components/registers/StaleRegister").then((m) => ({ default: m.StaleRegister })));
+const PrivilegedRegister = lazy(() => import("./components/registers/PrivilegedRegister").then((m) => ({ default: m.PrivilegedRegister })));
+const LicencesRegister = lazy(() => import("./components/registers/LicencesRegister").then((m) => ({ default: m.LicencesRegister })));
+const BulkRegister = lazy(() => import("./components/registers/BulkRegister").then((m) => ({ default: m.BulkRegister })));
 
 const LIC_COL = "Microsoft 365 licenses";
 const SIGNIN_COL = "365 last sign-in";
@@ -143,7 +143,7 @@ function App() {
     const q = override ?? req;
     if (!q.baseDN) return;
     setRunning(true); setError(null); setSelected(null); setExtra365Cols([]); setChecked(new Set());
-    setRegister("search");
+    setRegister("search"); setPicker(null);
     const t0 = performance.now();
     try {
       const cs = await SearchCached(ldap.SearchRequest.createFrom({ baseDN: q.baseDN, scope: q.scope, filter: effectiveFilter(q), attributes: q.attributes, pageSize: 1000, sizeLimit: 0 }), refresh);
@@ -162,7 +162,7 @@ function App() {
       openQuery({ ...resolveQuery(r, server?.isActiveDirectory ?? false, req.baseDN), search: "" });
       return;
     }
-    setRegister(key);
+    setRegister(key); setPicker(null);
   }
 
   // Column facts: keep or exclude a value by adding a condition and re-running.
@@ -229,7 +229,15 @@ function App() {
       <main className="ledger-sheet">
         <Registers active={register} onChange={openRegister} savedCount={saved.length} />
 
-        {register === "saved" ? (
+        {register === "stale" ? (
+          <Suspense fallback={null}><StaleRegister isAD={isAD} baseDN={req.baseDN} signedIn365={m365.signedIn} onOpen={openQuery} /></Suspense>
+        ) : register === "privileged" ? (
+          <Suspense fallback={null}><PrivilegedRegister baseDN={req.baseDN} /></Suspense>
+        ) : register === "licences" ? (
+          <Suspense fallback={null}><LicencesRegister isAD={isAD} baseDN={req.baseDN} signedIn365={m365.signedIn} onConnect365={() => setShow365(true)} /></Suspense>
+        ) : register === "bulk" ? (
+          <Suspense fallback={null}><BulkRegister req={req} signedIn365={m365.signedIn} onPickColumns={() => { setRegister("search"); requestPicker("columns"); }} /></Suspense>
+        ) : register === "saved" ? (
           <section className="ledger-open">
             <div className="ledger-eyebrow">Saved queries</div>
             {saved.length === 0 && <p className="ledger-note">Nothing saved yet. Run a query, then choose Save on the meta line under the heading.</p>}
@@ -299,12 +307,6 @@ function App() {
           meta={{ directory: `${conn?.host ?? ""}${req.baseDN ? " · " + req.baseDN : ""}`, scope: scopeLabel, filter: effectiveFilter(req), tool: `AD Query ${version || "dev"}` }}
           onClose={() => setShowExport(false)} />
       )}
-
-      {/* Registers still served by their dialogs until PR C moves them onto the sheet. */}
-      {register === "stale" && <Suspense fallback={null}><StaleReportDialog isAD={isAD} baseDN={req.baseDN} onOpen={openQuery} onClose={() => setRegister("search")} /></Suspense>}
-      {register === "privileged" && <Suspense fallback={null}><PrivilegedDialog baseDN={req.baseDN} onClose={() => setRegister("search")} /></Suspense>}
-      {register === "licences" && <Suspense fallback={null}><ReclaimDialog isAD={isAD} baseDN={req.baseDN} onClose={() => setRegister("search")} /></Suspense>}
-      {register === "bulk" && <Suspense fallback={null}><BulkImportDialog req={req} onClose={() => setRegister("search")} /></Suspense>}
 
       <Toaster position="bottom-right" />
     </div>

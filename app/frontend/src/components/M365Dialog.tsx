@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Cloud, CheckCircle2, ExternalLink } from "lucide-react";
 import { M365SignInInteractive, M365StartSignIn, M365PollSignIn, M365SignedIn, M365SignOut, M365Account } from "../../wailsjs/go/main/App";
 import type { m365 } from "../../wailsjs/go/models";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -79,7 +78,7 @@ export function M365Dialog({ onClose, onChange }: Props) {
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="w-[460px]">
         <DialogHeader>
-          <DialogTitle><span className="flex items-center gap-2"><Cloud size={16} className="text-brand" /><span className="display text-[16px] font-semibold">Microsoft 365</span></span></DialogTitle>
+          <DialogTitle className="ledger-dialog-title">Microsoft 365</DialogTitle>
         </DialogHeader>
 
         <div className="py-5 space-y-4">
@@ -102,7 +101,7 @@ export function M365Dialog({ onClose, onChange }: Props) {
 
           {phase === "browser" && (
             <div className="flex items-center gap-2 text-[12.5px] text-ink-2">
-              <Loader2 size={14} className="animate-spin" /> Continue sign-in in your browser… it'll return here automatically.
+              Continue sign-in in your browser… it'll return here automatically.
             </div>
           )}
 
@@ -112,14 +111,14 @@ export function M365Dialog({ onClose, onChange }: Props) {
               <div className="text-center py-2">
                 <div className="display text-[30px] tracking-[0.18em] select-all font-semibold">{dc.user_code}</div>
               </div>
-              <Button variant="outline" asChild className="w-full"><a href={dc.verification_uri} target="_blank" rel="noreferrer"><ExternalLink size={14} /> {dc.verification_uri}</a></Button>
-              <div className="flex items-center gap-2 text-[12px] text-ink-3"><Loader2 size={13} className="animate-spin" /> Waiting for you to finish signing in…</div>
+              <Button variant="outline" asChild className="w-full"><a href={dc.verification_uri} target="_blank" rel="noreferrer">{dc.verification_uri}</a></Button>
+              <div className="flex items-center gap-2 text-[12px] text-ink-3">Waiting for you to finish signing in…</div>
             </div>
           )}
 
           {phase === "done" && (
             <div className="flex items-center gap-2 text-[13px] text-success">
-              <CheckCircle2 size={16} /> Signed in to Microsoft 365{account ? <> as <span className="font-medium text-ink">{account}</span></> : ""}.
+              Signed in to Microsoft 365{account ? <> as <span className="font-medium text-ink">{account}</span></> : ""}.
             </div>
           )}
 
@@ -133,7 +132,6 @@ export function M365Dialog({ onClose, onChange }: Props) {
           {phase === "done"
             ? <Button variant="outline" onClick={signOut}>Sign out</Button>
             : <Button className="px-5" onClick={signIn} disabled={busy || phase === "browser" || phase === "pending"}>
-                {busy || phase === "browser" ? <Loader2 size={14} className="animate-spin" /> : <Cloud size={14} />}
                 {phase === "browser" ? "Waiting…" : phase === "pending" ? "Waiting…" : "Sign in"}
               </Button>}
         </DialogFooter>

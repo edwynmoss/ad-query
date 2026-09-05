@@ -41,7 +41,7 @@ export function ExportDialog({ allEntries, selectedEntries, columns, meta, onClo
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-[520px] max-h-[86vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="px-4 py-3 border-b border-line">
-          <DialogTitle className="display text-[16px] font-semibold">Export to CSV</DialogTitle>
+          <DialogTitle className="ledger-dialog-title">Export to CSV</DialogTitle>
         </DialogHeader>
 
         <div className="overflow-auto px-4 py-3.5 space-y-4">
