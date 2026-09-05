@@ -8,27 +8,29 @@ Pick an object type, narrow it with a filter, choose *any* attributes as columns
 
 ## Screenshots
 
-Connect (auto-detects your domain → sign in as you, no password) and the results "ledger":
+The app is one document: a running head, a sheet with register tabs along its top edge, and a foot. Open a directory (a joined domain is one sentence and one button), then ask in plain words: what, where, and the conditions, with the search as a rule.
 
-| Connect | Results |
-|---|---|
-| ![Connect](docs/screenshots/01-connect.png) | ![Ledger](docs/screenshots/02-ledger.png) |
-
-| Filters | Inspect (attributes + ACL) | Accurate last login (all DCs) | Risk flags |
-|---|---|---|---|
-| ![Filters](docs/screenshots/03-filters.png) | ![Inspector](docs/screenshots/04-inspector.png) | ![Login](docs/screenshots/12-login.png) | ![Risk](docs/screenshots/13-risk.png) |
-
-| Bulk lookup from CSV/Excel | Export | Dark theme |
+| Open a directory | Opening sheet | The question as a heading |
 |---|---|---|
-| ![Bulk](docs/screenshots/05-bulk.png) | ![Export](docs/screenshots/06-export.png) | ![Dark](docs/screenshots/07-ledger-dark.png) |
+| ![Connect](docs/screenshots/01-connect.png) | ![Opening](docs/screenshots/02-opening.png) | ![Heading](docs/screenshots/03-heading.png) |
 
-Reports: one-click run/download recipes, **unused-license reclamation** (licensed users dormant in AD *and* 365), stale-account review, and Microsoft 365 sign-in:
+The ledger: a numbered margin, mono figures, account flags as small capitals. The right pane gives facts about a column (click a value to keep it, Alt-click to exclude) or one row in full.
 
-| Reports | Privileged access | Licenses & sign-in | Stale accounts | 365 sign-in |
+| Ledger | Column facts | A row in full | Login across every DC |
+|---|---|---|---|
+| ![Ledger](docs/screenshots/04-ledger.png) | ![Facts](docs/screenshots/05-facts.png) | ![Row](docs/screenshots/06-row.png) | ![Login](docs/screenshots/07-login.png) |
+
+| Risk | Security descriptor | Export | Dark |
+|---|---|---|---|
+| ![Risk](docs/screenshots/08-risk.png) | ![Security](docs/screenshots/09-security.png) | ![Export](docs/screenshots/10-export.png) | ![Dark](docs/screenshots/16-ledger-dark.png) |
+
+Registers are pages of the same sheet: stale accounts across AD and Microsoft 365, privileged access with nested membership and risk, licences held by dormant accounts, and bulk lookup from a spreadsheet.
+
+| Stale accounts | Privileged access | Licences | Bulk lookup | 365 sign-in |
 |---|---|---|---|---|
-| ![Reports](docs/screenshots/08-reports.png) | ![Privileged](docs/screenshots/14-privileged.png) | ![Licenses](docs/screenshots/09-reclaim.png) | ![Stale](docs/screenshots/10-stale.png) | ![365](docs/screenshots/11-m365-signin.png) |
+| ![Stale](docs/screenshots/11-stale.png) | ![Privileged](docs/screenshots/12-privileged.png) | ![Licences](docs/screenshots/13-licences.png) | ![Bulk](docs/screenshots/14-bulk.png) | ![365](docs/screenshots/15-m365-signin.png) |
 
-> Regenerate with `cd app/frontend && npm run shots` (builds the app, serves it, and drives the journey via Playwright into `docs/screenshots/`).
+> Regenerate with `cd app/frontend && npm run shots` (builds the app, serves it, and drives the journey through Playwright into `docs/screenshots/`). `node scripts/e2e-ledger.mjs` drives the real backend through `wails dev` against the Samba AD container in `test/samba-ad`.
 
 ## Stack
 

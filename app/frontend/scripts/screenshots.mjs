@@ -3,8 +3,9 @@
 //   npm run shots        (builds, serves dist via vite preview, drives Playwright)
 //
 // Runs fully offline: a mock `window.go` (the Wails bindings) is injected before
-// the app loads, so no directory/back-end is required. Captures the journey plus
-// the Reports / Reclaim (unused licenses) / Stale / 365 surfaces, in light and dark.
+// the app loads, so no directory/back-end is required. Captures the first page,
+// the opening sheet, a query with its where line, column facts, a row in full,
+// export, the four registers and 365 sign-in, in light and dark.
 import { chromium } from "playwright";
 import { preview } from "vite";
 import { mkdir, writeFile, rm } from "node:fs/promises";
@@ -90,126 +91,122 @@ async function main() {
   const shots = [];
 
   async function session(theme, extraInit, run) {
-    const ctx = await browser.newContext({ viewport: { width: 1360, height: 768 }, deviceScaleFactor: 2 });
-    await ctx.addInitScript(`${MOCK}\ntry { localStorage.setItem('adquery.theme','${theme}'); } catch (e) {}\n${extraInit ?? ""}`);
+    const ctx = await browser.newContext({ viewport: { width: 1360, height: 800 }, deviceScaleFactor: 2 });
+    await ctx.addInitScript(`${MOCK}\ntry { localStorage.clear(); localStorage.setItem('adquery.theme','${theme}'); } catch (e) {}\n${extraInit ?? ""}`);
     const page = await ctx.newPage();
     await page.goto(url, { waitUntil: "networkidle" });
     await run(page);
     await ctx.close();
   }
 
-  // Freeze animations to their end state for the capture only (so dialogs are
-  // opaque/settled), without globally disabling them, which breaks Radix's
-  // open-state detection for menus/popovers at interaction time.
   const shot = async (page, name) => {
+    await page.waitForTimeout(250);
     await page.screenshot({ path: path.join(OUT, name + ".png"), animations: "disabled" });
     shots.push(name + ".png");
     console.log("  ✓", name);
   };
-  const connectRun = async (page) => {
+  const connect = async (page) => {
     await page.getByRole("button", { name: /Connect to CORP/ }).click();
-    // Object-type picker is a Radix ToggleGroup (items expose role="radio").
-    await page.getByRole("radio", { name: "Users", exact: true }).click();
+    await page.getByPlaceholder("Who are you looking for?").waitFor();
+  };
+  // Users, where department is Sales, run.
+  const compose = async (page) => {
+    await page.locator(".ledger-hint").getByRole("button", { name: "type" }).click();
+    await page.getByRole("button", { name: "Users", exact: true }).click();
+    await page.getByRole("button", { name: /add a condition/ }).click();
+    await page.getByRole("button", { name: /add condition/i }).click();
+    await page.getByRole("button", { name: /Field…/ }).last().click();
+    await page.getByPlaceholder("Search fields…").fill("department");
+    await page.getByRole("button", { name: /^Department/ }).first().click();
+    await page.getByPlaceholder("value").last().fill("Sales");
+    await page.keyboard.press("Escape");
+    await page.locator(".ledger-foot").click();
+    await page.getByRole("button", { name: /department is Sales/ }).waitFor();
+    await page.getByRole("tab", { name: "Conditions" }).waitFor({ state: "hidden" });
+  };
+  const run = async (page) => {
     await page.getByRole("button", { name: "Run", exact: true }).click();
-    await page.getByText("500 records").first().waitFor();
+    await page.locator(".ledger-meta b").waitFor();
   };
 
-  // --- Light: full journey + reports surfaces -------------------------------
+  // --- Light: the journey -----------------------------------------------------
   await session("light", "", async (page) => {
-    await page.getByRole("heading", { name: "AD Query" }).waitFor();
+    await page.getByRole("heading", { name: "Open a directory" }).waitFor();
     await shot(page, "01-connect");
 
-    await connectRun(page);
-    await shot(page, "02-ledger");
+    await connect(page);
+    await shot(page, "02-opening");
 
-    await page.getByRole("button", { name: /Filters/ }).click();
-    await page.getByRole("button", { name: "Add condition" }).click();
-    await shot(page, "03-filters");
-    await page.keyboard.press("Escape"); // close the Filters popover
+    await compose(page);
+    await shot(page, "03-heading");
 
-    await page.getByText("user2@adquery.test").click();
+    await run(page);
+    await shot(page, "04-ledger");
+
+    await page.locator(".ledger-facts-title").selectOption({ label: "Department" });
+    await page.locator(".ledger-leader").first().waitFor();
+    await shot(page, "05-facts");
+
+    await page.getByText("User 2", { exact: true }).click();
+    await page.locator(".ledger-record-dn").waitFor();
+    await shot(page, "06-row");
     await page.getByRole("tab", { name: "Login" }).click();
-    await page.getByRole("button", { name: "Check", exact: true }).click();
-    await page.getByText(/responded/).waitFor();
-    await shot(page, "12-login");
+    await page.getByRole("button", { name: "Ask them all" }).click();
+    await page.getByText(/confidence/).waitFor();
+    await shot(page, "07-login");
     await page.getByRole("tab", { name: "Risk" }).click();
     await page.getByText(/Overall/).waitFor();
-    await shot(page, "13-risk");
+    await shot(page, "08-risk");
     await page.getByRole("tab", { name: "Security" }).click();
-    await page.getByRole("button", { name: /Load security descriptor/ }).click();
-    await page.getByText("DACL").waitFor();
-    await shot(page, "04-inspector");
-    await page.getByRole("button", { name: "close" }).click();
+    await page.getByRole("button", { name: "Read it" }).click();
+    await page.getByText(/Access control/).waitFor();
+    await shot(page, "09-security");
 
-    await page.getByRole("button", { name: /Tools/ }).click();
-    await page.getByRole("menuitem", { name: /Bulk lookup/ }).click();
-    await page.locator('input[type="file"]').setInputFiles(csvPath);
-    await page.getByRole("button", { name: /Look up/ }).click();
-    await page.getByText(/found/).first().waitFor();
-    await shot(page, "05-bulk");
-    // Dialogs (shadcn) expose an auto close button labelled "Close"; take the first.
-    await page.getByRole("button", { name: "Close" }).first().click();
-
-    await page.getByRole("button", { name: /Export CSV/ }).click();
+    await page.getByRole("button", { name: "Export CSV" }).click();
     await page.getByText("Export to CSV").waitFor();
-    await shot(page, "06-export");
+    await shot(page, "10-export");
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
 
-    // Reports panel + license + stale.
-    await page.getByRole("button", { name: /Tools/ }).click();
-    await page.getByRole("menuitem", { name: /Reports/ }).click();
-    await page.getByText("Built-in", { exact: true }).waitFor();
-    await shot(page, "08-reports");
+    await page.getByRole("tab", { name: "Stale accounts" }).click();
+    await page.getByRole("heading", { name: "Stale accounts" }).waitFor();
+    await shot(page, "11-stale");
 
-    // Report rows render an "Open" Button each; DOM order = All users, Stale, Reclaim.
-    const opens = page.getByRole("button", { name: "Open", exact: true });
-    await opens.nth(2).click(); // Licenses & sign-in
-    await page.getByText("Built-in", { exact: true }).waitFor({ state: "hidden" }); // Reports closes as the sub-report opens
-    await page.getByText(/licensed in scope/).waitFor();           // ready phase
-    await shot(page, "09-reclaim");
+    await page.getByRole("tab", { name: "Privileged access" }).click();
+    await page.locator(".ledger-table").waitFor();
+    await shot(page, "12-privileged");
+
+    await page.getByRole("tab", { name: "Licences" }).click();
+    await page.locator(".ledger-table").waitFor();
+    await shot(page, "13-licences");
+
+    await page.getByRole("tab", { name: "Bulk lookup" }).click();
+    await page.locator('input[type="file"]').setInputFiles(csvPath);
+    await page.getByRole("button", { name: /Look up 6/ }).click();
+    await page.getByText(/Needs attention/).waitFor();
+    await shot(page, "14-bulk");
   });
 
-  // --- Stale report (own session; avoids nested-dialog churn) --------------
-  await session("light", "", async (page) => {
-    await page.getByRole("button", { name: /Connect to CORP/ }).click();
-    await page.getByRole("button", { name: /Tools/ }).click();
-    await page.getByRole("menuitem", { name: /Reports/ }).click();
-    await page.getByText("Built-in", { exact: true }).waitFor();
-    await page.getByRole("button", { name: "Open", exact: true }).nth(1).click(); // Stale accounts
-    await page.getByText("Not seen in the last").waitFor();
-    await shot(page, "10-stale");
-  });
-
-  // --- Privileged access review (own session) ------------------------------
-  await session("light", "", async (page) => {
-    await page.getByRole("button", { name: /Connect to CORP/ }).click();
-    await page.getByRole("button", { name: /Tools/ }).click();
-    await page.getByRole("menuitem", { name: /Reports/ }).click();
-    await page.getByText("Built-in", { exact: true }).waitFor();
-    await page.getByRole("button", { name: "Open", exact: true }).nth(3).click(); // Privileged access
-    await page.getByText(/privileged users/).waitFor();
-    await shot(page, "14-privileged");
-  });
-
-  // --- 365 device-code sign-in (signed out) --------------------------------
+  // --- 365 device-code sign-in (signed out) -----------------------------------
   await session("light",
     `localStorage.setItem('adquery.m365.tenant','contoso.onmicrosoft.com');
      localStorage.setItem('adquery.m365.client','11111111-2222-3333-4444-555555555555');
      window.go.main.App.M365SignedIn = () => Promise.resolve(false);`,
     async (page) => {
-      await page.getByRole("button", { name: /Connect to CORP/ }).click();
-      await page.getByRole("button", { name: /Connect 365/ }).click(); // masthead 365 chip (signed out)
-      // Primary sign-in opens the browser; for the gallery show the device-code
-      // fallback (which renders the code) instead.
+      await connect(page);
+      await page.getByRole("button", { name: "Connect 365" }).click();
       await page.getByRole("button", { name: /Sign in with a code/ }).click();
       await page.getByText("F7K2-9QLM").waitFor();
-      await shot(page, "11-m365-signin");
+      await shot(page, "15-m365-signin");
     });
 
-  // --- Dark ledger ---------------------------------------------------------
+  // --- Dark ledger -------------------------------------------------------------
   await session("dark", "", async (page) => {
-    await connectRun(page);
-    await shot(page, "07-ledger-dark");
+    await connect(page);
+    await compose(page);
+    await run(page);
+    await page.getByText("User 2", { exact: true }).click();
+    await page.locator(".ledger-record-dn").waitFor();
+    await shot(page, "16-ledger-dark");
   });
 
   await browser.close();
