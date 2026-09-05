@@ -7,7 +7,7 @@ toolchain go1.26.4
 require (
 	github.com/danieljoos/wincred v1.2.3
 	github.com/go-ldap/ldap/v3 v3.4.13
-	github.com/wailsapp/wails/v2 v2.12.0
+	github.com/wailsapp/wails/v2 v2.15.0
 	golang.org/x/crypto v0.56.0
 	modernc.org/sqlite v1.52.0
 )

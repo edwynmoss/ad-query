@@ -259,9 +259,14 @@ func (a *App) AppVersion() string {
 }
 
 // CheckForUpdate asks the release manifest for a newer version. nil means
-// the running build is current.
+// the running build is current. ADQUERY_UPDATE_MANIFEST overrides the
+// manifest URL so the whole flow can be exercised against a local server.
 func (a *App) CheckForUpdate() (*update.Available, error) {
-	return update.Check(a.ctx, updateManifestURL, Version)
+	manifest := updateManifestURL
+	if override := strings.TrimSpace(os.Getenv("ADQUERY_UPDATE_MANIFEST")); override != "" {
+		manifest = override
+	}
+	return update.Check(a.ctx, manifest, Version)
 }
 
 // InstallUpdate downloads the installer, verifies its signature, starts it

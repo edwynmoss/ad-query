@@ -48,7 +48,9 @@ export async function offerUpdate(manual: boolean): Promise<void> {
   if (!manual && offered === available.version) return;
   offered = available.version;
   const { version, current, notes, url, signature } = available;
+  // A fixed id means a manual check re-surfaces the same toast instead of stacking another.
   toast(`Version ${version} is available`, {
+    id: "update-available",
     description: `${summarize(notes) || "The update installs in the background and restarts the app."} You have ${current}.`,
     duration: Infinity,
     action: { label: "Install and restart", onClick: () => void install(url, signature) },

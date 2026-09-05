@@ -186,6 +186,7 @@ export function ConnectionPanel({ onConnected }: Props) {
               {auth === "sspi" && (
                 <p className="text-[12px] leading-relaxed px-4 py-3 rounded-lg bg-sunken text-ink-2">
                   Signs in as you, the Windows account you're logged in with. No username or password needed.
+                  Needs a PC joined to the domain. If your domain controller requires LDAP signing, use an ldaps:// address.
                 </p>
               )}
 
