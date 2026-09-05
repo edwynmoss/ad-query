@@ -15,7 +15,7 @@ import { escapeLdapValue, newCondition } from "../../lib/filterBuilder";
 import { OBJECT_TYPES, filterFor, defaultAttributesFor } from "../../lib/objectTypes";
 import { RegisterFrame, InlineCheck } from "./RegisterFrame";
 import { PolicyMapView } from "../PolicyMapView";
-import { PolicyFlow, PolicyExplainer, headline, fateOf, traceAsText, type ContainerHit } from "../PolicyFlow";
+import { PolicyFlow, PolicyExplainer, headline, fateOf, traceAsText, changedRecently, daysSince, type ContainerHit } from "../PolicyFlow";
 import { HypotheticalBar, ImpactList, toChanges, type Hypothetical } from "../WhatIfPanel";
 
 export type Target = { dn: string; kind: "user" | "computer" | "container"; label: string };
@@ -92,14 +92,37 @@ type Nav = { onBack: () => void; onTrace: (t: Target) => void; onPolicy: (dn: st
 
 const containerTarget = (dn: string): Target => ({ dn, kind: "container", label: dn.split(",")[0].replace(/^[^=]+=/, "") });
 
+/** The policies one chain receives and the other does not, by lower-case DN. */
+function onlyFor(mine: gpo.Chain | null, theirs: gpo.Chain | null): Set<string> {
+  const out = new Set<string>();
+  if (!mine || !theirs) return out;
+  const other = new Set((theirs.entries ?? []).filter((e) => e.precedence > 0).map((e) => e.policy.dn.toLowerCase()));
+  for (const e of mine.entries ?? []) {
+    if (e.precedence > 0 && !other.has(e.policy.dn.toLowerCase())) out.add(e.policy.dn.toLowerCase());
+  }
+  return out;
+}
+
+/** "Both get 3 policies. Terry Wong also gets Sales Drive Maps." */
+function compareSentence(a: gpo.Chain, b: gpo.Chain, aName: string, bName: string): string {
+  const onlyA = [...onlyFor(a, b)], onlyB = [...onlyFor(b, a)];
+  const nameOf = (c: gpo.Chain, dn: string) => (c.entries ?? []).find((e) => e.policy.dn.toLowerCase() === dn)?.policy.name ?? dn;
+  const shared = (a.entries ?? []).filter((e) => e.precedence > 0).length - onlyA.length;
+  const bits = [`${aName} and ${bName} share ${shared === 0 ? "no policies" : `${shared} ${shared === 1 ? "policy" : "policies"}`}.`];
+  if (onlyA.length) bits.push(`${aName} also gets ${onlyA.map((d) => nameOf(a, d)).join(", ")}.`);
+  if (onlyB.length) bits.push(`${bName} also gets ${onlyB.map((d) => nameOf(b, d)).join(", ")}.`);
+  if (!onlyA.length && !onlyB.length) bits.push("They receive exactly the same policies.");
+  return bits.join(" ");
+}
+
 /** "5 policies" for a chain, for the paired sentence. */
 function countOf(c: gpo.Chain): string {
   const n = (c.entries ?? []).filter((e) => e.precedence > 0).length;
   return n === 0 ? "no policies" : `${n} ${n === 1 ? "policy" : "policies"}`;
 }
 
-/** "On a computer…", with an inline find. */
-function MachinePicker({ find, onPick }: { find: (q: string) => Promise<Target[]>; onPick: (t: Target) => void }) {
+/** A link that opens an inline find and hands back what was picked. */
+function PickerLink({ label, word, placeholder, find, onPick }: { label: string; word: string; placeholder: string; find: (q: string) => Promise<Target[]>; onPick: (t: Target) => void }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<Target[]>([]);
@@ -108,14 +131,15 @@ function MachinePicker({ find, onPick }: { find: (q: string) => Promise<Target[]
     if (v.trim().length < 2) { setHits([]); return; }
     try { setHits(await find(v)); } catch { setHits([]); }
   };
-  if (!open) return <button className="ledger-link" onClick={() => setOpen(true)}>On a computer…</button>;
+  const close = () => { setOpen(false); setQ(""); setHits([]); };
+  if (!open) return <button className="ledger-link" onClick={() => setOpen(true)}>{label}</button>;
   return (
     <span className="ledger-move">
-      <span className="ledger-controls-word">signed in on</span>
-      <input className="ledger-inline-input" autoFocus value={q} onChange={(e) => search(e.target.value)} placeholder="a computer by name" aria-label="which computer" />
-      {hits.map((h) => <button key={h.dn} className="ledger-link" title={h.dn} onClick={() => { setOpen(false); setQ(""); setHits([]); onPick(h); }}>{h.label}</button>)}
-      {q.trim().length >= 2 && hits.length === 0 && <span className="is-dim">no computer by that name</span>}
-      <button className="ledger-link" onClick={() => { setOpen(false); setQ(""); setHits([]); }}>cancel</button>
+      <span className="ledger-controls-word">{word}</span>
+      <input className="ledger-inline-input" autoFocus value={q} onChange={(e) => search(e.target.value)} placeholder={placeholder} aria-label={label} />
+      {hits.map((h) => <button key={h.dn} className="ledger-link" title={h.dn} onClick={() => { close(); onPick(h); }}>{h.label}</button>)}
+      {q.trim().length >= 2 && hits.length === 0 && <span className="is-dim">nothing by that name</span>}
+      <button className="ledger-link" onClick={close}>cancel</button>
     </span>
   );
 }
@@ -219,8 +243,17 @@ function TracePage({ target, onBack, onMap, onTrace, onPolicy, onPeople, onRow }
   const [machine, setMachine] = useState<Target | null>(null);        // signed in on this computer
   const [machineChain, setMachineChain] = useState<gpo.Chain | null>(null);
   const [machineTried, setMachineTried] = useState<gpo.Chain | null>(null);
+  const [peer, setPeer] = useState<Target | null>(null);              // compared with this person
+  const [peerChain, setPeerChain] = useState<gpo.Chain | null>(null);
 
-  useEffect(() => { setChanges([]); setTried(null); setMachine(null); setMachineChain(null); }, [target.dn]);
+  useEffect(() => { setChanges([]); setTried(null); setMachine(null); setMachineChain(null); setPeer(null); setPeerChain(null); }, [target.dn]);
+
+  useEffect(() => {
+    if (!peer) { setPeerChain(null); return; }
+    let live = true;
+    PolicyChainWith(peer.dn, []).then((c) => { if (live) setPeerChain(c); }).catch((e: any) => { if (live) setError(String(e?.message ?? e)); });
+    return () => { live = false; };
+  }, [peer]);
 
   useEffect(() => {
     let live = true;
@@ -283,6 +316,27 @@ function TracePage({ target, onBack, onMap, onTrace, onPolicy, onPeople, onRow }
     }));
     return (res.entries ?? []).map((e) => ({ dn: e.dn, kind: "computer" as const, label: e.attributes?.name?.[0] || e.attributes?.dNSHostName?.[0] || e.dn }));
   };
+  // People to compare this person with.
+  const findPeople = async (q: string): Promise<Target[]> => {
+    const res = await Search(ldap.SearchRequest.createFrom({
+      baseDN: target.dn.split(",").filter((p) => /^(dc)=/i.test(p)).join(","), scope: 2, pageSize: 8, sizeLimit: 8,
+      filter: `(&(objectCategory=person)(objectClass=user)(anr=${escapeLdapValue(q.trim())}))`, attributes: ["displayName", "sAMAccountName", "name"],
+    }));
+    return (res.entries ?? [])
+      .filter((e) => e.dn.toLowerCase() !== target.dn.toLowerCase())
+      .map((e) => ({ dn: e.dn, kind: "user" as const, label: e.attributes?.displayName?.[0] || e.attributes?.sAMAccountName?.[0] || e.attributes?.name?.[0] || e.dn }));
+  };
+  const exportTrace = () => {
+    if (!shown) return;
+    const cols = ["Policy", "Linked at", "Container", "Arrives", "Precedence", "Enforced", "Why", "Policy changed"];
+    const rows = (shown.entries ?? []).map((e) => ({
+      Policy: e.policy.name, "Linked at": e.somName, Container: e.somKind,
+      Arrives: e.precedence > 0 ? "yes" : "no", Precedence: e.precedence > 0 ? String(e.precedence) : "",
+      Enforced: e.enforced ? "yes" : "", Why: fateOf(e, shown).text, "Policy changed": e.policy.changed || "",
+    }));
+    const who = target.label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    downloadCsv(`adquery-policy-trace-${who}-${new Date().toISOString().slice(0, 10)}.csv`, rowsToCsv(cols, rows));
+  };
   const copyTrace = async () => {
     if (!shown) return;
     try { await navigator.clipboard.writeText(traceAsText(shown, target.label, target.kind === "container" ? `container${changes.length ? ", hypothetical" : ""}` : shown.targetKind)); toast.success("Trace copied"); }
@@ -295,17 +349,23 @@ function TracePage({ target, onBack, onMap, onTrace, onPolicy, onPeople, onRow }
       back={{ label: "Policies", onClick: onBack }}
       title={target.label}
       lede={shown ? <>
-        {machine && machineShown
-          ? `Signed in on ${machine.label}, ${target.label} gets ${countOf(shown)} and the machine gets ${countOf(machineShown)}.`
-          : headline(shown, target.label, containerKind, tried ? chain : null)}
+        {peer && peerChain
+          ? compareSentence(shown, peerChain, target.label, peer.label)
+          : machine && machineShown
+            ? `Signed in on ${machine.label}, ${target.label} gets ${countOf(shown)} and the machine gets ${countOf(machineShown)}.`
+            : headline(shown, target.label, containerKind, tried ? chain : null)}
         {target.kind === "container" && <> Showing <button className={"ledger-link" + (kind === "user" ? " is-strong" : "")} onClick={() => setKind("user")}>users</button> · <button className={"ledger-link" + (kind === "computer" ? " is-strong" : "")} onClick={() => setKind("computer")}>computers</button>.</>}
       </> : busy ? "Tracing…" : undefined}
       meta={<>
         <span className="mono is-dim" title={target.dn}>{target.dn.length > 90 ? target.dn.slice(0, 89) + "…" : target.dn}</span>
         <span className="flex-1" />
-        {target.kind === "user" && (machine
-          ? <button className="ledger-link" onClick={() => setMachine(null)}>Just {target.label}</button>
-          : <MachinePicker find={findMachines} onPick={setMachine} />)}
+        {target.kind === "user" && (machine || peer
+          ? <button className="ledger-link" onClick={() => { setMachine(null); setPeer(null); }}>Just {target.label}</button>
+          : <>
+              <PickerLink label="On a computer…" word="signed in on" placeholder="a computer by name" find={findMachines} onPick={(t) => { setPeer(null); setMachine(t); }} />
+              <PickerLink label="Compare with…" word="compare with" placeholder="a person by name" find={findPeople} onPick={(t) => { setMachine(null); setPeer(t); }} />
+            </>)}
+        <button className="ledger-link" onClick={exportTrace} disabled={!shown}>Export CSV</button>
         <button className="ledger-link" onClick={copyTrace} disabled={!shown}>Copy as text</button>
         {target.kind === "container"
           ? <button className="ledger-link" onClick={() => onPeople(target.dn)}>People in {target.label}</button>
@@ -315,6 +375,26 @@ function TracePage({ target, onBack, onMap, onTrace, onPolicy, onPeople, onRow }
     >
       <HypotheticalBar changes={changes} onRemove={(i) => setChanges((cs) => cs.filter((_, j) => j !== i))} onReset={() => setChanges([])} />
       {error && <div className="p-6"><ErrorBanner error={error} /></div>}
+      {shown && peer && (
+        <div className="ledger-pair">
+          <section className="ledger-pair-col">
+            <div className="ledger-h4">{target.label}<span className="ledger-h4-hint">{onlyFor(shown, peerChain).size} not shared</span></div>
+            <PolicyFlow chain={shown} targetLabel={target.label} targetKind={shown.targetKind}
+              onPickStation={(dn) => onTrace(containerTarget(dn))} onPickPolicy={onPolicy} onlyHere={onlyFor(shown, peerChain)} />
+          </section>
+          <section className="ledger-pair-col">
+            <div className="ledger-h4">{peer.label}<span className="ledger-h4-hint">{peerChain ? onlyFor(peerChain, shown).size + " not shared" : ""}</span></div>
+            {peerChain
+              ? <PolicyFlow chain={peerChain} targetLabel={peer.label} targetKind={peerChain.targetKind}
+                  onPickStation={(dn) => onTrace(containerTarget(dn))} onPickPolicy={onPolicy} onlyHere={onlyFor(peerChain, shown)} />
+              : <p className="ledger-note">Tracing {peer.label}…</p>}
+          </section>
+          <p className="ledger-note ledger-pair-note">
+            Marked lines are the ones only that person receives. Two people in the same container can still differ, because
+            a policy can be filtered to a group one of them is in.
+          </p>
+        </div>
+      )}
       {shown && machine && (
         <div className={"ledger-pair" + (tried || machineTried ? " is-hypo" : "")}>
           <section className="ledger-pair-col">
@@ -337,7 +417,7 @@ function TracePage({ target, onBack, onMap, onTrace, onPolicy, onPeople, onRow }
           </p>
         </div>
       )}
-      {shown && !machine && (
+      {shown && !machine && !peer && (
         <div className={"ledger-page" + (tried ? " is-hypo" : "")}>
           <section className="ledger-page-main">
             <div className="ledger-h4">{tried ? "How it would get there" : "How it gets there"}<span className="ledger-h4-hint">hover a line to try a change</span></div>
@@ -440,6 +520,7 @@ function PolicyDetailPage({ dn, onBack, onTrace, onPeople, onMap }: { dn: string
               </dd>
               <dt>WMI filter</dt><dd>{p.wmiFilter ? (p.wmiFilterName || <span className="mono">{p.wmiFilter}</span>) : "none"}</dd>
               <dt>Version</dt><dd>{p.version === 0 ? <span className="ledger-flag warn">never edited</span> : <><span className="mono">{p.version & 0xffff}</span> user, <span className="mono">{p.version >>> 16}</span> computer</>}</dd>
+              <dt>Last changed</dt><dd>{p.changed ? <>{new Date(p.changed).toLocaleString()}{changedRecently(p) && <span className="ledger-flag warn">{changedRecently(p)}</span>}</> : "unknown"}</dd>
               <dt>GUID</dt><dd className="mono selectable">{p.guid}</dd>
               <dt>SYSVOL path</dt><dd className="mono selectable is-break">{p.path || "unknown"}</dd>
             </dl>
@@ -551,6 +632,7 @@ function ListPage({ onBack, onPolicy, onTrace }: Nav) {
   const [inv, setInv] = useState<gpo.Inventory | null>(null);
   const [error, setError] = useState("");
   const [oddOnly, setOddOnly] = useState(false);
+  const [recentOnly, setRecentOnly] = useState(false);
   const [at, setAt] = useState<number | null>(null);
 
   async function load() {
@@ -561,21 +643,22 @@ function ListPage({ onBack, onPolicy, onTrace }: Nav) {
   useEffect(() => { load(); }, []);
 
   const rows = useMemo(() => {
-    const all = (inv?.policies ?? []).map((p) => ({ ...p, links: p.links ?? [] }));
+    let all = (inv?.policies ?? []).map((p) => ({ ...p, links: p.links ?? [] }));
+    if (recentOnly) all = all.filter((p) => { const d = daysSince(p.policy.changed); return d !== null && d <= 30; });
     if (!oddOnly) return all;
     return all.filter((p) => p.links.length === 0 || p.policy.version === 0 || p.links.some((l) => l.disabled) || p.policy.userDisabled || p.policy.computerDisabled || p.policy.wmiFilter || (p.policy.applyDeny?.length ?? 0) > 0 || !(p.policy.applyAllow ?? []).includes(AUTHENTICATED_USERS));
-  }, [inv, oddOnly]);
+  }, [inv, oddOnly, recentOnly]);
   const unlinked = (inv?.policies ?? []).filter((p) => (p.links ?? []).length === 0).length;
 
   function exportCsv() {
-    const cols = ["Policy", "GUID", "Linked at", "Enforced", "Disabled links", "User settings", "Computer settings", "WMI filter", "Applies to", "Version"];
+    const cols = ["Policy", "GUID", "Linked at", "Enforced", "Disabled links", "User settings", "Computer settings", "WMI filter", "Applies to", "Version", "Last changed"];
     const out = rows.map((p) => ({
       Policy: p.policy.name, GUID: p.policy.guid,
       "Linked at": p.links.map((l) => l.somName).join("; "),
       Enforced: p.links.filter((l) => l.enforced).map((l) => l.somName).join("; "),
       "Disabled links": p.links.filter((l) => l.disabled).map((l) => l.somName).join("; "),
       "User settings": p.policy.userDisabled ? "disabled" : "enabled", "Computer settings": p.policy.computerDisabled ? "disabled" : "enabled",
-      "WMI filter": p.policy.wmiFilter ? (p.policy.wmiFilterName || "yes") : "", "Applies to": appliesTo(p.policy, inv?.names), Version: String(p.policy.version),
+      "WMI filter": p.policy.wmiFilter ? (p.policy.wmiFilterName || "yes") : "", "Applies to": appliesTo(p.policy, inv?.names), Version: String(p.policy.version), "Last changed": p.policy.changed || "",
     }));
     downloadCsv(`adquery-policies-${new Date().toISOString().slice(0, 10)}.csv`, rowsToCsv(cols, out));
   }
@@ -586,7 +669,7 @@ function ListPage({ onBack, onPolicy, onTrace }: Nav) {
       eyebrow="All policies"
       back={{ label: "Policies", onClick: onBack }}
       title="Every Group Policy Object"
-      lede={<>Where each is linked, which half is off, who it is filtered to, <InlineCheck checked={oddOnly} onChange={setOddOnly} disabled={phase !== "ready"}>only the ones worth a look</InlineCheck>. Click a policy to open it.</>}
+      lede={<>Where each is linked, which half is off, who it is filtered to, <InlineCheck checked={oddOnly} onChange={setOddOnly} disabled={phase !== "ready"}>only the ones worth a look</InlineCheck>, <InlineCheck checked={recentOnly} onChange={setRecentOnly} disabled={phase !== "ready"}>only those changed in the last 30 days</InlineCheck>. Click a policy to open it.</>}
       meta={phase === "ready" ? <>
         <span><b>{rows.length.toLocaleString()}</b> policies</span>
         <span>{unlinked} linked nowhere</span>
@@ -616,11 +699,12 @@ function ListPage({ onBack, onPolicy, onTrace }: Nav) {
                     ))}
                   </td>
                   <td className="is-2">
+                    {changedRecently(p.policy) && <span className="ledger-flag warn" title={p.policy.changed}>{changedRecently(p.policy)}</span>}
                     {p.policy.version === 0 && <span className="ledger-flag warn">never edited</span>}
                     {p.policy.userDisabled && <span className="ledger-flag warn">user settings off</span>}
                     {p.policy.computerDisabled && <span className="ledger-flag warn">computer settings off</span>}
                     {p.policy.wmiFilter && <span className="ledger-flag warn">wmi filter{p.policy.wmiFilterName ? `: ${p.policy.wmiFilterName}` : ""}</span>}
-                    {p.policy.version > 0 && !p.policy.userDisabled && !p.policy.computerDisabled && !p.policy.wmiFilter && <span className="is-dim">nothing unusual</span>}
+                    {p.policy.version > 0 && !changedRecently(p.policy) && !p.policy.userDisabled && !p.policy.computerDisabled && !p.policy.wmiFilter && <span className="is-dim">nothing unusual</span>}
                   </td>
                   <td className="is-2">{appliesTo(p.policy, inv?.names)}</td>
                 </tr>

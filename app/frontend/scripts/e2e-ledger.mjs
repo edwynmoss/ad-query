@@ -107,9 +107,9 @@ await step("row: login, risk and security sections", async () => {
   await page.locator(".ledger-flow-result").waitFor({ timeout: 30000 });
   const chain = await page.locator(".ledger-record-body").innerText();
   if (!/Terry Wong gets \d+ policies\. \d+ more are linked above them but never arrive\./.test(chain)) throw new Error("headline: " + chain.slice(0, 200));
-  if (!/Corporate Baseline\s*enforced, applies\s*1/i.test(chain)) throw new Error("Corporate Baseline should apply first: " + chain.slice(0, 400));
-  if (!/VPN Client Settings\s*would apply, but Sales Team is denied it/i.test(chain)) throw new Error("VPN Client Settings sentence: " + chain.slice(0, 600));
-  if (!/Sales Printers\s*the link is switched off on Sales/i.test(chain)) throw new Error("Sales Printers sentence");
+  if (!/Corporate Baseline[\s\S]{0,160}?enforced, applies\s*1/i.test(chain)) throw new Error("Corporate Baseline should apply first: " + chain.slice(0, 400));
+  if (!/VPN Client Settings[\s\S]{0,160}?would apply, but Sales Team is denied it/i.test(chain)) throw new Error("VPN Client Settings sentence: " + chain.slice(0, 600));
+  if (!/Sales Printers[\s\S]{0,160}?the link is switched off on Sales/i.test(chain)) throw new Error("Sales Printers sentence");
   if (!/How this is worked out/.test(chain)) throw new Error("explainer missing");
   await shot(page, "l06e-row-policies");
   await page.getByRole("tab", { name: "Attributes" }).click();
@@ -289,6 +289,49 @@ await step("a person signed in on a machine", async () => {
   await shot(page, "l21-person-on-machine");
   await page.getByRole("button", { name: /^Just Terry Wong$/ }).click();
   await page.locator(".ledger-pair").waitFor({ state: "hidden", timeout: 10000 });
+});
+
+// Terry (Sales) and Clark (IT) sit in different places and different groups.
+await step("compare two people", async () => {
+  await page.getByRole("button", { name: "Compare with…" }).click();
+  await page.getByPlaceholder("a person by name").fill("Clark");
+  await page.locator(".ledger-move").getByRole("button", { name: /Clark Kent/ }).first().click();
+  await page.locator(".ledger-pair").waitFor({ timeout: 60000 });
+  await page.locator(".ledger-pair-col").nth(1).locator(".ledger-flow-result").waitFor({ timeout: 60000 });
+
+  const lede = await page.locator(".ledger-qhead").innerText();
+  if (!/share \d+ polic\w+/.test(lede)) throw new Error("compare sentence: " + lede.slice(0, 300));
+  if (!/Terry Wong also gets[\s\S]*Sales Drive Maps/.test(lede)) throw new Error("Terry's own policy should be named: " + lede.slice(0, 300));
+  if (!/Clark Kent also gets[\s\S]*IT Admin Tools/.test(lede)) throw new Error("Clark's own policy should be named: " + lede.slice(0, 300));
+
+  // The lines that differ are marked on both sides.
+  await page.locator(".ledger-pair-col").first().locator(".ledger-flow-pol.is-only", { hasText: "Sales Drive Maps" }).waitFor({ timeout: 10000 });
+  await page.locator(".ledger-pair-col").nth(1).locator(".ledger-flow-pol.is-only", { hasText: "IT Admin Tools" }).waitFor({ timeout: 10000 });
+  await shot(page, "l22-compare-two");
+  await page.getByRole("button", { name: /^Just Terry Wong$/ }).click();
+  await page.locator(".ledger-pair").waitFor({ state: "hidden", timeout: 10000 });
+
+  // The trace exports as CSV.
+  const dl = page.waitForEvent("download", { timeout: 30000 });
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  const file = await dl;
+  if (!/adquery-policy-trace-terry-wong-/.test(file.suggestedFilename())) throw new Error("csv name: " + file.suggestedFilename());
+});
+
+// Every seeded policy was edited today, so the recent mark and its filter show.
+await step("policies changed recently are marked", async () => {
+  await page.getByRole("button", { name: "Policies" }).first().click();
+  await page.locator(".ledger-line", { hasText: "All policies" }).click();
+  await page.locator(".ledger-table").waitFor({ timeout: 60000 });
+  const before = await page.locator(".ledger-table tbody tr").count();
+  const body = await page.locator(".ledger-register-body").innerText();
+  if (!/changed (today|yesterday|\d+ days ago)/i.test(body)) throw new Error("no recent mark: " + body.slice(0, 300));
+  await page.getByText("only those changed in the last 30 days").click();
+  await page.waitForTimeout(300);
+  const after = await page.locator(".ledger-table tbody tr").count();
+  if (after === 0 || after > before) throw new Error(`the filter should narrow the list: ${before} -> ${after}`);
+  log("     policies:", before, "of which recent:", after);
+  await shot(page, "l23-policies-recent");
 });
 
 await step("bulk lookup from a CSV", async () => {

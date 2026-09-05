@@ -40,7 +40,7 @@ Group Policy, as far as the directory can tell. A row's Policies section answers
 |---|---|
 | ![Tree](docs/screenshots/20-policies-tree.png) | ![Policies list](docs/screenshots/21-policies-list.png) |
 
-Any line can be tried as a hypothetical: unlink a policy, stop a container blocking inheritance, or move a person and watch the flow redraw. A person signed in on a machine is traced as two halves, the person's user settings beside the machine's computer settings.
+Any line can be tried as a hypothetical: unlink a policy, stop a container blocking inheritance, or move a person and watch the flow redraw. A person signed in on a machine is traced as two halves, the person's user settings beside the machine's computer settings. Two people can be compared the same way, with the policies only one of them receives marked on each side, and any trace copies as text or exports as CSV.
 
 | A policy, with a change tried on it | Signed in on a machine |
 |---|---|

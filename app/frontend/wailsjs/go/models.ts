@@ -75,6 +75,7 @@ export namespace gpo {
 	    computerDisabled: boolean;
 	    wmiFilter: string;
 	    wmiFilterName: string;
+	    changed: string;
 	    applyAllow: string[];
 	    applyDeny: string[];
 	    aclKnown: boolean;
@@ -94,6 +95,7 @@ export namespace gpo {
 	        this.computerDisabled = source["computerDisabled"];
 	        this.wmiFilter = source["wmiFilter"];
 	        this.wmiFilterName = source["wmiFilterName"];
+	        this.changed = source["changed"];
 	        this.applyAllow = source["applyAllow"];
 	        this.applyDeny = source["applyDeny"];
 	        this.aclKnown = source["aclKnown"];
