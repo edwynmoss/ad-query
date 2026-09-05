@@ -1,13 +1,16 @@
-// Policies: every Group Policy Object in the domain, where it is linked and
-// who it is filtered to, so orphans, disabled links and odd filtering stand
-// out. Read from the directory; the settings inside each policy are not.
+// Policies: every Group Policy Object in the domain as a list (where linked,
+// which half is off, who it is filtered to) or as a map (the container tree
+// with policies pinned to it, and a trace into whichever container is
+// picked). Read from the directory; the settings inside a policy are not.
 import { useEffect, useMemo, useState } from "react";
-import { PolicyInventory } from "../../../wailsjs/go/main/App";
+import { PolicyInventory, PolicyMap, ContainerChain } from "../../../wailsjs/go/main/App";
 import type { gpo } from "../../../wailsjs/go/models";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { rowsToCsv } from "../../lib/bulk";
 import { downloadCsv } from "../../lib/csv";
 import { RegisterFrame, InlineCheck } from "./RegisterFrame";
+import { PolicyMapView } from "../PolicyMapView";
+import { PolicyFlow } from "../PolicyFlow";
 
 interface Props { isAD: boolean }
 
@@ -27,6 +30,103 @@ export function appliesTo(p: gpo.Policy, names: Record<string, string> | undefin
 }
 
 export function PoliciesRegister({ isAD }: Props) {
+  const [view, setView] = useState<"list" | "map">("map");
+  if (!isAD) {
+    return (
+      <RegisterFrame title="Policies" lede="Every Group Policy Object in the domain, where it is linked and who it is filtered to.">
+        <div className="ledger-prose">
+          <p><b>This register needs Active Directory.</b></p>
+          <p>Group Policy lives in Active Directory: the policy objects under CN=Policies, the gPLink attribute on sites, the domain and organizational units. This directory reports as plain LDAP.</p>
+        </div>
+      </RegisterFrame>
+    );
+  }
+  return view === "map" ? <MapView onList={() => setView("list")} /> : <ListView onMap={() => setView("map")} />;
+}
+
+function ViewSwitch({ view, onList, onMap }: { view: "list" | "map"; onList: () => void; onMap: () => void }) {
+  return (
+    <span className="ledger-view-switch" role="tablist">
+      <button role="tab" aria-selected={view === "map"} className={"ledger-tab" + (view === "map" ? " is-on" : "")} onClick={onMap}>Map</button>
+      <button role="tab" aria-selected={view === "list"} className={"ledger-tab" + (view === "list" ? " is-on" : "")} onClick={onList}>List</button>
+    </span>
+  );
+}
+
+// ---- Map -------------------------------------------------------------------
+function MapView({ onList }: { onList: () => void }) {
+  const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
+  const [map, setMap] = useState<gpo.Map | null>(null);
+  const [error, setError] = useState("");
+  const [selected, setSelected] = useState<string | null>(null);
+  const [kind, setKind] = useState<"user" | "computer">("user");
+  const [chain, setChain] = useState<gpo.Chain | null>(null);
+  const [tracing, setTracing] = useState(false);
+
+  async function load() {
+    setPhase("loading"); setError("");
+    try {
+      const m = await PolicyMap();
+      setMap(m); setPhase("ready");
+      if (!selected) setSelected((m.nodes ?? []).find((n) => n.kind === "domain")?.dn ?? null);
+    } catch (e: any) { setError(String(e?.message ?? e)); setPhase("error"); }
+  }
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!selected) return;
+    let live = true;
+    setTracing(true);
+    ContainerChain(selected, kind).then((c) => { if (live) { setChain(c); setTracing(false); } }).catch(() => { if (live) setTracing(false); });
+    return () => { live = false; };
+  }, [selected, kind]);
+
+  const node = (map?.nodes ?? []).find((n) => n.dn === selected) ?? null;
+  const policies = Object.keys(map?.policies ?? {}).length;
+  const linkedCount = new Set((map?.nodes ?? []).flatMap((n) => (n.links ?? []).map((l) => l.policyDN.toLowerCase()))).size;
+
+  return (
+    <RegisterFrame
+      title="Policies"
+      lede={<>The containers of the directory with the policies pinned where they are linked. Pick one to trace what flows into it.</>}
+      controls={<ViewSwitch view="map" onList={onList} onMap={() => {}} />}
+      meta={phase === "ready" ? <>
+        <span><b>{policies}</b> policies, {linkedCount} linked somewhere</span>
+        <span>{(map?.nodes ?? []).length} containers</span>
+        <button className="ledger-link" onClick={load}>rescan</button>
+      </> : phase === "loading" ? <span>Reading the tree…</span> : null}
+    >
+      {phase === "error" && <div className="p-6"><ErrorBanner error={error} /></div>}
+      {phase === "ready" && map && (
+        <div className="ledger-map-layout">
+          <PolicyMapView map={map} selectedDN={selected} onSelect={setSelected} />
+          <aside className="ledger-map-side">
+            {node ? (
+              <>
+                <div className="ledger-h4">Flow into {node.name}, for{" "}
+                  <button className={"ledger-link" + (kind === "user" ? " is-on" : "")} onClick={() => setKind("user")} style={kind === "user" ? { color: "var(--color-ink)", textDecorationColor: "var(--color-ink)" } : undefined}>users</button>
+                  {" · "}
+                  <button className="ledger-link" onClick={() => setKind("computer")} style={kind === "computer" ? { color: "var(--color-ink)", textDecorationColor: "var(--color-ink)" } : undefined}>computers</button>
+                </div>
+                {tracing && !chain && <p className="ledger-note">Tracing…</p>}
+                {chain && (
+                  <div style={{ opacity: tracing ? 0.6 : 1 }}>
+                    <PolicyFlow chain={chain} targetLabel={`${node.users} user${node.users === 1 ? "" : "s"}, ${node.computers} computer${node.computers === 1 ? "" : "s"}`} targetKind={`in ${node.name}`} onPickStation={setSelected} />
+                    <p className="ledger-note" style={{ marginTop: 12 }}>{(chain.notes ?? []).join(" ")}</p>
+                  </div>
+                )}
+              </>
+            ) : <p className="ledger-note">Pick a container on the map.</p>}
+          </aside>
+        </div>
+      )}
+      {phase === "ready" && map?.notes?.length ? <p className="ledger-note" style={{ padding: "0 26px 14px" }}>{map.notes.join(" ")}</p> : null}
+    </RegisterFrame>
+  );
+}
+
+// ---- List ------------------------------------------------------------------
+function ListView({ onMap }: { onMap: () => void }) {
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
   const [inv, setInv] = useState<gpo.Inventory | null>(null);
   const [error, setError] = useState("");
@@ -38,7 +138,7 @@ export function PoliciesRegister({ isAD }: Props) {
     try { setInv(await PolicyInventory()); setPhase("ready"); setAt(Date.now()); }
     catch (e: any) { setError(String(e?.message ?? e)); setPhase("error"); }
   }
-  useEffect(() => { if (isAD) load(); }, [isAD]);
+  useEffect(() => { load(); }, []);
 
   const rows = useMemo(() => {
     const all = (inv?.policies ?? []).map((p) => ({ ...p, links: p.links ?? [] }));
@@ -60,22 +160,12 @@ export function PoliciesRegister({ isAD }: Props) {
     downloadCsv(`adquery-policies-${new Date().toISOString().slice(0, 10)}.csv`, rowsToCsv(cols, out));
   }
 
-  if (!isAD) {
-    return (
-      <RegisterFrame title="Policies" lede="Every Group Policy Object in the domain, where it is linked and who it is filtered to.">
-        <div className="ledger-prose">
-          <p><b>This register needs Active Directory.</b></p>
-          <p>Group Policy lives in Active Directory: the policy objects under CN=Policies, the gPLink attribute on sites, the domain and organizational units. This directory reports as plain LDAP.</p>
-        </div>
-      </RegisterFrame>
-    );
-  }
-
   const asOf = at ? new Date(at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : null;
   return (
     <RegisterFrame
       title="Policies"
       lede={<>Every Group Policy Object in the domain, where it is linked and who it is filtered to, <InlineCheck checked={oddOnly} onChange={setOddOnly} disabled={phase !== "ready"}>only the ones worth a look</InlineCheck>.</>}
+      controls={<ViewSwitch view="list" onList={() => {}} onMap={onMap} />}
       meta={phase === "ready" ? <>
         <span><b>{rows.length.toLocaleString()}</b> policies</span>
         <span>{unlinked} not linked anywhere</span>

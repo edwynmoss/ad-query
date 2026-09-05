@@ -58,7 +58,7 @@ export function InspectorBody({ entry, isAD, onClose }: { entry: ldap.Entry; isA
         )}
         {section === "login" && <LoginSection entry={entry} isAD={isAD} />}
         {section === "risk" && <RiskSection dn={entry.dn} />}
-        {section === "policies" && <PoliciesSection dn={entry.dn} isAD={isAD} />}
+        {section === "policies" && <PoliciesSection entry={entry} isAD={isAD} />}
         {section === "acl" && <AclSection dn={entry.dn} />}
       </div>
     </div>

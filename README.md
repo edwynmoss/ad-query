@@ -30,11 +30,11 @@ Registers are pages of the same sheet: stale accounts across AD and Microsoft 36
 |---|---|---|---|---|
 | ![Stale](docs/screenshots/11-stale.png) | ![Privileged](docs/screenshots/12-privileged.png) | ![Licences](docs/screenshots/13-licences.png) | ![Bulk](docs/screenshots/14-bulk.png) | ![365](docs/screenshots/15-m365-signin.png) |
 
-Group Policy, as far as the directory can tell: a row's Policies section lays out which policies reach that user or computer in precedence order, with the reason each other link does not apply; the Policies register lists every policy, where it is linked and who it is filtered to.
+Group Policy, as far as the directory can tell. A row's Policies section draws how policy flows down the tree to that user or computer: every link on the way with its fate, blocked inheritance as a dashed rule, and what arrives in precedence order. The Policies register is a map of the containers with policies pinned where they are linked; pick one to trace what flows into it, or switch to the list.
 
-| Policies on a row | Policies register |
-|---|---|
-| ![Row policies](docs/screenshots/17-row-policies.png) | ![Policies](docs/screenshots/18-policies.png) |
+| Flow to a row | Policy map | Policies as a list |
+|---|---|---|
+| ![Row policies](docs/screenshots/17-row-policies.png) | ![Policy map](docs/screenshots/18-policies.png) | ![Policies list](docs/screenshots/19-policies-list.png) |
 
 > Regenerate with `cd app/frontend && npm run shots` (builds the app, serves it, and drives the journey through Playwright into `docs/screenshots/`). `node scripts/e2e-ledger.mjs` drives the real backend through `wails dev` against the Samba AD container in `test/samba-ad`.
 
