@@ -82,8 +82,13 @@ Write-Output "  groups created and populated"
 
 Write-Output "== Computers =="
 # ($comp, not $c: PowerShell variables are case-insensitive and $C is the container.)
-foreach ($comp in 'WS-SALES-01','WS-IT-01','WS-ENG-01','SRV-FILE-01','SRV-DB-01') {
-  St computer create $comp | Out-Null; Write-Output "  $comp"
+# samba-tool drops new computers in CN=Computers, which no policy can be linked
+# to. Workstations and servers belong in their own OUs, where the policies are.
+foreach ($comp in 'WS-SALES-01','WS-IT-01','WS-ENG-01') {
+  St computer create $comp --computerou "OU=Workstations" | Out-Null; Write-Output "  $comp -> OU=Workstations"
+}
+foreach ($comp in 'SRV-FILE-01','SRV-DB-01') {
+  St computer create $comp --computerou "OU=Servers" | Out-Null; Write-Output "  $comp -> OU=Servers"
 }
 
 # ---- Attributes samba-tool can't set on create: manager + pwd-never-expires --

@@ -92,6 +92,34 @@ type Nav = { onBack: () => void; onTrace: (t: Target) => void; onPolicy: (dn: st
 
 const containerTarget = (dn: string): Target => ({ dn, kind: "container", label: dn.split(",")[0].replace(/^[^=]+=/, "") });
 
+/** "5 policies" for a chain, for the paired sentence. */
+function countOf(c: gpo.Chain): string {
+  const n = (c.entries ?? []).filter((e) => e.precedence > 0).length;
+  return n === 0 ? "no policies" : `${n} ${n === 1 ? "policy" : "policies"}`;
+}
+
+/** "On a computer…", with an inline find. */
+function MachinePicker({ find, onPick }: { find: (q: string) => Promise<Target[]>; onPick: (t: Target) => void }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<Target[]>([]);
+  const search = async (v: string) => {
+    setQ(v);
+    if (v.trim().length < 2) { setHits([]); return; }
+    try { setHits(await find(v)); } catch { setHits([]); }
+  };
+  if (!open) return <button className="ledger-link" onClick={() => setOpen(true)}>On a computer…</button>;
+  return (
+    <span className="ledger-move">
+      <span className="ledger-controls-word">signed in on</span>
+      <input className="ledger-inline-input" autoFocus value={q} onChange={(e) => search(e.target.value)} placeholder="a computer by name" aria-label="which computer" />
+      {hits.map((h) => <button key={h.dn} className="ledger-link" title={h.dn} onClick={() => { setOpen(false); setQ(""); setHits([]); onPick(h); }}>{h.label}</button>)}
+      {q.trim().length >= 2 && hits.length === 0 && <span className="is-dim">no computer by that name</span>}
+      <button className="ledger-link" onClick={() => { setOpen(false); setQ(""); setHits([]); }}>cancel</button>
+    </span>
+  );
+}
+
 // ---- Home: the question ------------------------------------------------------
 function HomePage({ baseDN, onTrace, onMap, onList }: { baseDN: string; onTrace: (t: Target) => void; onMap: () => void; onList: () => void }) {
   const [term, setTerm] = useState("");
@@ -188,8 +216,11 @@ function TracePage({ target, onBack, onMap, onTrace, onPolicy, onPeople, onRow }
   const [counts, setCounts] = useState<main.Counts | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(true);
+  const [machine, setMachine] = useState<Target | null>(null);        // signed in on this computer
+  const [machineChain, setMachineChain] = useState<gpo.Chain | null>(null);
+  const [machineTried, setMachineTried] = useState<gpo.Chain | null>(null);
 
-  useEffect(() => { setChanges([]); setTried(null); }, [target.dn]);
+  useEffect(() => { setChanges([]); setTried(null); setMachine(null); setMachineChain(null); }, [target.dn]);
 
   useEffect(() => {
     let live = true;
@@ -209,7 +240,26 @@ function TracePage({ target, onBack, onMap, onTrace, onPolicy, onPeople, onRow }
     return () => { live = false; };
   }, [sig, target, kind]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The computer half is the computer's own trace. Changes to the account
+  // (joining a group, moving) say nothing about the machine, so it only sees
+  // the ones that change the directory's links.
+  const linkChanges = changes.filter((c) => c.kind !== "join" && c.kind !== "leave" && c.kind !== "move");
+  const linkSig = JSON.stringify(linkChanges);
+  useEffect(() => {
+    if (!machine) { setMachineChain(null); setMachineTried(null); return; }
+    let live = true;
+    PolicyChainWith(machine.dn, []).then((c) => { if (live) setMachineChain(c); }).catch((e: any) => { if (live) setError(String(e?.message ?? e)); });
+    return () => { live = false; };
+  }, [machine]);
+  useEffect(() => {
+    if (!machine || linkChanges.length === 0) { setMachineTried(null); return; }
+    let live = true;
+    PolicyChainWith(machine.dn, toChanges(linkChanges)).then((c) => { if (live) setMachineTried(c); }).catch(() => {});
+    return () => { live = false; };
+  }, [machine, linkSig]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const shown = tried ?? chain;
+  const machineShown = machineTried ?? machineChain;
   const containerKind = target.kind === "container" ? kind : undefined;
   const bottom = target.kind === "container"
     ? (counts ? `${counts.users.toLocaleString()} ${counts.users === 1 ? "user" : "users"}, ${counts.computers.toLocaleString()} ${counts.computers === 1 ? "computer" : "computers"}${counts.truncated ? " or more" : ""}` : "counting…")
@@ -225,6 +275,14 @@ function TracePage({ target, onBack, onMap, onTrace, onPolicy, onPeople, onRow }
     }));
     return (res.entries ?? []).map((e) => ({ dn: e.dn, name: e.attributes?.ou?.[0] || e.attributes?.name?.[0] || e.dn }));
   };
+  // Computers to sign this person in on.
+  const findMachines = async (q: string): Promise<Target[]> => {
+    const res = await Search(ldap.SearchRequest.createFrom({
+      baseDN: target.dn.split(",").filter((p) => /^(dc)=/i.test(p)).join(","), scope: 2, pageSize: 8, sizeLimit: 8,
+      filter: `(&(objectCategory=computer)(anr=${escapeLdapValue(q.trim())}))`, attributes: ["name", "dNSHostName"],
+    }));
+    return (res.entries ?? []).map((e) => ({ dn: e.dn, kind: "computer" as const, label: e.attributes?.name?.[0] || e.attributes?.dNSHostName?.[0] || e.dn }));
+  };
   const copyTrace = async () => {
     if (!shown) return;
     try { await navigator.clipboard.writeText(traceAsText(shown, target.label, target.kind === "container" ? `container${changes.length ? ", hypothetical" : ""}` : shown.targetKind)); toast.success("Trace copied"); }
@@ -237,12 +295,17 @@ function TracePage({ target, onBack, onMap, onTrace, onPolicy, onPeople, onRow }
       back={{ label: "Policies", onClick: onBack }}
       title={target.label}
       lede={shown ? <>
-        {headline(shown, target.label, containerKind, tried ? chain : null)}
+        {machine && machineShown
+          ? `Signed in on ${machine.label}, ${target.label} gets ${countOf(shown)} and the machine gets ${countOf(machineShown)}.`
+          : headline(shown, target.label, containerKind, tried ? chain : null)}
         {target.kind === "container" && <> Showing <button className={"ledger-link" + (kind === "user" ? " is-strong" : "")} onClick={() => setKind("user")}>users</button> · <button className={"ledger-link" + (kind === "computer" ? " is-strong" : "")} onClick={() => setKind("computer")}>computers</button>.</>}
       </> : busy ? "Tracing…" : undefined}
       meta={<>
         <span className="mono is-dim" title={target.dn}>{target.dn.length > 90 ? target.dn.slice(0, 89) + "…" : target.dn}</span>
         <span className="flex-1" />
+        {target.kind === "user" && (machine
+          ? <button className="ledger-link" onClick={() => setMachine(null)}>Just {target.label}</button>
+          : <MachinePicker find={findMachines} onPick={setMachine} />)}
         <button className="ledger-link" onClick={copyTrace} disabled={!shown}>Copy as text</button>
         {target.kind === "container"
           ? <button className="ledger-link" onClick={() => onPeople(target.dn)}>People in {target.label}</button>
@@ -252,7 +315,29 @@ function TracePage({ target, onBack, onMap, onTrace, onPolicy, onPeople, onRow }
     >
       <HypotheticalBar changes={changes} onRemove={(i) => setChanges((cs) => cs.filter((_, j) => j !== i))} onReset={() => setChanges([])} />
       {error && <div className="p-6"><ErrorBanner error={error} /></div>}
-      {shown && (
+      {shown && machine && (
+        <div className={"ledger-pair" + (tried || machineTried ? " is-hypo" : "")}>
+          <section className="ledger-pair-col">
+            <div className="ledger-h4">{target.label}<span className="ledger-h4-hint">user settings</span></div>
+            <PolicyFlow chain={shown} baseline={tried ? chain : null} targetLabel={target.label} targetKind="user"
+              onPickStation={(dn) => onTrace(containerTarget(dn))} onPickPolicy={onPolicy} tryIt={tryIt}
+              person={{ name: target.label, findContainers }} />
+          </section>
+          <section className="ledger-pair-col">
+            <div className="ledger-h4">{machine.label}<span className="ledger-h4-hint">computer settings</span></div>
+            {machineShown
+              ? <PolicyFlow chain={machineShown} baseline={machineTried ? machineChain : null} targetLabel={machine.label} targetKind="computer"
+                  onPickStation={(dn) => onTrace(containerTarget(dn))} onPickPolicy={onPolicy} tryIt={tryIt} />
+              : <p className="ledger-note">Tracing the machine…</p>}
+          </section>
+          <p className="ledger-note ledger-pair-note">
+            A signed-in session takes the user settings from the person's own policies and the computer settings from the machine's.
+            One exception the directory cannot show: a policy on the machine can turn on loopback processing, which makes the machine's
+            user settings apply instead of the person's. That switch lives in SYSVOL, so check it there if the two disagree.
+          </p>
+        </div>
+      )}
+      {shown && !machine && (
         <div className={"ledger-page" + (tried ? " is-hypo" : "")}>
           <section className="ledger-page-main">
             <div className="ledger-h4">{tried ? "How it would get there" : "How it gets there"}<span className="ledger-h4-hint">hover a line to try a change</span></div>
