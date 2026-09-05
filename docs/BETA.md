@@ -13,9 +13,11 @@ do with your data, current limits, and how to report problems.
   ("Evergreen Standalone Installer") if the window comes up blank.
 - **No installer, no admin rights.** It's a single `ADQuery.exe` (~15 MB). Copy
   it anywhere and double-click.
-- **It's unsigned during the beta.** SmartScreen will say "Windows protected
-  your PC." Click **More info → Run anyway**. This is expected, we haven't
-  bought a code-signing certificate yet.
+- **It is not code-signed.** SmartScreen will say "Windows protected your PC."
+  Click **More info → Run anyway**. This is expected and permanent: a signing
+  certificate is a yearly cost that a free tool does not carry. The download is
+  still signed with the project's key and checked before an update runs, so the
+  warning is about the publisher's identity, not about tampering.
 
 ## Connect
 
@@ -86,7 +88,7 @@ approve them once.
 
 ## Known limits in this beta
 
-- **Unsigned binary**, the SmartScreen prompt above.
+- **Not code-signed**, so the SmartScreen prompt above appears every time a new version is installed.
 - **365 enrichment is slow at large scale.** It looks each identity up
   individually, so a stale report or bulk file covering many thousands of
   365-checked users will be slow and may hit Graph rate limits. Keep
