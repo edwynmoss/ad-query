@@ -206,6 +206,7 @@ export namespace gpo {
 	    entries: Entry[];
 	    notes: string[];
 	    names: Record<string, string>;
+	    tokenSIDs: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Chain(source);
@@ -219,6 +220,7 @@ export namespace gpo {
 	        this.entries = this.convertValues(source["entries"], Entry);
 	        this.notes = source["notes"];
 	        this.names = source["names"];
+	        this.tokenSIDs = source["tokenSIDs"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -243,6 +245,8 @@ export namespace gpo {
 	    kind: string;
 	    policyDN: string;
 	    containerDN: string;
+	    groupSID: string;
+	    label: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Change(source);
@@ -253,6 +257,8 @@ export namespace gpo {
 	        this.kind = source["kind"];
 	        this.policyDN = source["policyDN"];
 	        this.containerDN = source["containerDN"];
+	        this.groupSID = source["groupSID"];
+	        this.label = source["label"];
 	    }
 	}
 	export class Effect {

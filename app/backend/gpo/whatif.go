@@ -9,9 +9,11 @@ import (
 // A Change is one hypothetical edit to Group Policy, applied in memory and
 // never to the directory. Several can be stacked.
 type Change struct {
-	Kind        string `json:"kind"`        // policy-off | unlink | link-off | delete | block | unblock | enforce | unenforce
+	Kind        string `json:"kind"`        // policy-off | unlink | link-off | delete | block | unblock | enforce | unenforce | join | leave | move
 	PolicyDN    string `json:"policyDN"`    // for policy-off, unlink, link-off, delete, enforce, unenforce
-	ContainerDN string `json:"containerDN"` // for unlink, link-off, block, unblock, enforce, unenforce
+	ContainerDN string `json:"containerDN"` // for unlink, link-off, block, unblock, enforce, unenforce; the destination for move
+	GroupSID    string `json:"groupSID"`    // for join, leave
+	Label       string `json:"label"`       // what the frontend called it, echoed back
 }
 
 // Describe puts the change into words, given the names.
@@ -33,8 +35,54 @@ func (c Change) Describe(policyName, containerName string) string {
 		return fmt.Sprintf("the link to %s enforced on %s", policyName, containerName)
 	case "unenforce":
 		return fmt.Sprintf("the link to %s no longer enforced on %s", policyName, containerName)
+	case "join", "leave", "move":
+		if c.Label != "" {
+			return c.Label
+		}
+	}
+	if c.Label != "" {
+		return c.Label
 	}
 	return c.Kind
+}
+
+// PersonOnly reports whether a change is about the account rather than the
+// directory's links, so a container trace can ignore it.
+func (c Change) PersonOnly() bool {
+	return c.Kind == "join" || c.Kind == "leave" || c.Kind == "move"
+}
+
+// MoveTo returns the destination container of a move, if the set has one.
+func MoveTo(changes []Change) string {
+	dest := ""
+	for _, c := range changes {
+		if c.Kind == "move" {
+			dest = c.ContainerDN
+		}
+	}
+	return dest
+}
+
+// ApplyToToken adds and removes group membership. The account's own SID and
+// the identities every account carries are left alone.
+func ApplyToToken(changes []Change, token map[string]bool) map[string]bool {
+	out := make(map[string]bool, len(token))
+	for k, v := range token {
+		out[k] = v
+	}
+	for _, c := range changes {
+		sid := strings.ToUpper(strings.TrimSpace(c.GroupSID))
+		if sid == "" {
+			continue
+		}
+		switch c.Kind {
+		case "join":
+			out[sid] = true
+		case "leave":
+			delete(out, sid)
+		}
+	}
+	return out
 }
 
 // applyLinks returns a container's links after the changes.
@@ -93,8 +141,20 @@ func applyPolicies(changes []Change, policies map[string]Policy) map[string]Poli
 	return ps
 }
 
+// directoryChanges drops the ones that only move an account around.
+func directoryChanges(changes []Change) []Change {
+	out := make([]Change, 0, len(changes))
+	for _, c := range changes {
+		if !c.PersonOnly() {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
 // Apply returns copies of the containers and policies with the changes made.
 func Apply(changes []Change, nodes []MapNode, policies map[string]Policy) ([]MapNode, map[string]Policy) {
+	changes = directoryChanges(changes)
 	out := make([]MapNode, len(nodes))
 	for i, n := range nodes {
 		n.Links = applyLinks(changes, n.DN, n.Links)
@@ -168,6 +228,10 @@ func arrivals(c *Chain) []string {
 // and reports the containers whose arrivals change. Group filtering is not
 // known for a container, so "depends" links count as arriving on both sides.
 func Evaluate(changes []Change, nodes []MapNode, policies map[string]Policy, kind string) []Effect {
+	changes = directoryChanges(changes)
+	if len(changes) == 0 {
+		return nil
+	}
 	after, afterPolicies := Apply(changes, nodes, policies)
 	before := map[string]MapNode{}
 	for _, n := range nodes {

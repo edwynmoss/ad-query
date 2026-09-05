@@ -10,7 +10,7 @@ import type { Hypothetical } from "./PolicyFlow";
 export type { Hypothetical } from "./PolicyFlow";
 
 export function toChanges(hs: Hypothetical[]): gpo.Change[] {
-  return hs.map((h) => gpo.Change.createFrom({ kind: h.kind, policyDN: h.policyDN ?? "", containerDN: h.containerDN ?? "" }));
+  return hs.map((h) => gpo.Change.createFrom({ kind: h.kind, policyDN: h.policyDN ?? "", containerDN: h.containerDN ?? "", groupSID: h.groupSID ?? "", label: h.label }));
 }
 
 /** The line at the top of a page while a hypothetical is on. */
