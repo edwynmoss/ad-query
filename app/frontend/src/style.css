@@ -390,8 +390,11 @@
   .ledger-leader.is-static:hover .ledger-leader-label { color: inherit; }
 
   /* first page */
-  .ledger-connect { height: 100%; overflow: auto; background: var(--color-page); display: flex; justify-content: center; padding: 8vh 22px 40px; }
-  .ledger-connect-sheet { width: 480px; max-width: 100%; align-self: flex-start; background: var(--color-surface); border: 1px solid var(--color-line); border-radius: 6px; padding: 26px 30px 30px; }
+  .ledger-connect { height: 100%; overflow: auto; background: var(--color-page); display: flex; justify-content: center; align-items: center; padding: 24px 22px; }
+  /* A touch above true centre reads as centred; the card grows downward from there. */
+  /* The form keeps the height of its tallest state so switching sign-in does not move the card. */
+  .ledger-connect-sheet.is-form { min-height: 512px; }
+  .ledger-connect-sheet { width: 480px; max-width: 100%; margin-bottom: 10vh; background: var(--color-surface); border: 1px solid var(--color-line); border-radius: 6px; padding: 26px 30px 30px; }
   .ledger-connect .ledger-lede { font-size: 13.5px; }
   .ledger-connect .ledger-h4 { margin-top: 22px; }
   .ledger-field { margin-top: 18px; }

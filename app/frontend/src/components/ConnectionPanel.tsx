@@ -76,7 +76,7 @@ export function ConnectionPanel({ onConnected }: Props) {
 
   return (
     <div className="ledger-connect">
-      <div className="ledger-connect-sheet">
+      <div className={"ledger-connect-sheet" + (mode === "manual" ? " is-form" : "")}>
         <h1 className="ledger-title is-large ledger-connect-brand"><Mark size={28} className="text-ink" />AD Query</h1>
 
         {mode === "detecting" && <p className="ledger-lede">Checking this machine for a domain…</p>}
