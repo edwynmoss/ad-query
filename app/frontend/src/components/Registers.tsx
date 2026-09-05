@@ -3,10 +3,10 @@
 // report the app made.
 export type RegisterKey = "search" | "stale" | "privileged" | "licences" | "all-users" | "bulk" | "saved";
 
-export const REGISTERS: Array<{ key: RegisterKey; label: string; needs365?: boolean }> = [
+export const REGISTERS: Array<{ key: RegisterKey; label: string; needs365?: boolean; needsAD?: boolean }> = [
   { key: "search", label: "Search" },
-  { key: "stale", label: "Stale accounts" },
-  { key: "privileged", label: "Privileged access" },
+  { key: "stale", label: "Stale accounts", needsAD: true },
+  { key: "privileged", label: "Privileged access", needsAD: true },
   { key: "licences", label: "Licences", needs365: true },
   { key: "all-users", label: "All users" },
   { key: "bulk", label: "Bulk lookup" },
@@ -16,13 +16,15 @@ interface Props {
   active: RegisterKey;
   onChange: (key: RegisterKey) => void;
   savedCount: number;
+  isAD: boolean;
 }
 
-export function Registers({ active, onChange, savedCount }: Props) {
+export function Registers({ active, onChange, savedCount, isAD }: Props) {
   return (
     <div className="ledger-tabs" role="tablist" aria-label="Registers">
       {REGISTERS.map((r) => (
-        <button key={r.key} role="tab" aria-selected={active === r.key} className={"ledger-tab" + (active === r.key ? " is-on" : "")} onClick={() => onChange(r.key)}>
+        <button key={r.key} role="tab" aria-selected={active === r.key} className={"ledger-tab" + (active === r.key ? " is-on" : "") + (r.needsAD && !isAD ? " is-unavailable" : "")}
+          title={r.needsAD && !isAD ? "Needs Active Directory" : undefined} onClick={() => onChange(r.key)}>
           {r.label}
         </button>
       ))}

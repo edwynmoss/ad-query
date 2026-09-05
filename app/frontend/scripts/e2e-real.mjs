@@ -6,7 +6,7 @@ import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 
-const OUT = path.resolve("C:/Users/edwyn/AppData/Local/Temp/claude/C--Projects-Intermet/65be5e4c-7d65-453c-ab85-15c3bebb5b32/scratchpad/adq-real-out");
+const OUT = path.resolve(process.env.E2E_OUT ?? "node_modules/.cache/adquery-e2e/real");
 mkdirSync(OUT, { recursive: true });
 const shot = (page, name) => page.screenshot({ path: path.join(OUT, `${name}.png`) });
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);

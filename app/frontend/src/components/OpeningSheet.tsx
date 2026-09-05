@@ -81,7 +81,7 @@ export function OpeningSheet({ req, setReq, isAD, locations, signedIn365, onRun,
           <button key={r.key} className="ledger-line is-register" onClick={() => onOpenRegister(r.key)}>
             <span className="ledger-line-name">{r.label}</span>
             <span className="ledger-line-desc">{REGISTER_BLURBS[r.key]}</span>
-            <span className="mono ledger-line-meta">{r.needs365 && !signedIn365 ? "needs 365" : ""}</span>
+            <span className="mono ledger-line-meta">{r.needsAD && !isAD ? "needs Active Directory" : r.needs365 && !signedIn365 ? "needs 365" : ""}</span>
           </button>
         ))}
       </div>

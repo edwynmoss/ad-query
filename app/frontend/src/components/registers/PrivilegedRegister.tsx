@@ -11,7 +11,7 @@ import { rowsToCsv } from "../../lib/bulk";
 import { downloadCsv } from "../../lib/csv";
 import { RegisterFrame, InlineCheck } from "./RegisterFrame";
 
-interface Props { baseDN: string }
+interface Props { baseDN: string; isAD: boolean }
 
 interface PrivUser {
   dn: string;
@@ -27,7 +27,7 @@ const IN_CHAIN = "1.2.840.113556.1.4.1941";
 
 export const riskFlagTone = (level: string) => (/critical|high/i.test(level) ? "crit" : /medium/i.test(level) ? "warn" : "");
 
-export function PrivilegedRegister({ baseDN }: Props) {
+export function PrivilegedRegister({ baseDN, isAD }: Props) {
   const [phase, setPhase] = useState<"scanning" | "ready" | "error">("scanning");
   const [users, setUsers] = useState<PrivUser[]>([]);
   const [groupsFound, setGroupsFound] = useState(0);
@@ -35,7 +35,7 @@ export function PrivilegedRegister({ baseDN }: Props) {
   const [error, setError] = useState("");
   const [at, setAt] = useState<number | null>(null);
 
-  useEffect(() => { scan(false); }, [baseDN]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (isAD) scan(false); }, [baseDN, isAD]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function scan(refresh: boolean) {
     setPhase("scanning"); setError("");
@@ -84,6 +84,18 @@ export function PrivilegedRegister({ baseDN }: Props) {
   }
 
   const asOf = at ? new Date(at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : null;
+
+  if (!isAD) {
+    return (
+      <RegisterFrame title="Privileged access" lede="Members of the high-privilege groups, nested membership included, with a risk level for each.">
+        <div className="ledger-prose">
+          <p><b>This register needs Active Directory.</b></p>
+          <p>The privileged groups (Domain Admins, Enterprise Admins and the rest), the nested-membership matching rule and the risk flags are all Active Directory features. This directory reports as plain LDAP.</p>
+          <p className="ledger-note">To review a group here, search for Groups and open the one you want; its members are listed in the row.</p>
+        </div>
+      </RegisterFrame>
+    );
+  }
 
   return (
     <RegisterFrame

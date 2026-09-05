@@ -77,6 +77,18 @@ export function StaleRegister({ isAD, baseDN, signedIn365, onOpen }: Props) {
     } catch (e: any) { setError(String(e?.message ?? e)); } finally { setBusy(false); }
   }
 
+  if (!isAD) {
+    return (
+      <RegisterFrame title="Stale accounts" lede="Users not seen for a number of days, judged from the last logon Active Directory records.">
+        <div className="ledger-prose">
+          <p><b>This register needs Active Directory.</b></p>
+          <p>Staleness is read from lastLogonTimestamp, which only Active Directory keeps. This directory reports as plain LDAP and does not record when an account last signed in, so there is nothing to judge here.</p>
+          <p className="ledger-note">If your directory stores a last-login attribute of its own, add a condition on it in Search instead.</p>
+        </div>
+      </RegisterFrame>
+    );
+  }
+
   return (
     <RegisterFrame
       title="Stale accounts"
