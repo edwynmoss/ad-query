@@ -29,6 +29,16 @@ const RULES: Rule[] = [
     remedy: "Check the spelling of the server address (e.g. dc01.contoso.com).",
   },
   {
+    test: /integrity checking|00002028|strong(er)? auth(entication)? (is )?required|result code 8\b/i,
+    title: "The domain controller requires a signed connection for Windows sign-in.",
+    remedy: "Connect with an ldaps:// address (port 636) so the connection is encrypted, or ask for a certificate on the domain controller. Username & password over ldaps:// works as well.",
+  },
+  {
+    test: /sspi client|no credentials are available|SEC_E_NO_CREDENTIALS|logon attempt failed|not joined|no logon servers|SEC_E_TARGET_UNKNOWN|target principal name is incorrect/i,
+    title: "Windows sign-in needs a PC joined to the domain, signed in with a domain account.",
+    remedy: "On this PC use Username & password instead. On a domain-joined PC, enter the domain controller's full name (dc01.contoso.com), not an IP address.",
+  },
+  {
     test: /result code 49|invalid credentials|data 52e|acceptsecuritycontext|1326/i,
     title: "Sign-in was rejected by the directory.",
     remedy: "Check the username and password. Use a UPN (you@contoso.com) or a full DN.",

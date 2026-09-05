@@ -110,6 +110,27 @@ func Connect(opts ConnectOptions) (*Conn, error) {
 		}
 	}
 
+	// Windows sign-in and Kerberos use SASL GSSAPI with no SASL security
+	// layer (go-ldap's SSPI client cannot sign or seal LDAP traffic). Domain
+	// controllers that require LDAP signing reject that unless the
+	// connection is already TLS, so on a plain ldap:// connection we try to
+	// upgrade first. A controller without a certificate simply refuses
+	// StartTLS and we carry on in the clear; the bind then reports the
+	// signing requirement in plain language if the controller enforces it.
+	if opts.Encryption == EncryptionNone && (opts.Auth == AuthSSPI || opts.Auth == AuthKerberos) {
+		if err := conn.StartTLS(tlsCfg); err != nil {
+			// Keep the connection usable: go-ldap leaves it open on a
+			// refused StartTLS extended operation, but a failed handshake
+			// poisons it, so redial to be safe.
+			conn.Close()
+			conn, err = goldap.DialURL(opts.url(), dialOpts...)
+			if err != nil {
+				return nil, fmt.Errorf("dial %s: %w", opts.url(), err)
+			}
+			conn.SetTimeout(time.Duration(timeout) * time.Second)
+		}
+	}
+
 	if err := authenticate(conn, opts); err != nil {
 		conn.Close()
 		return nil, err
