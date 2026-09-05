@@ -409,6 +409,7 @@
   .ledger-help:hover { color: var(--color-ink); border-color: var(--color-ink); }
   .ledger-connect .ledger-field { margin-top: 20px; }
   .ledger-connect .ledger-lede { margin-top: 6px; }
+  .ledger-connect-brand { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
 }
 
 @layer components {
