@@ -45,8 +45,8 @@ password is kept in Windows Credential Manager, keyed to the saved name.
 - **Bulk lookup:** import a CSV/Excel list of identities, match them against the
   directory, and export the enriched rows. Unmatched rows are listed and can be
   exported on their own.
-- **Reports:** stale accounts, privileged-group members (including nested),
-  license/sign-in, and an all-users export.
+- **Registers:** pages of the same sheet for stale accounts, privileged-group
+  members (including nested), licences and sign-in, all users, and bulk lookup.
 - **Inspect** a row for full attributes, accurate last-logon (queried across
   every DC, since `lastLogon` isn't replicated), risk flags, and the security
   descriptor (ACL).
