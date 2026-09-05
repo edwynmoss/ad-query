@@ -40,6 +40,19 @@ func first(e ldap.Entry, attr string) string {
 	return ""
 }
 
+// adTime turns a directory timestamp ("20260905141530.0Z") into RFC3339.
+func adTime(v string) string {
+	v = strings.TrimSpace(v)
+	if len(v) < 14 {
+		return ""
+	}
+	t, err := time.Parse("20060102150405", v[:14])
+	if err != nil {
+		return ""
+	}
+	return t.UTC().Format(time.RFC3339)
+}
+
 func plural(n int, one, many string) string {
 	if n == 1 {
 		return one
@@ -56,7 +69,7 @@ func loadPolicies(conn *ldap.Conn, root string) (map[string]gpo.Policy, []string
 	res, err := conn.Search(ldap.SearchRequest{
 		BaseDN: "CN=Policies,CN=System," + root, Scope: ldap.ScopeSubtree,
 		Filter:     "(objectClass=groupPolicyContainer)",
-		Attributes: []string{"displayName", "name", "flags", "versionNumber", "gPCFileSysPath", "gPCWQLFilter", "nTSecurityDescriptor"},
+		Attributes: []string{"displayName", "name", "flags", "versionNumber", "gPCFileSysPath", "gPCWQLFilter", "nTSecurityDescriptor", "whenChanged"},
 		PageSize:   500, SDFlags: ldap.SDDACL,
 	})
 	if err != nil {
@@ -77,6 +90,7 @@ func loadPolicies(conn *ldap.Conn, root string) (map[string]gpo.Policy, []string
 				}
 			}
 		}
+		p.Changed = adTime(first(e, "whenChanged"))
 		fmt.Sscanf(first(e, "versionNumber"), "%d", &p.Version)
 		p.UserDisabled, p.ComputerDisabled = gpo.ParseFlags(first(e, "flags"))
 		if raw := e.RawValues["nTSecurityDescriptor"]; len(raw) > 0 && len(raw[0]) > 0 {

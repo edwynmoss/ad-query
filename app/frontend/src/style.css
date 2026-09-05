@@ -586,3 +586,11 @@
   .ledger-pair .ledger-flow-result { font-size: 11.5px; }
   .ledger-pair-note { grid-column: 1 / -1; padding: 16px 26px 26px; border-top: 1px solid var(--color-line); max-width: 900px; }
 }
+
+/* comparing two people */
+@layer components {
+  .ledger-flow-who .ledger-flag { margin-left: 8px; margin-right: 0; }
+  .ledger-flow-pol.is-only { background: var(--color-brand-soft); margin: 0 -8px; padding-left: 8px; padding-right: 8px; }
+  .ledger-flow-pol.is-only .ledger-flag { color: var(--color-brand); }
+}
+

@@ -106,9 +106,26 @@ interface Props {
   baseline?: gpo.Chain | null;
   /** A trace of one account, so group membership and a move can be tried too. */
   person?: { name: string; findContainers?: (q: string) => Promise<ContainerHit[]> };
+  /** Policy DNs this side receives and the other side does not. */
+  onlyHere?: Set<string>;
 }
 
 const EVERYONE = new Set(["S-1-1-0", "S-1-5-11"]);
+
+/** Whole days since a directory timestamp, or null when it is unknown. */
+export function daysSince(iso: string | undefined): number | null {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return null;
+  return Math.max(0, Math.floor((Date.now() - t) / 86400000));
+}
+
+/** "changed today", "changed 3 days ago"; nothing for older than the window. */
+export function changedRecently(p: gpo.Policy, withinDays = 30): string {
+  const d = daysSince(p.changed);
+  if (d === null || d > withinDays) return "";
+  return d === 0 ? "changed today" : d === 1 ? "changed yesterday" : `changed ${d} days ago`;
+}
 
 /** Joining or leaving the groups that decide this policy's filtering. */
 function membershipOptions(e: gpo.Entry, chain: gpo.Chain, who: string): Hypothetical[] {
@@ -170,7 +187,7 @@ function MoveControl({ person, tryIt }: { person: NonNullable<Props["person"]>; 
 
 type Line = { e: gpo.Entry; mark: "" | "starts" | "stops" | "gone" };
 
-export function PolicyFlow({ chain, targetLabel, targetKind, onPickStation, onPickPolicy, tryIt, baseline, person }: Props) {
+export function PolicyFlow({ chain, targetLabel, targetKind, onPickStation, onPickPolicy, tryIt, baseline, person, onlyHere }: Props) {
   const path = chain.path ?? [];
   const entries = chain.entries ?? [];
   const key = (e: gpo.Entry) => e.policy.dn.toLowerCase() + "|" + e.somDN.toLowerCase();
@@ -229,11 +246,13 @@ export function PolicyFlow({ chain, targetLabel, targetKind, onPickStation, onPi
                   const out = e.precedence === 0 || mark === "gone";
                   const fate = mark === "gone" ? { text: "would be gone from here", tone: "warn" as const } : fateOf(e, chain);
                   return (
-                    <div key={key(e) + mark} className={"ledger-flow-pol" + (out ? " is-out" : "") + (mark ? " is-" + mark : "")} title={e.policy.dn}>
+                    <div key={key(e) + mark} className={"ledger-flow-pol" + (out ? " is-out" : "") + (mark ? " is-" + mark : "") + (onlyHere?.has(e.policy.dn.toLowerCase()) ? " is-only" : "")} title={e.policy.dn}>
                       <span className="ledger-flow-who">
                         {onPickPolicy && e.verdict !== "not-found"
                           ? <button className="ledger-flow-pick" onClick={() => onPickPolicy(e.policy.dn)}>{e.policy.name}</button>
                           : e.policy.name}
+                        {onlyHere?.has(e.policy.dn.toLowerCase()) && <span className="ledger-flag">only here</span>}
+                        {changedRecently(e.policy) && <span className="ledger-flag warn" title={e.policy.changed}>{changedRecently(e.policy)}</span>}
                         {tryIt && mark !== "gone" && e.verdict !== "not-found" && (
                           <span className="ledger-try-group">
                             <button className="ledger-try" onClick={() => tryIt({ kind: "unlink", policyDN: e.policy.dn, containerDN: e.somDN, label: `${e.policy.name} unlinked from ${e.somName}` })}>unlink</button>
