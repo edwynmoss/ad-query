@@ -1,38 +1,37 @@
-// "What if": one hypothetical change to Group Policy, applied in memory by
-// the backend, answered as a sentence and then container by container.
-// Nothing is written to the directory.
+// The pieces of a hypothetical: the line at the top that says what is being
+// tried, and the container-by-container impact that answers "and who else".
+// The backend applies the changes to a copy; nothing is written.
 import { useEffect, useState } from "react";
 import { WhatIf } from "../../wailsjs/go/main/App";
 import { gpo } from "../../wailsjs/go/models";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import type { Hypothetical } from "./PolicyFlow";
 
-export type Hypothetical = { kind: string; policyDN?: string; containerDN?: string; label: string };
+export type { Hypothetical } from "./PolicyFlow";
 
-interface Props {
-  options: Hypothetical[];
-  onTrace?: (containerDN: string) => void;
+export function toChanges(hs: Hypothetical[]): gpo.Change[] {
+  return hs.map((h) => gpo.Change.createFrom({ kind: h.kind, policyDN: h.policyDN ?? "", containerDN: h.containerDN ?? "" }));
+}
+
+/** The line at the top of a page while a hypothetical is on. */
+export function HypotheticalBar({ changes, onRemove, onReset }: { changes: Hypothetical[]; onRemove: (i: number) => void; onReset: () => void }) {
+  if (changes.length === 0) return null;
+  return (
+    <div className="ledger-hypo" role="status">
+      <span className="ledger-hypo-word">Hypothetical</span>
+      {changes.map((c, i) => (
+        <span key={i} className="ledger-hypo-item">{i > 0 && <span className="is-dim"> and </span>}{c.label}<button className="ledger-hypo-x" onClick={() => onRemove(i)} aria-label={`drop ${c.label}`}>×</button></span>
+      ))}
+      <span className="flex-1" />
+      <button className="ledger-link" onClick={onReset}>Back to what is real</button>
+    </div>
+  );
 }
 
 function count(e: gpo.Effect, kind: "users" | "computers"): string {
   const n = kind === "users" ? e.users : e.computers;
   if (n < 0) return "";
   return `${n.toLocaleString()} ${kind === "users" ? (n === 1 ? "user" : "users") : (n === 1 ? "computer" : "computers")}`;
-}
-
-/** The headline: who is affected, in one sentence. */
-function summary(w: gpo.WhatIf): string {
-  const roots = (list: gpo.Effect[]) => list.filter((e) => e.root);
-  const u = roots(w.users ?? []), c = roots(w.computers ?? []);
-  const sum = (list: gpo.Effect[]) => list.reduce((n, e) => n + Math.max(0, e.users >= 0 ? e.users : 0), 0);
-  const sumC = (list: gpo.Effect[]) => list.reduce((n, e) => n + Math.max(0, e.computers >= 0 ? e.computers : 0), 0);
-  if (u.length === 0 && c.length === 0) return "Nothing would change. No container gains or loses a policy.";
-  // Name the accounts that exist; a half with nobody under it stays quiet.
-  const parts: string[] = [];
-  const uKnown = u.every((e) => e.users >= 0), cKnown = c.every((e) => e.computers >= 0);
-  if (u.length && (!uKnown || sum(u) > 0)) parts.push(`${uKnown ? sum(u).toLocaleString() + " " : ""}users under ${u.length === 1 ? u[0].name : `${u.length} containers`}`);
-  if (c.length && (!cKnown || sumC(c) > 0)) parts.push(`${cKnown ? sumC(c).toLocaleString() + " " : ""}computers under ${c.length === 1 ? c[0].name : `${c.length} containers`}`);
-  if (parts.length === 0) return `No accounts sit under the affected ${u.length + c.length === 1 ? "container" : "containers"} today, so nobody would notice, but the containers would ${describeVerbs(w)}.`;
-  return `${parts.join(" and ")} would ${describeVerbs(w)}.`;
 }
 
 function describeVerbs(w: gpo.WhatIf): string {
@@ -45,21 +44,46 @@ function describeVerbs(w: gpo.WhatIf): string {
   return verbs.join(" and ");
 }
 
-export function WhatIfPanel({ options, onTrace }: Props) {
-  const [pick, setPick] = useState<Hypothetical | null>(null);
+/** Who is affected, in one sentence. */
+export function impactSummary(w: gpo.WhatIf): string {
+  const roots = (list: gpo.Effect[]) => list.filter((e) => e.root);
+  const u = roots(w.users ?? []), c = roots(w.computers ?? []);
+  const sum = (list: gpo.Effect[]) => list.reduce((n, e) => n + (e.users >= 0 ? e.users : 0), 0);
+  const sumC = (list: gpo.Effect[]) => list.reduce((n, e) => n + (e.computers >= 0 ? e.computers : 0), 0);
+  if (u.length === 0 && c.length === 0) return "Nobody else is affected. No container gains or loses a policy.";
+  const parts: string[] = [];
+  const uKnown = u.every((e) => e.users >= 0), cKnown = c.every((e) => e.computers >= 0);
+  if (u.length && (!uKnown || sum(u) > 0)) parts.push(`${uKnown ? sum(u).toLocaleString() + " " : ""}users under ${u.length === 1 ? u[0].name : `${u.length} containers`}`);
+  if (c.length && (!cKnown || sumC(c) > 0)) parts.push(`${cKnown ? sumC(c).toLocaleString() + " " : ""}computers under ${c.length === 1 ? c[0].name : `${c.length} containers`}`);
+  if (parts.length === 0) return `No accounts sit under the affected ${u.length + c.length === 1 ? "container" : "containers"} today, so nobody would notice, but the containers would ${describeVerbs(w)}.`;
+  return `${parts.join(" and ")} would ${describeVerbs(w)}.`;
+}
+
+/** A half is worth listing unless every impact root is known to hold no accounts of that kind. */
+function worth(list: gpo.Effect[], kind: "users" | "computers"): boolean {
+  if (list.length === 0) return false;
+  const roots = list.filter((e) => e.root);
+  return roots.some((e) => (kind === "users" ? e.users : e.computers) !== 0);
+}
+
+/** The container-by-container impact of a set of changes. */
+export function ImpactList({ changes, onTrace, title }: { changes: Hypothetical[]; onTrace?: (containerDN: string) => void; title?: string }) {
   const [result, setResult] = useState<gpo.WhatIf | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const sig = JSON.stringify(changes);
 
   useEffect(() => {
-    if (!pick) return;
+    if (changes.length === 0) { setResult(null); return; }
     let live = true;
-    setBusy(true); setError(""); setResult(null);
-    WhatIf(gpo.Change.createFrom({ kind: pick.kind, policyDN: pick.policyDN ?? "", containerDN: pick.containerDN ?? "" }))
+    setBusy(true); setError("");
+    WhatIf(toChanges(changes))
       .then((w) => { if (live) { setResult(w); setBusy(false); } })
       .catch((e: any) => { if (live) { setError(String(e?.message ?? e)); setBusy(false); } });
     return () => { live = false; };
-  }, [pick]);
+  }, [sig]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (changes.length === 0) return null;
 
   const effects = (list: gpo.Effect[], kind: "users" | "computers") => (
     <div className="ledger-lines">
@@ -81,22 +105,17 @@ export function WhatIfPanel({ options, onTrace }: Props) {
   );
 
   return (
-    <div className="ledger-whatif">
-      <div className="ledger-h4">What if</div>
-      <div className="ledger-whatif-options">
-        {options.map((o) => (
-          <button key={o.kind + (o.policyDN ?? "") + (o.containerDN ?? "")} className={"ledger-whatif-opt" + (pick === o ? " is-on" : "")} onClick={() => setPick(o)}>{o.label}</button>
-        ))}
-      </div>
+    <div className="ledger-impact">
+      <div className="ledger-h4">{title ?? "And who else"}</div>
       {busy && <p className="ledger-note">Working it out…</p>}
       {error && <ErrorBanner error={error} />}
       {result && !busy && (
-        <div className="ledger-whatif-result">
-          <p className="ledger-headline">{summary(result)}</p>
-          {(result.users?.length ?? 0) > 0 && <><div className="ledger-h4">For users</div>{effects(result.users, "users")}</>}
-          {(result.computers?.length ?? 0) > 0 && <><div className="ledger-h4">For computers</div>{effects(result.computers, "computers")}</>}
+        <>
+          <p className="ledger-headline">{impactSummary(result)}</p>
+          {worth(result.users ?? [], "users") && <><div className="ledger-h4">For users</div>{effects(result.users, "users")}</>}
+          {worth(result.computers ?? [], "computers") && <><div className="ledger-h4">For computers</div>{effects(result.computers, "computers")}</>}
           <p className="ledger-note">{(result.notes ?? []).join(" ")}</p>
-        </div>
+        </>
       )}
     </div>
   );

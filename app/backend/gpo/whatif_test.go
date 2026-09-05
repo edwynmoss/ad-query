@@ -31,7 +31,7 @@ func names(effects []Effect) map[string]Effect {
 
 func TestWhatIfSwitchOffPolicy(t *testing.T) {
 	nodes, ps := whatIfFixture()
-	eff := names(Evaluate(Change{Kind: "policy-off", PolicyDN: "CN={People Screensaver},CN=Policies,CN=System,DC=x"}, nodes, ps, "user"))
+	eff := names(Evaluate([]Change{Change{Kind: "policy-off", PolicyDN: "CN={People Screensaver},CN=Policies,CN=System,DC=x"}}, nodes, ps, "user"))
 	if e, ok := eff["People"]; !ok || strings.Join(e.Loses, ",") != "People Screensaver" || !e.Root {
 		t.Errorf("People should lose the screensaver as the root of the impact: %+v", eff["People"])
 	}
@@ -48,7 +48,7 @@ func TestWhatIfSwitchOffPolicy(t *testing.T) {
 
 func TestWhatIfUnblock(t *testing.T) {
 	nodes, ps := whatIfFixture()
-	eff := names(Evaluate(Change{Kind: "unblock", ContainerDN: "OU=Finance,OU=People,DC=x"}, nodes, ps, "user"))
+	eff := names(Evaluate([]Change{Change{Kind: "unblock", ContainerDN: "OU=Finance,OU=People,DC=x"}}, nodes, ps, "user"))
 	e, ok := eff["Finance"]
 	if !ok || strings.Join(e.Gains, ",") != "People Screensaver" || len(e.Loses) != 0 {
 		t.Errorf("Finance should gain the screensaver when it stops blocking: %+v", e)
@@ -62,7 +62,7 @@ func TestWhatIfUnenforceReorders(t *testing.T) {
 	nodes, ps := whatIfFixture()
 	// Without enforcement the baseline drops behind the nearer links and no
 	// longer passes Finance's block.
-	eff := names(Evaluate(Change{Kind: "unenforce", PolicyDN: "CN={Corporate Baseline},CN=Policies,CN=System,DC=x", ContainerDN: "DC=x"}, nodes, ps, "user"))
+	eff := names(Evaluate([]Change{Change{Kind: "unenforce", PolicyDN: "CN={Corporate Baseline},CN=Policies,CN=System,DC=x", ContainerDN: "DC=x"}}, nodes, ps, "user"))
 	if e, ok := eff["Finance"]; !ok || strings.Join(e.Loses, ",") != "Corporate Baseline" {
 		t.Errorf("Finance should lose the baseline once it is not enforced: %+v", eff["Finance"])
 	}
@@ -74,15 +74,20 @@ func TestWhatIfUnenforceReorders(t *testing.T) {
 func TestWhatIfUnlinkAndDescribe(t *testing.T) {
 	nodes, ps := whatIfFixture()
 	c := Change{Kind: "unlink", PolicyDN: "CN={Sales Drive Maps},CN=Policies,CN=System,DC=x", ContainerDN: "OU=Sales,OU=People,DC=x"}
-	eff := names(Evaluate(c, nodes, ps, "user"))
+	eff := names(Evaluate([]Change{c}, nodes, ps, "user"))
 	if e, ok := eff["Sales"]; !ok || strings.Join(e.Loses, ",") != "Sales Drive Maps" || len(eff) != 1 {
 		t.Errorf("unlink: %+v (%d effects)", e, len(eff))
+	}
+	// Stacked: unlink Sales Drive Maps and unblock Finance in one go.
+	both := names(Evaluate([]Change{c, {Kind: "unblock", ContainerDN: "OU=Finance,OU=People,DC=x"}}, nodes, ps, "user"))
+	if len(both) != 2 || strings.Join(both["Finance"].Gains, ",") != "People Screensaver" {
+		t.Errorf("stacked changes: %+v", both)
 	}
 	if c.Describe("Sales Drive Maps", "Sales") != "Sales Drive Maps unlinked from Sales" {
 		t.Errorf("describe: %q", c.Describe("Sales Drive Maps", "Sales"))
 	}
 	// The computer half of a switched-off policy is affected too.
-	eff = names(Evaluate(Change{Kind: "policy-off", PolicyDN: "CN={Corporate Baseline},CN=Policies,CN=System,DC=x"}, nodes, ps, "computer"))
+	eff = names(Evaluate([]Change{Change{Kind: "policy-off", PolicyDN: "CN={Corporate Baseline},CN=Policies,CN=System,DC=x"}}, nodes, ps, "computer"))
 	if len(eff) != 5 {
 		t.Errorf("switching off the enforced domain policy touches every container including the domain: %d", len(eff))
 	}

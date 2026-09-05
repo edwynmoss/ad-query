@@ -163,26 +163,35 @@ await step("policies register lists every policy and its links", async () => {
   await page.getByText(/Finance blocks inheritance from above/).waitFor({ timeout: 60000 });
   const trace = await page.locator(".ledger-qhead, .ledger-page").allInnerTexts().then((t) => t.join("\n"));
   if (!/Users in Finance get 2 policies\./.test(trace)) throw new Error("finance headline: " + trace.slice(0, 300));
-  if (!/Corporate Baseline\s*enforced, so it passes the block and applies\s*1/.test(trace)) throw new Error("enforced sentence: " + trace.slice(0, 800));
+  // Hover controls sit inside the line (invisible until hover), so allow a few words between the name and the fate.
+  if (!/Corporate Baseline[\s\S]{0,80}?enforced, so it passes the block and applies\s*1/.test(trace)) throw new Error("enforced sentence: " + trace.slice(0, 800));
   await page.getByText(/\d[\d,]* users?, \d+ computers?/).waitFor({ timeout: 60000 });
   await shot(page, "l16-policies-trace-finance");
-  // What if Finance stopped blocking inheritance: it gains the screensaver and the domain policies.
-  await page.getByRole("button", { name: "Finance stopped blocking inheritance" }).click();
-  await page.locator(".ledger-whatif-result .ledger-headline").waitFor({ timeout: 60000 });
-  const wf = await page.locator(".ledger-whatif-result").innerText();
-  if (!/gain[\s\S]*People Screensaver/.test(wf)) throw new Error("unblock should gain the screensaver: " + wf.slice(0, 300));
+  // Try it on the block line: Finance stops blocking, the flow redraws with what would start arriving.
+  await page.getByRole("button", { name: "try: stop blocking" }).click({ force: true });
+  await page.locator(".ledger-hypo").waitFor({ timeout: 5000 });
+  await page.locator(".ledger-page.is-hypo").waitFor({ timeout: 60000 });
+  await page.locator(".ledger-flow-pol.is-starts").first().waitFor({ timeout: 60000 });
+  const flow = await page.locator(".ledger-page-main").innerText();
+  if (!/People Screensaver[\s\S]*would start arriving/.test(flow)) throw new Error("the screensaver should start arriving: " + flow.slice(0, 400));
+  if (!/would get \d+ policies instead of 2/.test(await page.locator(".ledger-qhead").innerText())) throw new Error("hypothetical headline missing");
+  await page.locator(".ledger-impact .ledger-headline").waitFor({ timeout: 60000 });
   await shot(page, "l16f-whatif-unblock");
+  await page.getByRole("button", { name: "Back to what is real" }).click();
   // Drill down: the policy's own page, then back.
   await page.locator(".ledger-page-main").getByRole("button", { name: "Finance Lockdown", exact: true }).click();
   await page.getByText(/Finance Lockdown is linked at Finance/).waitFor({ timeout: 30000 });
   await page.locator("dt", { hasText: "SYSVOL path" }).waitFor({ timeout: 5000 });
   await shot(page, "l16b-policy-page");
-  // What if: switching the policy off empties Finance of it.
-  await page.getByRole("button", { name: "it were switched off" }).click();
-  await page.locator(".ledger-whatif-result .ledger-headline").waitFor({ timeout: 60000 });
-  const wi = await page.locator(".ledger-whatif-result").innerText();
-  if (!/\d+ users under Finance would lose Finance Lockdown/.test(wi)) throw new Error("what-if headline: " + wi.slice(0, 200));
+  // Try it: switching the policy off, from the facts.
+  await page.getByRole("button", { name: "try: switch the policy off" }).click({ force: true });
+  await page.locator(".ledger-hypo").waitFor({ timeout: 5000 });
+  await page.locator(".ledger-impact .ledger-headline").waitFor({ timeout: 60000 });
+  const wi = await page.locator(".ledger-impact").innerText();
+  if (!/\d+ users under Finance would lose Finance Lockdown/.test(wi)) throw new Error("impact headline: " + wi.slice(0, 200));
   await shot(page, "l16e-whatif-policy");
+  await page.getByRole("button", { name: "Back to what is real" }).click();
+  await page.locator(".ledger-hypo").waitFor({ state: "hidden", timeout: 5000 });
   await page.locator(".ledger-line").getByRole("button", { name: "Finance" }).first().click();
   await page.getByText(/Finance blocks inheritance from above/).waitFor({ timeout: 60000 });
   // Show on the tree: Finance is revealed, quiet branches are folded.

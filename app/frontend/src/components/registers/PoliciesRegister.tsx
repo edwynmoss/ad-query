@@ -4,7 +4,7 @@
 // name opens the policy's own page, a container opens its trace or the
 // people in it, and a person opens their row in Search.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { PolicyInventory, PolicyMap, PolicyChain, ContainerChain, CountUnder, Search } from "../../../wailsjs/go/main/App";
+import { PolicyInventory, PolicyMap, PolicyChainWith, ContainerChainWith, CountUnder, Search } from "../../../wailsjs/go/main/App";
 import { ldap, type gpo, type main } from "../../../wailsjs/go/models";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { toast } from "sonner";
@@ -16,7 +16,7 @@ import { OBJECT_TYPES, filterFor, defaultAttributesFor } from "../../lib/objectT
 import { RegisterFrame, InlineCheck } from "./RegisterFrame";
 import { PolicyMapView } from "../PolicyMapView";
 import { PolicyFlow, PolicyExplainer, headline, fateOf } from "../PolicyFlow";
-import { WhatIfPanel, type Hypothetical } from "../WhatIfPanel";
+import { HypotheticalBar, ImpactList, toChanges, type Hypothetical } from "../WhatIfPanel";
 
 export type Target = { dn: string; kind: "user" | "computer" | "container"; label: string };
 export type PolicyPage = { name: "home" } | { name: "trace"; target: Target } | { name: "map"; reveal?: string } | { name: "list" } | { name: "policy"; dn: string };
@@ -181,33 +181,48 @@ function HomePage({ baseDN, onTrace, onMap, onList }: { baseDN: string; onTrace:
 // ---- Trace: the answer -------------------------------------------------------
 function TracePage({ target, onBack, onMap, onTrace, onPolicy, onPeople, onRow }: { target: Target } & Nav) {
   const [kind, setKind] = useState<"user" | "computer">("user");
-  const [chain, setChain] = useState<gpo.Chain | null>(null);
+  const [chain, setChain] = useState<gpo.Chain | null>(null);       // what is real
+  const [tried, setTried] = useState<gpo.Chain | null>(null);       // the hypothetical, when changes are on
+  const [changes, setChanges] = useState<Hypothetical[]>([]);
   const [counts, setCounts] = useState<main.Counts | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(true);
 
+  useEffect(() => { setChanges([]); setTried(null); }, [target.dn]);
+
   useEffect(() => {
     let live = true;
     setBusy(true); setError(""); setCounts(null);
-    const p = target.kind === "container" ? ContainerChain(target.dn, kind) : PolicyChain(target.dn);
+    const p = target.kind === "container" ? ContainerChainWith(target.dn, kind, []) : PolicyChainWith(target.dn, []);
     p.then((c) => { if (live) { setChain(c); setBusy(false); } }).catch((e: any) => { if (live) { setError(String(e?.message ?? e)); setBusy(false); } });
     if (target.kind === "container") CountUnder(target.dn).then((c) => { if (live) setCounts(c); }).catch(() => {});
     return () => { live = false; };
   }, [target, kind]);
 
+  const sig = JSON.stringify(changes);
+  useEffect(() => {
+    if (changes.length === 0) { setTried(null); return; }
+    let live = true;
+    const p = target.kind === "container" ? ContainerChainWith(target.dn, kind, toChanges(changes)) : PolicyChainWith(target.dn, toChanges(changes));
+    p.then((c) => { if (live) setTried(c); }).catch((e: any) => { if (live) setError(String(e?.message ?? e)); });
+    return () => { live = false; };
+  }, [sig, target, kind]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const shown = tried ?? chain;
   const containerKind = target.kind === "container" ? kind : undefined;
   const bottom = target.kind === "container"
     ? (counts ? `${counts.users.toLocaleString()} ${counts.users === 1 ? "user" : "users"}, ${counts.computers.toLocaleString()} ${counts.computers === 1 ? "computer" : "computers"}${counts.truncated ? " or more" : ""}` : "counting…")
     : target.label;
   const parentDN = target.dn.split(",").slice(1).join(",");
+  const tryIt = (h: Hypothetical) => setChanges((cs) => (cs.some((c) => JSON.stringify(c) === JSON.stringify(h)) ? cs : [...cs, h]));
 
   return (
     <RegisterFrame
       eyebrow="Trace"
       back={{ label: "Policies", onClick: onBack }}
       title={target.label}
-      lede={chain ? <>
-        {headline(chain, target.label, containerKind)}
+      lede={shown ? <>
+        {headline(shown, target.label, containerKind, tried ? chain : null)}
         {target.kind === "container" && <> Showing <button className={"ledger-link" + (kind === "user" ? " is-strong" : "")} onClick={() => setKind("user")}>users</button> · <button className={"ledger-link" + (kind === "computer" ? " is-strong" : "")} onClick={() => setKind("computer")}>computers</button>.</>}
       </> : busy ? "Tracing…" : undefined}
       meta={<>
@@ -219,34 +234,18 @@ function TracePage({ target, onBack, onMap, onTrace, onPolicy, onPeople, onRow }
         <button className="ledger-link" onClick={() => onMap(target.kind === "container" ? target.dn : parentDN)}>Show on the tree</button>
       </>}
     >
+      <HypotheticalBar changes={changes} onRemove={(i) => setChanges((cs) => cs.filter((_, j) => j !== i))} onReset={() => setChanges([])} />
       {error && <div className="p-6"><ErrorBanner error={error} /></div>}
-      {chain && (
-        <div className="ledger-page">
+      {shown && (
+        <div className={"ledger-page" + (tried ? " is-hypo" : "")}>
           <section className="ledger-page-main">
-            <div className="ledger-h4">How it gets there</div>
-            <PolicyFlow chain={chain} targetLabel={bottom} targetKind={target.kind === "container" ? `in ${target.label}` : chain.targetKind}
-              onPickStation={(dn) => onTrace(containerTarget(dn))} onPickPolicy={onPolicy} />
-            {target.kind === "container" && (() => {
-              const here = (chain.path ?? []).find((s) => s.dn.toLowerCase() === target.dn.toLowerCase());
-              if (!here || here.kind === "site") return null;
-              const own = (chain.entries ?? []).filter((e) => e.somDN.toLowerCase() === target.dn.toLowerCase());
-              const opts: Hypothetical[] = [
-                here.blockInheritance
-                  ? { kind: "unblock", containerDN: target.dn, label: `${target.label} stopped blocking inheritance` }
-                  : { kind: "block", containerDN: target.dn, label: `${target.label} blocked inheritance from above` },
-                ...own.filter((e) => e.verdict !== "not-found").flatMap((e): Hypothetical[] => [
-                  e.enforced
-                    ? { kind: "unenforce", policyDN: e.policy.dn, containerDN: target.dn, label: `${e.policy.name} were no longer enforced here` }
-                    : { kind: "enforce", policyDN: e.policy.dn, containerDN: target.dn, label: `${e.policy.name} were enforced here` },
-                  { kind: "unlink", policyDN: e.policy.dn, containerDN: target.dn, label: `${e.policy.name} were unlinked from here` },
-                ]),
-              ];
-              return <WhatIfPanel key={target.dn} options={opts} onTrace={(dn) => onTrace(containerTarget(dn))} />;
-            })()}
-            <PolicyExplainer chain={chain} />
+            <div className="ledger-h4">{tried ? "How it would get there" : "How it gets there"}<span className="ledger-h4-hint">hover a line to try a change</span></div>
+            <PolicyFlow chain={shown} baseline={tried ? chain : null} targetLabel={bottom} targetKind={target.kind === "container" ? `in ${target.label}` : shown.targetKind}
+              onPickStation={(dn) => onTrace(containerTarget(dn))} onPickPolicy={onPolicy} tryIt={tryIt} />
+            <PolicyExplainer chain={shown} />
           </section>
           <section className="ledger-page-side">
-            <Outcome chain={chain} onPolicy={onPolicy} />
+            {tried ? <ImpactList changes={changes} onTrace={(dn) => onTrace(containerTarget(dn))} title="And who else" /> : <Outcome chain={shown} onPolicy={onPolicy} />}
           </section>
         </div>
       )}
@@ -292,8 +291,10 @@ function Outcome({ chain, onPolicy }: { chain: gpo.Chain; onPolicy: (dn: string)
 function PolicyDetailPage({ dn, onBack, onTrace, onPeople, onMap }: { dn: string } & Nav) {
   const [inv, setInv] = useState<gpo.Inventory | null>(null);
   const [error, setError] = useState("");
+  const [changes, setChanges] = useState<Hypothetical[]>([]);
   useEffect(() => {
     let live = true;
+    setChanges([]);
     PolicyInventory().then((i) => { if (live) setInv(i); }).catch((e: any) => { if (live) setError(String(e?.message ?? e)); });
     return () => { live = false; };
   }, [dn]);
@@ -301,6 +302,8 @@ function PolicyDetailPage({ dn, onBack, onTrace, onPeople, onMap }: { dn: string
   const p = entry?.policy;
   const links = entry?.links ?? [];
   const copy = async (text: string) => { try { await navigator.clipboard.writeText(text); toast.success("Copied"); } catch { toast.error("Couldn't copy"); } };
+  const tryIt = (h: Hypothetical) => setChanges((cs) => (cs.some((c) => JSON.stringify(c) === JSON.stringify(h)) ? cs : [...cs, h]));
+  const on = (kind: string, containerDN?: string) => changes.some((c) => c.kind === kind && (c.containerDN ?? "") === (containerDN ?? ""));
 
   const lede = p ? (() => {
     const where = links.length === 0 ? "linked nowhere" : "linked at " + links.map((l) => l.somName + (l.enforced ? " (enforced)" : "") + (l.disabled ? " (link switched off)" : "")).join(", ");
@@ -317,52 +320,55 @@ function PolicyDetailPage({ dn, onBack, onTrace, onPeople, onMap }: { dn: string
         <button className="ledger-link" onClick={() => copy(p.path)} disabled={!p.path}>Copy SYSVOL path</button>
         <button className="ledger-link" onClick={() => copy(p.dn)}>Copy DN</button>
       </> : null}>
+      <HypotheticalBar changes={changes} onRemove={(i) => setChanges((cs) => cs.filter((_, j) => j !== i))} onReset={() => setChanges([])} />
       {error && <div className="p-6"><ErrorBanner error={error} /></div>}
       {p && (
-        <div className="ledger-page">
+        <div className={"ledger-page" + (changes.length ? " is-hypo" : "")}>
           <section className="ledger-page-main">
-            <div className="ledger-h4">Facts</div>
+            <div className="ledger-h4">Facts<span className="ledger-h4-hint">hover a line to try a change</span></div>
             <dl className="ledger-kv">
               <dt>Applies to</dt><dd>{appliesTo(p, inv?.names)}</dd>
               <dt>User settings</dt><dd>{p.userDisabled ? <span className="ledger-flag warn">switched off</span> : "on"}</dd>
-              <dt>Computer settings</dt><dd>{p.computerDisabled ? <span className="ledger-flag warn">switched off</span> : "on"}</dd>
+              <dt>Computer settings</dt><dd>{p.computerDisabled ? <span className="ledger-flag warn">switched off</span> : "on"}
+                {!(p.userDisabled && p.computerDisabled) && !on("policy-off") && <button className="ledger-try" onClick={() => tryIt({ kind: "policy-off", policyDN: p.dn, label: `${p.name} switched off` })}>try: switch the policy off</button>}
+              </dd>
               <dt>WMI filter</dt><dd>{p.wmiFilter ? (p.wmiFilterName || <span className="mono">{p.wmiFilter}</span>) : "none"}</dd>
               <dt>Version</dt><dd>{p.version === 0 ? <span className="ledger-flag warn">never edited</span> : <><span className="mono">{p.version & 0xffff}</span> user, <span className="mono">{p.version >>> 16}</span> computer</>}</dd>
               <dt>GUID</dt><dd className="mono selectable">{p.guid}</dd>
               <dt>SYSVOL path</dt><dd className="mono selectable is-break">{p.path || "unknown"}</dd>
             </dl>
             <p className="ledger-note">The version counts how many times each half has been saved. The settings themselves live at the SYSVOL path and are not read here.</p>
-            <WhatIfPanel key={p.dn} onTrace={(dn) => onTrace(containerTarget(dn))} options={[
-              { kind: "policy-off", policyDN: p.dn, label: "it were switched off" },
-              ...(links.length > 1 ? [{ kind: "delete", policyDN: p.dn, label: "it were deleted" }] : []),
-              ...links.flatMap((l): Hypothetical[] => [
-                { kind: "unlink", policyDN: p.dn, containerDN: l.somDN, label: `it were unlinked from ${l.somName}` },
-                ...(l.disabled ? [] : [{ kind: "link-off", policyDN: p.dn, containerDN: l.somDN, label: `the link on ${l.somName} were switched off` }]),
-                l.enforced
-                  ? { kind: "unenforce", policyDN: p.dn, containerDN: l.somDN, label: `the link on ${l.somName} were no longer enforced` }
-                  : { kind: "enforce", policyDN: p.dn, containerDN: l.somDN, label: `the link on ${l.somName} were enforced` },
-              ]),
-            ]} />
+            {changes.length > 0 && <ImpactList changes={changes} onTrace={(dn) => onTrace(containerTarget(dn))} title="Who would notice" />}
           </section>
           <section className="ledger-page-side">
             <div className="ledger-h4">Linked at</div>
             {links.length === 0 && <p className="ledger-note">Nowhere. The policy exists but no site, domain or organizational unit links it, so it reaches no one.</p>}
             <div className="ledger-lines">
-              {links.map((l, i) => (
-                <div key={l.somDN + i} className="ledger-line is-static">
-                  <span className="ledger-line-text">
-                    <button className="ledger-flow-pick" onClick={() => onTrace(containerTarget(l.somDN))} title={l.somDN}>{l.somName}</button>
-                    <small className="ledger-kind">{l.somKind === "ou" ? "organizational unit" : l.somKind}, link {l.order}</small>
-                    {l.enforced && <span className="ledger-flag">enforced</span>}
-                    {l.disabled && <span className="ledger-flag warn">link switched off</span>}
-                  </span>
-                  <span className="ledger-line-desc ledger-line-acts">
-                    <button className="ledger-link" onClick={() => onTrace(containerTarget(l.somDN))}>trace</button>
-                    <button className="ledger-link" onClick={() => onPeople(l.somDN)}>people</button>
-                    <button className="ledger-link" onClick={() => onMap(l.somDN)}>on the tree</button>
-                  </span>
-                </div>
-              ))}
+              {links.map((l, i) => {
+                const gone = on("unlink", l.somDN) || on("delete");
+                return (
+                  <div key={l.somDN + i} className={"ledger-line is-static" + (gone ? " is-gone" : "")}>
+                    <span className="ledger-line-text">
+                      <button className="ledger-flow-pick" onClick={() => onTrace(containerTarget(l.somDN))} title={l.somDN}>{l.somName}</button>
+                      <small className="ledger-kind">{l.somKind === "ou" ? "organizational unit" : l.somKind}, link {l.order}</small>
+                      {(l.enforced || on("enforce", l.somDN)) && !on("unenforce", l.somDN) && <span className="ledger-flag">enforced</span>}
+                      {(l.disabled || on("link-off", l.somDN)) && <span className="ledger-flag warn">link switched off</span>}
+                      {gone && <span className="ledger-flag warn">would be unlinked</span>}
+                    </span>
+                    <span className="ledger-line-desc ledger-line-acts">
+                      <button className="ledger-link" onClick={() => onTrace(containerTarget(l.somDN))}>trace</button>
+                      <button className="ledger-link" onClick={() => onPeople(l.somDN)}>people</button>
+                      <button className="ledger-link" onClick={() => onMap(l.somDN)}>on the tree</button>
+                      {!gone && <span className="ledger-try-group">
+                        <button className="ledger-try" onClick={() => tryIt({ kind: "unlink", policyDN: p.dn, containerDN: l.somDN, label: `${p.name} unlinked from ${l.somName}` })}>try: unlink</button>
+                        {l.enforced || on("enforce", l.somDN)
+                          ? <button className="ledger-try" onClick={() => tryIt({ kind: "unenforce", policyDN: p.dn, containerDN: l.somDN, label: `${p.name} no longer enforced on ${l.somName}` })}>stop enforcing</button>
+                          : <button className="ledger-try" onClick={() => tryIt({ kind: "enforce", policyDN: p.dn, containerDN: l.somDN, label: `${p.name} enforced on ${l.somName}` })}>enforce</button>}
+                      </span>}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
             {links.length > 0 && <p className="ledger-note">To see who actually receives this policy, open the people at a link and trace one of them.</p>}
           </section>
