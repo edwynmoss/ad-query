@@ -22,18 +22,18 @@ export function Inspector({ entry, isAD, onClose }: Props) {
   return <InspectorBody key={entry.dn} entry={entry} isAD={isAD} onClose={onClose} />;
 }
 
-function InspectorBody({ entry, isAD, onClose }: { entry: ldap.Entry; isAD?: boolean; onClose: () => void }) {
+export function InspectorBody({ entry, isAD, onClose, embedded }: { entry: ldap.Entry; isAD?: boolean; onClose: () => void; embedded?: boolean }) {
   const [tab, setTab] = useState<"attrs" | "login" | "risk" | "acl">("attrs");
   const attrs = Object.keys(entry.attributes ?? {}).sort();
 
   return (
-    <div className="w-[360px] shrink-0 flex flex-col min-h-0 border-l border-line bg-surface">
+    <div className={embedded ? "flex flex-col min-h-0 h-full" : "w-[360px] shrink-0 flex flex-col min-h-0 border-l border-line bg-surface"}>
       <div className="flex items-start justify-between gap-2 px-3 py-2.5 border-b border-line">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold tracking-wide text-ink-3">DISTINGUISHED NAME</div>
+          <div className="eyebrow">Distinguished name</div>
           <div className="text-[12px] break-all selectable font-mono">{entry.dn}</div>
         </div>
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onClose} aria-label="close"><X size={15} /></Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onClose} aria-label="close" title={embedded ? "Clear selection" : "Close"}><X size={15} /></Button>
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="px-3 border-b border-line">
