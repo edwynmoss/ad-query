@@ -16,6 +16,7 @@ import { OBJECT_TYPES, filterFor, defaultAttributesFor } from "../../lib/objectT
 import { RegisterFrame, InlineCheck } from "./RegisterFrame";
 import { PolicyMapView } from "../PolicyMapView";
 import { PolicyFlow, PolicyExplainer, headline, fateOf } from "../PolicyFlow";
+import { WhatIfPanel, type Hypothetical } from "../WhatIfPanel";
 
 export type Target = { dn: string; kind: "user" | "computer" | "container"; label: string };
 export type PolicyPage = { name: "home" } | { name: "trace"; target: Target } | { name: "map"; reveal?: string } | { name: "list" } | { name: "policy"; dn: string };
@@ -225,6 +226,23 @@ function TracePage({ target, onBack, onMap, onTrace, onPolicy, onPeople, onRow }
             <div className="ledger-h4">How it gets there</div>
             <PolicyFlow chain={chain} targetLabel={bottom} targetKind={target.kind === "container" ? `in ${target.label}` : chain.targetKind}
               onPickStation={(dn) => onTrace(containerTarget(dn))} onPickPolicy={onPolicy} />
+            {target.kind === "container" && (() => {
+              const here = (chain.path ?? []).find((s) => s.dn.toLowerCase() === target.dn.toLowerCase());
+              if (!here || here.kind === "site") return null;
+              const own = (chain.entries ?? []).filter((e) => e.somDN.toLowerCase() === target.dn.toLowerCase());
+              const opts: Hypothetical[] = [
+                here.blockInheritance
+                  ? { kind: "unblock", containerDN: target.dn, label: `${target.label} stopped blocking inheritance` }
+                  : { kind: "block", containerDN: target.dn, label: `${target.label} blocked inheritance from above` },
+                ...own.filter((e) => e.verdict !== "not-found").flatMap((e): Hypothetical[] => [
+                  e.enforced
+                    ? { kind: "unenforce", policyDN: e.policy.dn, containerDN: target.dn, label: `${e.policy.name} were no longer enforced here` }
+                    : { kind: "enforce", policyDN: e.policy.dn, containerDN: target.dn, label: `${e.policy.name} were enforced here` },
+                  { kind: "unlink", policyDN: e.policy.dn, containerDN: target.dn, label: `${e.policy.name} were unlinked from here` },
+                ]),
+              ];
+              return <WhatIfPanel key={target.dn} options={opts} onTrace={(dn) => onTrace(containerTarget(dn))} />;
+            })()}
             <PolicyExplainer chain={chain} />
           </section>
           <section className="ledger-page-side">
@@ -314,6 +332,17 @@ function PolicyDetailPage({ dn, onBack, onTrace, onPeople, onMap }: { dn: string
               <dt>SYSVOL path</dt><dd className="mono selectable is-break">{p.path || "unknown"}</dd>
             </dl>
             <p className="ledger-note">The version counts how many times each half has been saved. The settings themselves live at the SYSVOL path and are not read here.</p>
+            <WhatIfPanel key={p.dn} onTrace={(dn) => onTrace(containerTarget(dn))} options={[
+              { kind: "policy-off", policyDN: p.dn, label: "it were switched off" },
+              ...(links.length > 1 ? [{ kind: "delete", policyDN: p.dn, label: "it were deleted" }] : []),
+              ...links.flatMap((l): Hypothetical[] => [
+                { kind: "unlink", policyDN: p.dn, containerDN: l.somDN, label: `it were unlinked from ${l.somName}` },
+                ...(l.disabled ? [] : [{ kind: "link-off", policyDN: p.dn, containerDN: l.somDN, label: `the link on ${l.somName} were switched off` }]),
+                l.enforced
+                  ? { kind: "unenforce", policyDN: p.dn, containerDN: l.somDN, label: `the link on ${l.somName} were no longer enforced` }
+                  : { kind: "enforce", policyDN: p.dn, containerDN: l.somDN, label: `the link on ${l.somName} were enforced` },
+              ]),
+            ]} />
           </section>
           <section className="ledger-page-side">
             <div className="ledger-h4">Linked at</div>

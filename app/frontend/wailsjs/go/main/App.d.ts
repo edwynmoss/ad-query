@@ -69,3 +69,5 @@ export function SearchCached(arg1:ldap.SearchRequest,arg2:boolean):Promise<main.
 export function ServerInfo():Promise<ldap.ServerInfo>;
 
 export function StoreSecret(arg1:string,arg2:string):Promise<void>;
+
+export function WhatIf(arg1:gpo.Change):Promise<gpo.WhatIf>;

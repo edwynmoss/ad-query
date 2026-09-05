@@ -125,3 +125,7 @@ export function ServerInfo() {
 export function StoreSecret(arg1, arg2) {
   return window['go']['main']['App']['StoreSecret'](arg1, arg2);
 }
+
+export function WhatIf(arg1) {
+  return window['go']['main']['App']['WhatIf'](arg1);
+}
