@@ -81,8 +81,9 @@ St group addmembers 'Domain Admins' 'bwayne' | Out-Null
 Write-Output "  groups created and populated"
 
 Write-Output "== Computers =="
-foreach ($c in 'WS-SALES-01','WS-IT-01','WS-ENG-01','SRV-FILE-01','SRV-DB-01') {
-  St computer create $c | Out-Null; Write-Output "  $c"
+# ($comp, not $c: PowerShell variables are case-insensitive and $C is the container.)
+foreach ($comp in 'WS-SALES-01','WS-IT-01','WS-ENG-01','SRV-FILE-01','SRV-DB-01') {
+  St computer create $comp | Out-Null; Write-Output "  $comp"
 }
 
 # ---- Attributes samba-tool can't set on create: manager + pwd-never-expires --
@@ -91,7 +92,15 @@ foreach ($c in 'WS-SALES-01','WS-IT-01','WS-ENG-01','SRV-FILE-01','SRV-DB-01') {
 Write-Output "== manager links + password-never-expires (via ldbmodify) =="
 Start-Sleep -Seconds 2
 function Dn($u) { $x = $users | Where-Object { $_.u -eq $u }; "CN=$u,$($x.ou),$BASE" }
-function LdbMod($ldif) { ($ldif | docker exec -i $C ldbmodify -H ldap://localhost -U "administrator%AdminPass123!" 2>&1 | Out-String) -match 'Modified 1' }
+# Pipe-to-stdin is unreliable from PowerShell into docker exec, so the LDIF goes
+# in as a file and ldbmodify reads it from there.
+function LdbMod($ldif) {
+  $tmp = New-TemporaryFile
+  [IO.File]::WriteAllText($tmp.FullName, ($ldif -replace "`r", ""), (New-Object System.Text.UTF8Encoding $false))
+  docker cp $tmp.FullName "${C}:/tmp/seed.ldif" | Out-Null
+  Remove-Item $tmp.FullName -Force
+  (docker exec $C ldbmodify -H ldap://localhost -U "administrator%AdminPass123!" /tmp/seed.ldif 2>&1 | Out-String) -match 'Modified 1'
+}
 
 $mgr = @{ jdoe='bsmith'; agarcia='bsmith'; twong='bsmith'; pparker='ckent'; ckent='bwayne';
          lsong='jlee'; mpatel='jlee'; rkhan='jlee'; dscott='mfox'; ngreen='oroyer' }
@@ -101,14 +110,15 @@ foreach ($u in $mgr.Keys) {
 }
 Write-Output "  manager links: $ok / $($mgr.Count)"
 
-# Service accounts: NORMAL_ACCOUNT(512) | DONT_EXPIRE_PASSWORD(0x10000) = 66048
+# Service accounts: password never expires (DONT_EXPIRE_PASSWORD) via samba-tool.
 $uac = 0
 foreach ($u in 'svc-backup','svc-sql','svc-monitor') {
-  if (LdbMod "dn: $(Dn $u)`nchangetype: modify`nreplace: userAccountControl`nuserAccountControl: 66048`n") { $uac++ }
+  $r = St user setexpiry $u --noexpiry
+  if ($r -match 'Expiry for user' -or $r -match 'never') { $uac++ }
 }
 Write-Output "  password-never-expires service accounts: $uac / 3"
 
 Write-Output "`n== Done. Counts: =="
-$nu = (docker exec $C samba-tool user list 2>&1 | Measure-Object).Count
-$ng = (docker exec $C samba-tool computer list 2>&1 | Measure-Object).Count
+$nu = @((docker exec $C samba-tool user list 2>&1 | Out-String) -split "`n" | Where-Object { $_.Trim() }).Count
+$ng = @((docker exec $C samba-tool computer list 2>&1 | Out-String) -split "`n" | Where-Object { $_.Trim() }).Count
 Write-Output "  users (incl. built-ins): $nu ; computers: $ng"
