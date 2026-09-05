@@ -465,13 +465,14 @@
   .ledger-map .react-flow__edge-path { stroke: var(--color-line-strong); stroke-width: 1; }
   .ledger-map .react-flow__edge.ledger-map-edge.is-on .react-flow__edge-path { stroke: var(--color-ink); stroke-width: 1.5; }
   .ledger-map .react-flow__edge.ledger-map-edge.is-fold .react-flow__edge-path { stroke-dasharray: 2 3; }
-  .ledger-map-handle { opacity: 0; width: 4px; height: 4px; min-width: 0; min-height: 0; border: 0; pointer-events: none; }
-  .ledger-map-node { display: flex; align-items: flex-start; gap: 8px; width: 236px; padding: 6px 8px 6px 0; cursor: pointer; font-family: var(--font-ui); }
+  .ledger-map-handle { opacity: 0; width: 1px; height: 1px; min-width: 0; min-height: 0; border: 0; pointer-events: none; }
+  .ledger-map .react-flow__node { z-index: 1; }
+  .ledger-map-node { display: flex; align-items: flex-start; gap: 8px; width: max-content; max-width: 300px; padding: 6px 8px 6px 0; cursor: pointer; font-family: var(--font-ui); }
   .ledger-map-node .ledger-map-dot { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--color-ink-3); background: var(--color-surface); flex-shrink: 0; margin-top: 3px; box-sizing: border-box; }
   .ledger-map-node.is-on .ledger-map-dot { border-color: var(--color-ink); }
   .ledger-map-node.is-sel .ledger-map-dot { background: var(--color-ink); border-color: var(--color-ink); }
   .ledger-map-text { min-width: 0; line-height: 18px; }
-  .ledger-map-title { display: flex; align-items: baseline; gap: 7px; white-space: nowrap; }
+  .ledger-map-title { position: relative; display: flex; align-items: baseline; gap: 7px; white-space: nowrap; }
   .ledger-map-name { font-size: 12.5px; font-weight: 600; color: var(--color-ink); }
   .ledger-map-name.mono { font-weight: 500; }
   .ledger-map-node.is-quiet .ledger-map-name { font-weight: 400; color: var(--color-ink-2); }
