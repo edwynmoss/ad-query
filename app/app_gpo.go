@@ -294,3 +294,129 @@ func (a *App) PolicyInventory() (*gpo.Inventory, error) {
 	inv.Names = sidNames(conn, root, sids)
 	return inv, nil
 }
+
+// ContainerChain traces policy into a container (the domain or an OU) for
+// users or computers in general, rather than one account. Links whose
+// security filtering depends on group membership come back as "depends".
+func (a *App) ContainerChain(containerDN string, kind string) (*gpo.Chain, error) {
+	conn, root, cfg, err := a.policyRoots()
+	if err != nil {
+		return nil, err
+	}
+	if kind != "computer" {
+		kind = "user"
+	}
+	var notes []string
+	var path []gpo.SOM
+	if ss, err := sites(conn, cfg); err == nil && len(ss) == 1 {
+		path = append(path, ss[0])
+	} else if err == nil && len(ss) > 1 {
+		notes = append(notes, fmt.Sprintf("The forest has %d sites; site-linked policies are left out of a container trace.", len(ss)))
+	}
+	// PathFromDN lists the containers above an object, so ask for a
+	// pretend child of the container to include the container itself.
+	for _, cdn := range gpo.PathFromDN("CN=x,"+containerDN, root) {
+		k := "ou"
+		if strings.EqualFold(cdn, root) {
+			k = "domain"
+		}
+		s, err := somFor(conn, cdn, k)
+		if err != nil {
+			notes = append(notes, "Could not read "+cdn+": "+err.Error())
+			continue
+		}
+		path = append(path, s)
+	}
+	linked := map[string]bool{}
+	for _, s := range path {
+		for _, l := range s.Links {
+			linked[strings.ToLower(l.PolicyDN)] = true
+		}
+	}
+	policies, pnotes := loadPolicies(conn, root, linked)
+	notes = append(notes, pnotes...)
+	chain := gpo.Resolve(containerDN, kind, path, policies, nil)
+	chain.Notes = append(notes, "A container trace cannot know group membership, so links with security filtering are marked as depending on it. Open a row for the exact answer.")
+	sids := map[string]bool{}
+	for _, e := range chain.Entries {
+		for _, s := range append(e.Policy.ApplyAllow, e.Policy.ApplyDeny...) {
+			sids[s] = true
+		}
+	}
+	chain.Names = sidNames(conn, root, sids)
+	return chain, nil
+}
+
+// PolicyMap returns every container that can carry policy (site when there
+// is one, the domain, every OU) with its links and the accounts directly in
+// it, so the frontend can draw the tree.
+func (a *App) PolicyMap() (*gpo.Map, error) {
+	conn, root, cfg, err := a.policyRoots()
+	if err != nil {
+		return nil, err
+	}
+	m := &gpo.Map{}
+	domainParent := ""
+	if ss, err := sites(conn, cfg); err == nil && len(ss) == 1 {
+		m.Nodes = append(m.Nodes, gpo.MapNode{DN: ss[0].DN, Kind: "site", Name: ss[0].Name, Links: ss[0].Links})
+		domainParent = ss[0].DN
+	} else if err == nil && len(ss) > 1 {
+		m.Notes = append(m.Notes, fmt.Sprintf("The forest has %d sites; they are left off the map because the directory does not say which objects are in which.", len(ss)))
+	}
+	dom, err := somFor(conn, root, "domain")
+	if err != nil {
+		return nil, err
+	}
+	m.Nodes = append(m.Nodes, gpo.MapNode{DN: dom.DN, ParentDN: domainParent, Kind: "domain", Name: dom.Name, Links: dom.Links, BlockInheritance: dom.BlockInheritance})
+	ous, err := conn.Search(ldap.SearchRequest{BaseDN: root, Scope: ldap.ScopeSubtree, Filter: "(objectClass=organizationalUnit)", Attributes: []string{"gPLink", "gPOptions", "ou"}, PageSize: 1000})
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range ous.Entries {
+		n := gpo.MapNode{DN: e.DN, ParentDN: gpo.ParentOf(e.DN), Kind: "ou", Name: gpo.NameOf(e.DN, "ou")}
+		if v := e.Attributes["gPLink"]; len(v) > 0 {
+			n.Links = gpo.ParseGPLink(v[0])
+		}
+		if v := e.Attributes["gPOptions"]; len(v) > 0 && strings.TrimSpace(v[0]) == "1" {
+			n.BlockInheritance = true
+		}
+		m.Nodes = append(m.Nodes, n)
+	}
+	// Direct counts: users and computers bucketed onto the nearest container.
+	index := map[string]int{}
+	known := map[string]bool{}
+	for i, n := range m.Nodes {
+		index[strings.ToLower(n.DN)] = i
+		known[strings.ToLower(n.DN)] = true
+	}
+	count := func(filter string, bump func(*gpo.MapNode)) {
+		res, err := conn.Search(ldap.SearchRequest{BaseDN: root, Scope: ldap.ScopeSubtree, Filter: filter, Attributes: []string{"objectClass"}, PageSize: 1000})
+		if err != nil {
+			m.Notes = append(m.Notes, "Could not count accounts: "+err.Error())
+			return
+		}
+		for _, e := range res.Entries {
+			c := gpo.NearestContainer(e.DN, known)
+			if i, ok := index[strings.ToLower(c)]; ok {
+				bump(&m.Nodes[i])
+			}
+		}
+	}
+	count("(&(objectCategory=person)(objectClass=user))", func(n *gpo.MapNode) { n.Users++ })
+	count("(objectCategory=computer)", func(n *gpo.MapNode) { n.Computers++ })
+	gpo.SortNodes(m.Nodes)
+	for i := range m.Nodes {
+		if m.Nodes[i].Links == nil {
+			m.Nodes[i].Links = []gpo.Link{}
+		}
+	}
+	m.Policies, m.Notes = loadPolicies(conn, root, nil)
+	sids := map[string]bool{}
+	for _, p := range m.Policies {
+		for _, s := range append(p.ApplyAllow, p.ApplyDeny...) {
+			sids[s] = true
+		}
+	}
+	m.Names = sidNames(conn, root, sids)
+	return m, nil
+}

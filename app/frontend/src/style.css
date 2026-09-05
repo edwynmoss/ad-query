@@ -418,3 +418,52 @@
   .ledger-chain-name { font-weight: 500; }
   .ledger-linkplace .ledger-flag { margin-right: 0; margin-left: 4px; }
 }
+
+/* the policy flow and the policy map */
+@layer components {
+  .ledger-flow { position: relative; margin-left: 6px; }
+  .ledger-flow::before { content: ""; position: absolute; left: 5px; top: 6px; bottom: 14px; width: 1.5px; background: var(--color-ink); }
+  .ledger-flow-stn { position: relative; padding-left: 22px; padding-bottom: 14px; }
+  .ledger-flow-stn::before { content: ""; position: absolute; left: 0; top: 4px; width: 11px; height: 11px; border-radius: 50%; background: var(--color-surface); border: 1.5px solid var(--color-ink); box-sizing: border-box; }
+  .ledger-flow-stn.is-target::before { border-radius: 0; background: var(--color-ink); transform: rotate(45deg); }
+  .ledger-flow-stn.is-target { padding-bottom: 4px; }
+  .ledger-flow-stn-name { font-weight: 600; font-size: 13px; display: flex; align-items: baseline; gap: 8px; color: var(--color-ink); }
+  .ledger-flow-stn-name small { font-weight: 400; font-size: 10.5px; color: var(--color-ink-3); letter-spacing: .06em; text-transform: uppercase; }
+  .ledger-flow-pick { font: inherit; color: inherit; cursor: pointer; border-bottom: 1px dotted var(--color-line-strong); }
+  .ledger-flow-pick:hover { border-bottom-color: var(--color-ink); }
+  .ledger-flow-none { font-size: 11.5px; color: var(--color-ink-3); padding: 3px 0; }
+  .ledger-flow-pol { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--color-line); font-size: 12.5px; }
+  .ledger-flow-pol:last-child { border-bottom: 0; }
+  .ledger-flow-who { color: var(--color-ink); }
+  .ledger-flow-pol.is-out .ledger-flow-who { color: var(--color-ink-3); text-decoration: line-through; text-decoration-color: var(--color-line-strong); }
+  .ledger-flow-fate { font-size: 11px; color: var(--color-ink-3); white-space: nowrap; text-align: right; }
+  .ledger-flow-fate b { font-weight: 400; color: var(--color-ink); font-size: 11px; }
+  .ledger-flow-fate.is-warn { color: var(--color-warning); }
+  .ledger-flow-fate.is-crit { color: var(--color-critical); }
+  .ledger-flow-block { position: relative; margin: 2px 0 10px 22px; padding: 5px 0 0; border-top: 1.5px dashed var(--color-warning); font-size: 11px; color: var(--color-warning); line-height: 1.4; }
+  .ledger-flow-block::before { content: ""; position: absolute; left: -22px; top: -1px; width: 12px; height: 1.5px; background: var(--color-warning); }
+  .ledger-flow-result { padding-left: 28px; margin-top: 2px; font-size: 12px; color: var(--color-ink-2); line-height: 1.7; }
+  .ledger-flow-result b { color: var(--color-ink); font-weight: 500; }
+  .ledger-flow-n { color: var(--color-ink-3); font-size: 11px; margin-right: 4px; }
+
+  .ledger-map-scroll { overflow: auto; flex: 1; min-width: 0; }
+  .ledger-map { display: block; font-family: var(--font-ui); }
+  .ledger-map-edge { fill: none; stroke: var(--color-line-strong); stroke-width: 1; }
+  .ledger-map-edge.is-on { stroke: var(--color-ink); stroke-width: 1.5; }
+  .ledger-map-dot { fill: var(--color-surface); stroke: var(--color-ink-3); stroke-width: 1.5; }
+  .ledger-map-node.is-on .ledger-map-dot { stroke: var(--color-ink); }
+  .ledger-map-node.is-sel .ledger-map-dot { fill: var(--color-ink); stroke: var(--color-ink); }
+  .ledger-map-name { font-size: 12.5px; font-weight: 600; fill: var(--color-ink); }
+  .ledger-map-name.mono { font-family: var(--font-mono); font-weight: 500; }
+  .ledger-map-node.is-sel .ledger-map-name { text-decoration: underline; text-underline-offset: 3px; }
+  .ledger-map-kind { font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase; fill: var(--color-ink-3); }
+  .ledger-map-count { font-family: var(--font-mono); font-size: 10.5px; fill: var(--color-ink-3); }
+  .ledger-map-pol { font-size: 11.5px; fill: var(--color-ink-2); }
+  .ledger-map-pol.is-out { fill: var(--color-ink-3); text-decoration: line-through; }
+  .ledger-map-pol.is-warn { fill: var(--color-warning); }
+  .ledger-view-switch { display: inline-flex; gap: 16px; font-size: 12.5px; }
+  .ledger-flow-who .ledger-flag { margin-left: 8px; margin-right: 0; }
+  .ledger-map-layout { display: flex; min-height: 0; flex: 1; }
+  .ledger-map-side { width: 400px; flex-shrink: 0; border-left: 1px solid var(--color-line); overflow: auto; padding: 18px 22px 24px; }
+  .ledger-map-side .ledger-h4:first-child { margin-top: 0; }
+}

@@ -101,11 +101,13 @@ await step("row: login, risk and security sections", async () => {
   await page.waitForTimeout(300);
   await shot(page, "l06d-row-security");
   await page.locator(".ledger-record-switch").getByRole("tab", { name: "Policies" }).click();
-  await page.getByText("Applies, in order of precedence").waitFor({ timeout: 30000 });
+  await page.getByText(/How policy flows down/).waitFor({ timeout: 30000 });
+  await page.locator(".ledger-flow-result").waitFor({ timeout: 30000 });
   const chain = await page.locator(".ledger-record-body").innerText();
-  if (!/1\s*Corporate Baseline/.test(chain)) throw new Error("Corporate Baseline should be first: " + chain.slice(0, 200));
-  if (!/denied\s*VPN Client Settings/i.test(chain)) throw new Error("VPN Client Settings should be denied: " + chain.slice(0, 400));
-  if (!/blocks inheritance|Sales/.test(chain)) throw new Error("strip missing");
+  if (!/Corporate Baseline\s*enforced\s*applies\s*1/i.test(chain)) throw new Error("Corporate Baseline should apply first: " + chain.slice(0, 300));
+  if (!/VPN Client Settings\s*denied to Sales Team/i.test(chain)) throw new Error("VPN Client Settings should be denied to Sales Team: " + chain.slice(0, 500));
+  if (!/Sales Printers\s*link disabled/i.test(chain)) throw new Error("Sales Printers should be link disabled");
+  if (!/Terry Wong\s*user/i.test(chain)) throw new Error("target station missing");
   await shot(page, "l06e-row-policies");
   await page.getByRole("tab", { name: "Attributes" }).click();
 });
@@ -151,11 +153,25 @@ await step("licences register asks for 365", async () => {
 
 await step("policies register lists every policy and its links", async () => {
   await page.locator(".ledger-tabs").getByRole("tab", { name: "Policies" }).click();
+  await page.locator(".ledger-map").waitFor({ timeout: 60000 });
+  await page.locator(".ledger-map-side .ledger-flow-result").waitFor({ timeout: 60000 });
+  const svg = await page.locator(".ledger-map").evaluate((el) => el.textContent || "");
+  for (const n of ["adquery.test", "People", "Sales", "Finance", "Workstations", "Corporate Baseline", "Finance Lockdown"]) if (!svg.includes(n)) throw new Error("map missing " + n);
+  await page.waitForTimeout(300);
+  await shot(page, "l15-policies-map");
+  // Trace into Finance: the block shows and the enforced link passes it.
+  await page.locator(".ledger-map-node", { hasText: "Finance" }).first().locator("circle").click();
+  await page.getByText(/Finance blocks inheritance from above/).waitFor({ timeout: 30000 });
+  const side = await page.locator(".ledger-map-side").innerText();
+  if (!/Corporate Baseline[\s\S]*passes the block/.test(side)) throw new Error("enforced link should pass the block: " + side.slice(0, 400));
+  await shot(page, "l16-policies-map-finance");
+  // The list view still has the orphan and the filtering names.
+  await page.getByRole("tab", { name: "List" }).click();
   await page.locator(".ledger-table").waitFor({ timeout: 60000 });
   const body = await page.locator(".ledger-register-body").innerText();
   if (!/Legacy Proxy[\s\S]*not linked/.test(body)) throw new Error("orphan not flagged");
   if (!/IT Admin Tools[\s\S]*IT Team/.test(body)) throw new Error("security filtering names missing");
-  await shot(page, "l15-policies");
+  await shot(page, "l17-policies-list");
 });
 
 await step("bulk lookup from a CSV", async () => {

@@ -70,6 +70,27 @@ const MOCK = `
       ];
       return Promise.resolve({ targetDN:dn, targetKind:'user', path, entries, notes:['Read from the directory only: WMI filters are not evaluated, loopback and slow-link processing happen on the client, and the settings inside each policy live in SYSVOL.'], names:{ 'S-1-5-21-1-1-1-1204':'Sales Team' } });
     },
+    ContainerChain: (dn, kind) => window.go.main.App.PolicyChain('CN=x,' + dn).then((c) => { c.targetDN = dn; c.targetKind = kind || 'user'; c.path = c.path.filter((s) => dn.toLowerCase().endsWith(s.dn.toLowerCase()) || s.kind === 'site' || s.kind === 'domain'); c.entries = c.entries.filter((e) => c.path.some((s) => s.dn === e.somDN)); c.notes = ['A container trace cannot know group membership, so links with security filtering are marked as depending on it. Open a row for the exact answer.']; return c; }),
+    PolicyMap: () => {
+      const pol = (name) => ({ dn:'CN={'+name+'},CN=Policies,CN=System,DC=adquery,DC=test', guid:'{'+name+'}', name, version:3, path:'', userDisabled:false, computerDisabled:false, wmiFilter:'', applyAllow:['S-1-5-11'], applyDeny:[], aclKnown:true });
+      const names = ['Corporate Baseline','VPN Client Settings','Default Domain Policy','People Screensaver','Sales Drive Maps','Sales Printers','IT Admin Tools','Finance Lockdown','Workstation Hardening','Server Config','Site Time Sync','Legacy Proxy'];
+      const policies = {}; for (const n of names) policies[pol(n).dn.toLowerCase()] = pol(n);
+      const L = (name, o) => ({ policyDN: pol(name).dn, enforced: !!(o&2), disabled: !!(o&1) });
+      const site = 'CN=Default-First-Site-Name,CN=Sites,CN=Configuration,DC=adquery,DC=test', dom = 'DC=adquery,DC=test', people = 'OU=People,DC=adquery,DC=test';
+      const nodes = [
+        { dn: site, parentDN:'', kind:'site', name:'Default-First-Site-Name', links:[L('Site Time Sync',0)], blockInheritance:false, users:0, computers:0 },
+        { dn: dom, parentDN: site, kind:'domain', name:'adquery.test', links:[L('VPN Client Settings',0), L('Corporate Baseline',2), L('Default Domain Policy',0)], blockInheritance:false, users:3, computers:1 },
+        { dn: people, parentDN: dom, kind:'ou', name:'People', links:[L('People Screensaver',0)], blockInheritance:false, users:0, computers:0 },
+        { dn: 'OU=Servers,'+dom, parentDN: dom, kind:'ou', name:'Servers', links:[L('Server Config',0)], blockInheritance:false, users:0, computers:2 },
+        { dn: 'OU=Workstations,'+dom, parentDN: dom, kind:'ou', name:'Workstations', links:[L('Workstation Hardening',0)], blockInheritance:false, users:0, computers:4 },
+        { dn: 'OU=Engineering,'+people, parentDN: people, kind:'ou', name:'Engineering', links:[], blockInheritance:false, users:120, computers:0 },
+        { dn: 'OU=Finance,'+people, parentDN: people, kind:'ou', name:'Finance', links:[L('Finance Lockdown',0)], blockInheritance:true, users:80, computers:0 },
+        { dn: 'OU=HR,'+people, parentDN: people, kind:'ou', name:'HR', links:[], blockInheritance:false, users:60, computers:0 },
+        { dn: 'OU=IT,'+people, parentDN: people, kind:'ou', name:'IT', links:[L('IT Admin Tools',0)], blockInheritance:false, users:90, computers:0 },
+        { dn: 'OU=Sales,'+people, parentDN: people, kind:'ou', name:'Sales', links:[L('Sales Printers',1), L('Sales Drive Maps',0)], blockInheritance:false, users:150, computers:0 },
+      ];
+      return Promise.resolve({ nodes, policies, names:{ 'S-1-5-21-1-1-1-1204':'Sales Team', 'S-1-5-21-1-1-1-1205':'IT Team' }, notes:[] });
+    },
     PolicyInventory: () => {
       const pol = (name, extra) => Object.assign({ dn:'CN={'+name+'},CN=Policies,CN=System,DC=adquery,DC=test', guid:'{'+name.replace(/\s+/g,'-').toUpperCase().slice(0,12)+'-0000-0000-0000-000000000000}', name, version:3, path:'', userDisabled:false, computerDisabled:false, wmiFilter:'', applyAllow:['S-1-5-11'], applyDeny:[], aclKnown:true }, extra||{});
       const at = (name, kind, extra) => Object.assign({ somDN:name, somKind:kind, somName:name, enforced:false, disabled:false, order:1 }, extra||{});
@@ -197,7 +218,7 @@ async function main() {
     await page.getByText(/Overall/).waitFor();
     await shot(page, "08-risk");
     await page.locator(".ledger-record-switch").getByRole("tab", { name: "Policies" }).click();
-    await page.getByText("Applies, in order of precedence").waitFor();
+    await page.locator(".ledger-flow-result").waitFor();
     await shot(page, "17-row-policies");
     await page.getByRole("tab", { name: "Security" }).click();
     await page.getByRole("button", { name: "Read it" }).click();
@@ -222,8 +243,13 @@ async function main() {
     await shot(page, "13-licences");
 
     await page.locator(".ledger-tabs").getByRole("tab", { name: "Policies" }).click();
-    await page.locator(".ledger-table").waitFor();
+    await page.locator(".ledger-map").waitFor();
+    await page.locator(".ledger-map-node", { hasText: "Sales" }).first().locator("circle").click();
+    await page.locator(".ledger-map-side .ledger-flow-result").waitFor();
     await shot(page, "18-policies");
+    await page.getByRole("tab", { name: "List" }).click();
+    await page.locator(".ledger-table").waitFor();
+    await shot(page, "19-policies-list");
 
     await page.getByRole("tab", { name: "Bulk lookup" }).click();
     await page.locator('input[type="file"]').setInputFiles(csvPath);

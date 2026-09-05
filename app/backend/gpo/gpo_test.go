@@ -154,6 +154,53 @@ func TestResolveScenario(t *testing.T) {
 	}
 }
 
+func TestResolveGenericToken(t *testing.T) {
+	it := "S-1-5-21-1-1-1-1205"
+	ps := map[string]Policy{}
+	for _, p := range []Policy{pol("Everyone Gets"), pol("IT Only", func(p *Policy) { p.ApplyAllow = []string{it} }), pol("Not Sales", func(p *Policy) { p.ApplyDeny = []string{"S-1-5-21-1-1-1-1204"} }), pol("Nobody", func(p *Policy) { p.ApplyAllow = nil })} {
+		ps[strings.ToLower(p.DN)] = p
+	}
+	var links []Link
+	for _, n := range []string{"Everyone Gets", "IT Only", "Not Sales", "Nobody"} {
+		links = append(links, Link{PolicyDN: "CN={" + n + "},CN=Policies,CN=System,DC=x"})
+	}
+	c := Resolve("OU=IT,DC=x", "user", []SOM{{DN: "OU=IT,DC=x", Kind: "ou", Name: "IT", Links: links}}, ps, nil)
+	got := map[string]Entry{}
+	for _, e := range c.Entries {
+		got[e.Policy.Name] = e
+	}
+	if got["Everyone Gets"].Verdict != "applies" || got["Everyone Gets"].Precedence != 1 {
+		t.Errorf("everyone: %+v", got["Everyone Gets"])
+	}
+	if got["IT Only"].Verdict != "depends" || got["IT Only"].Precedence != 2 || !strings.Contains(got["IT Only"].Reason, it) {
+		t.Errorf("it only: %+v", got["IT Only"])
+	}
+	if got["Not Sales"].Verdict != "depends" || got["Not Sales"].Precedence != 3 {
+		t.Errorf("not sales: %+v", got["Not Sales"])
+	}
+	if got["Nobody"].Verdict != "filtered" || got["Nobody"].Precedence != 0 {
+		t.Errorf("nobody: %+v", got["Nobody"])
+	}
+}
+
+func TestMapHelpers(t *testing.T) {
+	nodes := map[string]bool{"dc=x": true, "ou=people,dc=x": true, "ou=sales,ou=people,dc=x": true}
+	if NearestContainer("CN=jdoe,OU=Sales,OU=People,DC=x", nodes) != "OU=Sales,OU=People,DC=x" {
+		t.Error("nearest for a user in Sales")
+	}
+	if NearestContainer("CN=Administrator,CN=Users,DC=x", nodes) != "DC=x" {
+		t.Error("CN=Users should land on the domain")
+	}
+	if ParentOf("DC=x") != "" {
+		t.Error("root has no parent")
+	}
+	ns := []MapNode{{DN: "OU=Sales,OU=People,DC=x", Kind: "ou", Name: "Sales"}, {DN: "DC=x", Kind: "domain", Name: "x"}, {DN: "CN=S,CN=Sites,CN=Configuration,DC=x", Kind: "site", Name: "S"}, {DN: "OU=People,DC=x", Kind: "ou", Name: "People"}}
+	SortNodes(ns)
+	if ns[0].Kind != "site" || ns[1].Kind != "domain" || ns[2].Name != "People" || ns[3].Name != "Sales" {
+		t.Errorf("order: %v %v %v %v", ns[0].Name, ns[1].Name, ns[2].Name, ns[3].Name)
+	}
+}
+
 func TestBuildInventory(t *testing.T) {
 	ps := map[string]Policy{}
 	a, b, orphan := pol("A"), pol("B"), pol("Orphan")

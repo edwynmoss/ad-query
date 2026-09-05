@@ -22,6 +22,10 @@ export function Connect(arg1) {
   return window['go']['main']['App']['Connect'](arg1);
 }
 
+export function ContainerChain(arg1, arg2) {
+  return window['go']['main']['App']['ContainerChain'](arg1, arg2);
+}
+
 export function DeleteSecret(arg1) {
   return window['go']['main']['App']['DeleteSecret'](arg1);
 }
@@ -92,6 +96,10 @@ export function PolicyChain(arg1) {
 
 export function PolicyInventory() {
   return window['go']['main']['App']['PolicyInventory']();
+}
+
+export function PolicyMap() {
+  return window['go']['main']['App']['PolicyMap']();
 }
 
 export function SchemaAttributes() {

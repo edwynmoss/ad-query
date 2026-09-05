@@ -155,7 +155,9 @@ func Token(ownSID string, groupSIDs []string) map[string]bool {
 }
 
 // Resolve orders the chain. path is site (optional), domain, then OUs from
-// the top down. Precedence follows MS-GPOL as Samba implements it: a nearer
+// the top down. A nil token means "anything in this container" rather than
+// one account: links whose security filtering depends on group membership
+// are kept in the order with the verdict "depends". Precedence follows MS-GPOL as Samba implements it: a nearer
 // container beats a farther one, within a container the first-listed link
 // wins, enforced links beat everything non-enforced and, among enforced
 // links, the farther container wins. Blocked inheritance drops non-enforced
@@ -178,9 +180,15 @@ func Resolve(targetDN, targetKind string, path []SOM, policies map[string]Policy
 			switch {
 			case l.Disabled:
 				e.Verdict, e.Reason = "link-disabled", "The link is disabled on "+som.Name+"."
-			case denied(p, token) != "":
+			case token == nil && p.ACLKnown && (len(p.ApplyDeny) > 0 || !allowedGeneric(p)):
+				if !allowedGeneric(p) && len(p.ApplyAllow) == 0 {
+					e.Verdict, e.Reason = "filtered", "Security filtering: nobody holds Apply Group Policy on this policy."
+				} else {
+					e.Verdict, e.Reason = "depends", dependsReason(p)
+				}
+			case token != nil && denied(p, token) != "":
 				e.Verdict, e.Reason = "denied", "Apply Group Policy is denied to "+adtypes.FriendlySID(denied(p, token))+"."
-			case p.ACLKnown && !allowed(p, token):
+			case token != nil && p.ACLKnown && !allowed(p, token):
 				e.Verdict, e.Reason = "filtered", "Security filtering: none of the target's groups hold Apply Group Policy."
 			case targetKind == "user" && p.UserDisabled:
 				e.Verdict, e.Reason = "half-disabled", "The policy's user settings are disabled."
@@ -196,7 +204,7 @@ func Resolve(targetDN, targetKind string, path []SOM, policies map[string]Policy
 					e.Reason = strings.TrimSpace(e.Reason + " Security filtering could not be read.")
 				}
 			}
-			if e.Verdict != "applies" {
+			if e.Verdict != "applies" && e.Verdict != "depends" {
 				rest = append(rest, e)
 				continue
 			}
@@ -243,6 +251,29 @@ func Resolve(targetDN, targetKind string, path []SOM, policies map[string]Policy
 		c.Path = []SOM{}
 	}
 	return c
+}
+
+// allowedGeneric says whether every authenticated account holds the right.
+func allowedGeneric(p Policy) bool {
+	for _, s := range p.ApplyAllow {
+		if s == sidEveryone || s == sidAuthenticatedUsers {
+			return true
+		}
+	}
+	return false
+}
+
+// dependsReason spells out the membership a container-level trace cannot
+// settle. SIDs are left raw; the frontend names them.
+func dependsReason(p Policy) string {
+	var parts []string
+	if !allowedGeneric(p) {
+		parts = append(parts, "applies only to "+strings.Join(p.ApplyAllow, ", "))
+	}
+	if len(p.ApplyDeny) > 0 {
+		parts = append(parts, "denied to "+strings.Join(p.ApplyDeny, ", "))
+	}
+	return "Depends on group membership: " + strings.Join(parts, "; ") + "."
 }
 
 func denied(p Policy, token map[string]bool) string {
