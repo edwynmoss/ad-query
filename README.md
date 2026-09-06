@@ -87,6 +87,13 @@ This brings up OpenLDAP seeded with sample users/groups/OUs/computers:
 - Sample user password (all users): `Passw0rd!`
 - Optional web UI: phpLDAPadmin at <http://localhost:8082>
 
+To try the app against something the size of a real company, `./seed-scale.ps1`
+in that folder grows the directory to 23,000 people and 25,000 devices under an
+800-branch tree. Group Policy is deliberately absent there: plain LDAP has no
+gPLink and no policy objects, so the Policies register steps aside, and the
+policy work is measured against the Active Directory stack instead. See
+`test/samba-ad/README.md`.
+
 ### 2. Run the app
 
 ```powershell
