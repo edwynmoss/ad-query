@@ -137,14 +137,18 @@ Against the seed above, on a laptop, after the fixes in this pass:
 | Read the whole tree (`PolicyMap`) | 0.9 s, 520 KB |
 | Every policy and its links | 1.5 s |
 | Draw the tree, 669 containers | 4.8 s |
-| What if this policy were switched off | 8 s |
-| Count a whole domain's accounts | 16 s, capped |
+| What if this policy were switched off | 1.3 s to the answer |
+| Count the accounts under one OU | 1.6 s |
+| Count the accounts under a whole domain | 38 s |
 
-The last two are the expensive ones, and both are counting rather than policy
-work: a directory has no count operation, so the only way to a total is to
-fetch every matching object and add them up. `CountUnder` stops at five
-thousand of each kind and says "or more", which is why a domain-wide count
-costs sixteen seconds rather than the thirty-seven it did uncapped.
+Counting is the one expensive thing, and it is not policy work: a directory has
+no count operation, so the only way to a total is to fetch every matching
+object and add them up. Nothing waits on it. Every screen that shows a count
+shows its answer first and the number when it arrives, which is why switching a
+policy off went from eight seconds to one and a third. The counts are exact:
+capping them made the wait shorter for a number nobody was waiting on, at the
+price of telling someone with twenty-three thousand people "five thousand or
+more", which is not an answer.
 
 ### Run the correctness suite on the small seed
 
