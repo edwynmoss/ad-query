@@ -107,16 +107,73 @@ func (c *Conn) Search(req SearchRequest) (*SearchResult, error) {
 	if req.SDFlags > 0 && req.SDFlags <= 0xff {
 		search.Controls = append(search.Controls, goldap.NewControlString(sdFlagsControlOID, true, string([]byte{0x30, 0x03, 0x02, 0x01, byte(req.SDFlags)})))
 	}
+	if req.SizeLimit > 0 && uint32(req.SizeLimit) < pageSize {
+		pageSize = uint32(req.SizeLimit)
+	}
 
-	res, err := c.conn.SearchWithPaging(search, pageSize)
+	res, truncated, err := c.searchPaged(search, pageSize, req.SizeLimit)
 	if err != nil {
-		// A size-limit-exceeded result still carries the entries gathered so far.
-		if ldapErr, ok := err.(*goldap.Error); ok && ldapErr.ResultCode == goldap.LDAPResultSizeLimitExceeded && res != nil {
-			return buildResult(res, true), nil
-		}
 		return nil, fmt.Errorf("search %q: %w", filter, err)
 	}
-	return buildResult(res, false), nil
+	return buildResult(res, truncated), nil
+}
+
+// searchPaged walks the pages itself rather than using SearchWithPaging,
+// which reads every page whatever the size limit says. On a directory with
+// tens of thousands of accounts that difference is the whole cost of a
+// lookup: a picker asking for forty matches would otherwise drag back every
+// one of the twelve hundred people whose name starts the same way.
+//
+// Stopping early leaves the server holding a paged search, so the cookie is
+// handed back with a page size of zero, which is how the protocol says to
+// abandon one.
+func (c *Conn) searchPaged(search *goldap.SearchRequest, pageSize uint32, limit int) (*goldap.SearchResult, bool, error) {
+	paging := goldap.NewControlPaging(pageSize)
+	search.Controls = append(search.Controls, paging)
+	out := &goldap.SearchResult{}
+	truncated := false
+
+	for {
+		page, err := c.conn.Search(search)
+		if page != nil {
+			out.Entries = append(out.Entries, page.Entries...)
+			out.Referrals = append(out.Referrals, page.Referrals...)
+			out.Controls = append(out.Controls, page.Controls...)
+		}
+		if err != nil {
+			// The server enforcing its own limit is an answer, not a failure:
+			// what it sent before stopping is still worth showing.
+			if e, ok := err.(*goldap.Error); ok && e.ResultCode == goldap.LDAPResultSizeLimitExceeded {
+				truncated = true
+				break
+			}
+			return out, truncated, err
+		}
+		if limit > 0 && len(out.Entries) >= limit {
+			// More may be waiting; say so only if the server still has a page.
+			if ctrl := goldap.FindControl(page.Controls, goldap.ControlTypePaging); ctrl != nil && len(ctrl.(*goldap.ControlPaging).Cookie) > 0 {
+				truncated = true
+				paging.SetCookie(ctrl.(*goldap.ControlPaging).Cookie)
+				paging.PagingSize = 0
+				_, _ = c.conn.Search(search)
+			}
+			break
+		}
+		ctrl := goldap.FindControl(page.Controls, goldap.ControlTypePaging)
+		if ctrl == nil {
+			break
+		}
+		cookie := ctrl.(*goldap.ControlPaging).Cookie
+		if len(cookie) == 0 {
+			break
+		}
+		paging.SetCookie(cookie)
+	}
+
+	if limit > 0 && len(out.Entries) > limit {
+		out.Entries = out.Entries[:limit]
+	}
+	return out, truncated, nil
 }
 
 func buildResult(res *goldap.SearchResult, truncated bool) *SearchResult {
