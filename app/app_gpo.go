@@ -533,21 +533,32 @@ func (a *App) WhatIf(changes []gpo.Change) (*gpo.WhatIf, error) {
 	w := &gpo.WhatIf{Changes: changes, Description: strings.Join(described, "; ")}
 	w.Users = gpo.Evaluate(changes, nodes, set, "user")
 	w.Computers = gpo.Evaluate(changes, nodes, set, "computer")
-	// Count the accounts under each impact root, a dozen at most.
-	counted := 0
+	// Count the accounts under each impact root, a dozen at most, all at once:
+	// run one after another they are the whole wait on a large directory.
+	var roots []*gpo.Effect
+	allRoots := 0
 	for _, list := range []*[]gpo.Effect{&w.Users, &w.Computers} {
 		for i := range *list {
-			e := &(*list)[i]
-			if !e.Root || counted >= 12 {
-				continue
-			}
-			if c, err := a.CountUnder(e.ContainerDN); err == nil {
-				e.Users, e.Computers = c.Users, c.Computers
-				counted++
+			if e := &(*list)[i]; e.Root {
+				allRoots++
+				if len(roots) < 12 {
+					roots = append(roots, e)
+				}
 			}
 		}
 	}
-	if counted >= 12 {
+	var wg sync.WaitGroup
+	for _, e := range roots {
+		wg.Add(1)
+		go func(e *gpo.Effect) {
+			defer wg.Done()
+			if c, err := a.CountUnder(e.ContainerDN); err == nil {
+				e.Users, e.Computers = c.Users, c.Computers
+			}
+		}(e)
+	}
+	wg.Wait()
+	if allRoots > len(roots) {
 		notes = append(notes, "Counts were fetched for the first twelve containers where the impact starts; the rest are listed without counts.")
 	}
 	w.Notes = append(notes, "Worked out for containers, so links filtered by group membership count as arriving on both sides. Nothing was changed in the directory.")
@@ -568,8 +579,17 @@ var countCache = struct {
 	at map[string]time.Time
 }{m: map[string]Counts{}, at: map[string]time.Time{}}
 
-// CountUnder counts the users and computers in a container's subtree. DN-only
-// pages keep it cheap; the answer is kept for five minutes.
+// countCap is where counting stops. A directory has no count operation, so
+// the only way to a total is to fetch every matching object's name and add
+// them up, and a domain with fifty thousand accounts in it takes the better
+// part of a minute to hand them all over. The number is here to say how big
+// a change would be, and past a few thousand "or more" says that just as
+// well, so the answer is capped and the caller is told it was.
+const countCap = 5000
+
+// CountUnder counts the users and computers in a container's subtree, up to
+// countCap of each. DN-only pages keep it cheap, the two counts run at the
+// same time, and the answer is kept for five minutes.
 func (a *App) CountUnder(dn string) (*Counts, error) {
 	conn, _, _, err := a.policyRoots()
 	if err != nil {
@@ -583,16 +603,32 @@ func (a *App) CountUnder(dn string) (*Counts, error) {
 	}
 	countCache.mu.Unlock()
 	c := Counts{DN: dn}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var firstErr error
 	for _, q := range []struct {
 		filter string
 		into   *int
 	}{{"(&(objectCategory=person)(objectClass=user))", &c.Users}, {"(objectCategory=computer)", &c.Computers}} {
-		res, err := conn.Search(ldap.SearchRequest{BaseDN: dn, Scope: ldap.ScopeSubtree, Filter: q.filter, Attributes: []string{"1.1"}, PageSize: 1000, SizeLimit: 100000})
-		if err != nil {
-			return nil, err
-		}
-		*q.into = res.Count
-		c.Truncated = c.Truncated || res.Truncated
+		wg.Add(1)
+		go func(filter string, into *int) {
+			defer wg.Done()
+			res, err := conn.Search(ldap.SearchRequest{BaseDN: dn, Scope: ldap.ScopeSubtree, Filter: filter, Attributes: []string{"1.1"}, PageSize: 1000, SizeLimit: countCap})
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				if firstErr == nil {
+					firstErr = err
+				}
+				return
+			}
+			*into = res.Count
+			c.Truncated = c.Truncated || res.Truncated
+		}(q.filter, q.into)
+	}
+	wg.Wait()
+	if firstErr != nil {
+		return nil, firstErr
 	}
 	countCache.mu.Lock()
 	countCache.m[key], countCache.at[key] = c, time.Now()

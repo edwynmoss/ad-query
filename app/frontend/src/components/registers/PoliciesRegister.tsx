@@ -121,17 +121,64 @@ function countOf(c: gpo.Chain): string {
   return n === 0 ? "no policies" : `${n} ${n === 1 ? "policy" : "policies"}`;
 }
 
+/**
+ * Looks names up as they are typed, one search at a time, latest wins.
+ *
+ * A directory with tens of thousands of accounts takes seconds to answer a
+ * name lookup, and people type faster than that. Searching on every
+ * keystroke queues each one behind the last, so the answer lands long after
+ * the typing stopped: on a domain of fifty thousand objects, four letters
+ * typed at a normal pace turned a seven second lookup into more than a
+ * minute. This waits for a pause in the typing, then keeps a single search
+ * in flight and runs again only if the term moved on while it was away.
+ */
+function useTypeAhead(find: (q: string) => Promise<Target[]>, minLength = 2, pause = 300) {
+  const [hits, setHits] = useState<Target[]>([]);
+  const [searching, setSearching] = useState(false);
+  const finder = useRef(find);
+  finder.current = find;
+  const wanted = useRef("");
+  const answered = useRef<string | null>(null);
+  const busy = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const pump = async () => {
+    if (busy.current) return;
+    busy.current = true;
+    setSearching(true);
+    try {
+      while (wanted.current.length >= minLength && wanted.current !== answered.current) {
+        const q = wanted.current;
+        let out: Target[] = [];
+        try { out = await finder.current(q); } catch { out = []; }
+        answered.current = q;
+        if (wanted.current === q) setHits(out);
+      }
+    } finally {
+      busy.current = false;
+      setSearching(false);
+    }
+  };
+
+  const ask = (term: string) => {
+    const q = term.trim();
+    wanted.current = q;
+    clearTimeout(timer.current);
+    if (q.length < minLength) { answered.current = null; setHits([]); return; }
+    timer.current = setTimeout(pump, pause);
+  };
+  const forget = () => { clearTimeout(timer.current); wanted.current = ""; answered.current = null; setHits([]); };
+  useEffect(() => () => clearTimeout(timer.current), []);
+  return { hits, searching, ask, forget };
+}
+
 /** A link that opens an inline find and hands back what was picked. */
 function PickerLink({ label, word, placeholder, find, onPick }: { label: string; word: string; placeholder: string; find: (q: string) => Promise<Target[]>; onPick: (t: Target) => void }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
-  const [hits, setHits] = useState<Target[]>([]);
-  const search = async (v: string) => {
-    setQ(v);
-    if (v.trim().length < 2) { setHits([]); return; }
-    try { setHits(await find(v)); } catch { setHits([]); }
-  };
-  const close = () => { setOpen(false); setQ(""); setHits([]); };
+  const { hits, ask, forget } = useTypeAhead(find);
+  const search = (v: string) => { setQ(v); ask(v); };
+  const close = () => { setOpen(false); setQ(""); forget(); };
   if (!open) return <button className="ledger-link" onClick={() => setOpen(true)}>{label}</button>;
   return (
     <span className="ledger-move">
@@ -147,40 +194,39 @@ function PickerLink({ label, word, placeholder, find, onPick }: { label: string;
 // ---- Home: the question ------------------------------------------------------
 function HomePage({ baseDN, onTrace, onMap, onList }: { baseDN: string; onTrace: (t: Target) => void; onMap: () => void; onList: () => void }) {
   const [term, setTerm] = useState("");
-  const [hits, setHits] = useState<Target[]>([]);
-  const [searching, setSearching] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => { input.current?.focus(); }, []);
 
-  useEffect(() => {
-    const q = term.trim();
-    if (q.length < 2) { setHits([]); return; }
-    let live = true;
-    const t = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const v = escapeLdapValue(q);
-        const res = await Search(ldap.SearchRequest.createFrom({
-          baseDN, scope: 2, pageSize: 40, sizeLimit: 40,
-          filter: `(|(&(objectCategory=person)(objectClass=user)(anr=${v}))(&(objectCategory=computer)(anr=${v}))(&(objectClass=organizationalUnit)(ou=*${v}*)))`,
-          attributes: ["displayName", "sAMAccountName", "dNSHostName", "ou", "objectClass", "name"],
-        }));
-        if (!live) return;
-        const out: Target[] = (res.entries ?? []).map((e) => {
-          const a = e.attributes ?? {};
-          const classes = (a.objectClass ?? []).map((c) => c.toLowerCase());
-          if (classes.includes("organizationalunit")) return { dn: e.dn, kind: "container" as const, label: a.ou?.[0] || a.name?.[0] || e.dn };
-          if (classes.includes("computer")) return { dn: e.dn, kind: "computer" as const, label: a.name?.[0] || a.dNSHostName?.[0] || e.dn };
-          return { dn: e.dn, kind: "user" as const, label: a.displayName?.[0] || a.sAMAccountName?.[0] || a.name?.[0] || e.dn };
-        });
-        const order = { user: 0, computer: 1, container: 2 };
-        out.sort((x, y) => order[x.kind] - order[y.kind] || x.label.localeCompare(y.label));
-        setHits(out);
-      } catch { if (live) setHits([]); }
-      finally { if (live) setSearching(false); }
-    }, 180);
-    return () => { live = false; clearTimeout(t); };
-  }, [term, baseDN]);
+  // People, computers and containers are asked for separately, each with its
+  // own small limit. One combined filter with a single limit looks tidier but
+  // breaks on a large directory: the server answers in whatever order it
+  // likes, so on a domain with twenty thousand people the limit is spent
+  // before a single organizational unit comes back, and searching for a
+  // container by name returns nothing but people. Three bounded questions
+  // also cost the server no more than one unbounded one.
+  const findAnything = async (q: string): Promise<Target[]> => {
+    const v = escapeLdapValue(q);
+    const ask = (filter: string, attributes: string[], limit: number) =>
+      Search(ldap.SearchRequest.createFrom({ baseDN, scope: 2, pageSize: limit, sizeLimit: limit, filter, attributes }))
+        .then((r) => r.entries ?? [])
+        .catch(() => []);
+    const [people, machines, places] = await Promise.all([
+      ask(`(&(objectCategory=person)(objectClass=user)(anr=${v}))`, ["displayName", "sAMAccountName", "name"], 20),
+      ask(`(&(objectCategory=computer)(anr=${v}))`, ["name", "dNSHostName"], 12),
+      ask(`(&(objectClass=organizationalUnit)(ou=*${v}*))`, ["ou", "name"], 8),
+    ]);
+    const at = (e: { attributes?: Record<string, string[]> }, k: string) => e.attributes?.[k]?.[0];
+    const out: Target[] = [
+      ...people.map((e) => ({ dn: e.dn, kind: "user" as const, label: at(e, "displayName") || at(e, "sAMAccountName") || at(e, "name") || e.dn })),
+      ...machines.map((e) => ({ dn: e.dn, kind: "computer" as const, label: at(e, "name") || at(e, "dNSHostName") || e.dn })),
+      ...places.map((e) => ({ dn: e.dn, kind: "container" as const, label: at(e, "ou") || at(e, "name") || e.dn })),
+    ];
+    const order = { user: 0, computer: 1, container: 2 };
+    out.sort((x, y) => order[x.kind] - order[y.kind] || x.label.localeCompare(y.label));
+    return out;
+  };
+  const { hits, searching, ask } = useTypeAhead(findAnything);
+  const type = (v: string) => { setTerm(v); ask(v); };
 
   const where = (dn: string) => dn.split(",").filter((p) => /^ou=/i.test(p)).map((p) => p.replace(/^ou=/i, "")).join(" › ") || "domain root";
   const groups: Array<[string, Target[]]> = [["People", hits.filter((h) => h.kind === "user")], ["Computers", hits.filter((h) => h.kind === "computer")], ["Containers", hits.filter((h) => h.kind === "container")]];
@@ -190,7 +236,7 @@ function HomePage({ baseDN, onTrace, onMap, onList }: { baseDN: string; onTrace:
       <div className="ledger-open" style={{ paddingTop: 22 }}>
         <div className="ledger-eyebrow">Trace policy to</div>
         <div className="ledger-rule-field is-large">
-          <input ref={input} value={term} onChange={(e) => setTerm(e.target.value)} placeholder="A person, a computer or a container" aria-label="Trace policy to"
+          <input ref={input} value={term} onChange={(e) => type(e.target.value)} placeholder="A person, a computer or a container" aria-label="Trace policy to"
             onKeyDown={(e) => { if (e.key === "Enter" && hits[0]) onTrace(hits[0]); }} />
           <span className="ledger-rule-hint mono">{searching ? "searching…" : hits.length ? "Enter for the first" : "type a name"}</span>
         </div>

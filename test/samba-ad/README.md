@@ -74,3 +74,86 @@ Run: `go test ./backend/ldap/ -run Samba -count=1`
 
 So a Sales user should see Corporate Baseline, People Screensaver and Sales Drive Maps apply, VPN Client Settings filtered out, Sales Printers disabled; a Finance user only Corporate Baseline (enforced through the block) and Finance Lockdown.
 
+
+## Measuring at the size of a real estate
+
+`seed-gpo.ps1` proves the policy chain is **correct**. `seed-enterprise.ps1`
+proves it is **usable**, by growing the directory to the size of a company with
+twenty-five thousand seats:
+
+```powershell
+./seed-enterprise.ps1          # ~75 minutes, see below
+./seed-enterprise.ps1 -Remove  # take it out again
+```
+
+| | |
+|---|---|
+| Users | 23,000 across 288 department OUs |
+| Computers | 25,000 (22,000 workstations, 3,000 servers) |
+| Organizational units | 831, eight regions of twelve sites |
+| Policies | 466, linked in 683 places |
+| Security groups | 120, used for the filtering on 1 policy in 7 |
+| Total objects | 49,755 |
+
+The load is slow and there is no way round it: Samba takes a single database
+write lock, so it accepts about twenty records a second no matter how many
+writers push at it. Six parallel `ldbadd` streams finish in the same time as
+one. That is the write path only, and it says nothing about the read
+performance being measured.
+
+### The two measurements
+
+**The backend**, calling the same methods the window calls:
+
+```powershell
+cd app
+$env:ADQ_BENCH=1; go test -run TestPolicyPerformance -v -timeout 40m .
+```
+
+It prints each operation cold and warm, the size of the JSON that crosses to
+the window, and the pieces `PolicyMap` is built from so a slow map can be
+blamed on one of them.
+
+**The window**, timing click to answer with the app actually running:
+
+```powershell
+cd app; wails dev          # in one terminal
+cd app/frontend; node scripts/e2e-scale.mjs
+```
+
+It types into the picker a letter at a time, at the speed a person types,
+because filling the box in one go hides the cost of a search per keystroke.
+Screenshots and a `timings.json` land in `node_modules/.cache/adquery-e2e/scale`.
+
+### What the numbers were
+
+Against the seed above, on a laptop, after the fixes in this pass:
+
+| | |
+|---|---|
+| Trace one person or one computer | 0.3 s |
+| Try a hypothetical on a trace | 0.1 s |
+| Look a name up in the picker | ~3 s |
+| Read the whole tree (`PolicyMap`) | 0.9 s, 520 KB |
+| Every policy and its links | 1.5 s |
+| Draw the tree, 669 containers | 4.8 s |
+| What if this policy were switched off | 8 s |
+| Count a whole domain's accounts | 16 s, capped |
+
+The last two are the expensive ones, and both are counting rather than policy
+work: a directory has no count operation, so the only way to a total is to
+fetch every matching object and add them up. `CountUnder` stops at five
+thousand of each kind and says "or more", which is why a domain-wide count
+costs sixteen seconds rather than the thirty-seven it did uncapped.
+
+### Run the correctness suite on the small seed
+
+`scripts/e2e-ledger.mjs` asserts on the eleven policies above and on named
+people, and the enterprise tree has its own OUs called Finance and Sales and
+its own twenty thousand users. Run it against `seed.ps1` + `seed-gpo.ps1`
+alone; with the enterprise tree in place it picks up the wrong Finance and the
+wrong first row. `seed-enterprise.ps1 -Remove` puts the directory back.
+
+**Samba is the harsher environment.** Its ambiguous-name resolution is slow in
+a way real Active Directory's is not, so the picker's three seconds is close to
+a worst case rather than what a real domain controller would give.
