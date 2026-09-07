@@ -2,8 +2,8 @@
 // tried, and the container-by-container impact that answers "and who else".
 // The backend applies the changes to a copy; nothing is written.
 import { useEffect, useState } from "react";
-import { WhatIf } from "../../wailsjs/go/main/App";
-import { gpo } from "../../wailsjs/go/models";
+import { WhatIf, CountUnder } from "../../wailsjs/go/main/App";
+import { gpo, type main } from "../../wailsjs/go/models";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import type { Hypothetical } from "./PolicyFlow";
 
@@ -71,17 +71,47 @@ export function ImpactList({ changes, onTrace, title }: { changes: Hypothetical[
   const [result, setResult] = useState<gpo.WhatIf | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // How many accounts sit under each affected container, by DN. These arrive
+  // after the answer does: the directory has to hand over every object under
+  // a container to be counted, which on a large domain takes far longer than
+  // working out what changes. The list is useful without them.
+  const [counted, setCounted] = useState<Record<string, main.Counts>>({});
   const sig = JSON.stringify(changes);
 
   useEffect(() => {
-    if (changes.length === 0) { setResult(null); return; }
+    if (changes.length === 0) { setResult(null); setCounted({}); return; }
     let live = true;
-    setBusy(true); setError("");
+    setBusy(true); setError(""); setCounted({});
     WhatIf(toChanges(changes))
-      .then((w) => { if (live) { setResult(w); setBusy(false); } })
+      .then((w) => {
+        if (!live) return;
+        setResult(w); setBusy(false);
+        // Count the containers where the impact starts, one at a time so a
+        // big subtree does not hold the connection against everything else.
+        const roots: string[] = [];
+        for (const e of [...(w.users ?? []), ...(w.computers ?? [])]) {
+          if (e.root && !roots.includes(e.containerDN)) roots.push(e.containerDN);
+        }
+        void (async () => {
+          for (const dn of roots.slice(0, 12)) {
+            if (!live) return;
+            try {
+              const c = await CountUnder(dn);
+              if (live) setCounted((was) => ({ ...was, [dn]: c }));
+            } catch { /* a count that fails just stays unknown */ }
+          }
+        })();
+      })
       .catch((e: any) => { if (live) { setError(String(e?.message ?? e)); setBusy(false); } });
     return () => { live = false; };
   }, [sig]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The effects as they came back, with any counts that have since arrived.
+  const withCounts = (list: gpo.Effect[]): gpo.Effect[] =>
+    list.map((e) => {
+      const c = counted[e.containerDN];
+      return c ? ({ ...e, users: c.users, computers: c.computers } as gpo.Effect) : e;
+    });
 
   if (changes.length === 0) return null;
 
@@ -111,9 +141,9 @@ export function ImpactList({ changes, onTrace, title }: { changes: Hypothetical[
       {error && <ErrorBanner error={error} />}
       {result && !busy && (
         <>
-          <p className="ledger-headline">{impactSummary(result)}</p>
-          {worth(result.users ?? [], "users") && <><div className="ledger-h4">For users</div>{effects(result.users, "users")}</>}
-          {worth(result.computers ?? [], "computers") && <><div className="ledger-h4">For computers</div>{effects(result.computers, "computers")}</>}
+          <p className="ledger-headline">{impactSummary({ ...result, users: withCounts(result.users ?? []), computers: withCounts(result.computers ?? []) } as gpo.WhatIf)}</p>
+          {worth(withCounts(result.users ?? []), "users") && <><div className="ledger-h4">For users</div>{effects(withCounts(result.users ?? []), "users")}</>}
+          {worth(withCounts(result.computers ?? []), "computers") && <><div className="ledger-h4">For computers</div>{effects(withCounts(result.computers ?? []), "computers")}</>}
           <p className="ledger-note">{(result.notes ?? []).join(" ")}</p>
         </>
       )}

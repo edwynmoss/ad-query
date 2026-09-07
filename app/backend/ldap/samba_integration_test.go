@@ -111,3 +111,51 @@ func firstVal(e Entry, attr string) string {
 	}
 	return ""
 }
+
+// A size limit has to stop the paging, not just the page. Before this was
+// enforced client-side, asking for forty matches on a directory with tens of
+// thousands of accounts read every page to the end: the caller got the forty
+// it asked for only because it ignored the rest, after the whole set had
+// crossed the wire.
+func TestSambaSizeLimitStopsPaging(t *testing.T) {
+	c := sambaConnectOrSkip(t)
+	defer c.Close()
+
+	info, err := c.RootDSE()
+	if err != nil {
+		t.Fatalf("RootDSE: %v", err)
+	}
+	root := info.DefaultNamingContext
+
+	all, err := c.Search(SearchRequest{BaseDN: root, Scope: ScopeSubtree, Filter: "(&(objectCategory=person)(objectClass=user))", Attributes: []string{"1.1"}, PageSize: 1000})
+	if err != nil {
+		t.Fatalf("counting users: %v", err)
+	}
+	if all.Count < 25 {
+		t.Skipf("only %d users in the directory, nothing to limit", all.Count)
+	}
+
+	const want = 20
+	res, err := c.Search(SearchRequest{BaseDN: root, Scope: ScopeSubtree, Filter: "(&(objectCategory=person)(objectClass=user))", Attributes: []string{"1.1"}, PageSize: 1000, SizeLimit: want})
+	if err != nil {
+		t.Fatalf("limited search: %v", err)
+	}
+	if res.Count != want {
+		t.Errorf("size limit %d returned %d entries", want, res.Count)
+	}
+	if !res.Truncated {
+		t.Errorf("a search cut short by its size limit should say it was truncated")
+	}
+
+	// A limit no one reaches must not claim truncation.
+	res, err = c.Search(SearchRequest{BaseDN: root, Scope: ScopeSubtree, Filter: "(&(objectCategory=person)(objectClass=user))", Attributes: []string{"1.1"}, PageSize: 1000, SizeLimit: all.Count + 100})
+	if err != nil {
+		t.Fatalf("generous limit: %v", err)
+	}
+	if res.Count != all.Count {
+		t.Errorf("a limit above the total changed the answer: %d, want %d", res.Count, all.Count)
+	}
+	if res.Truncated {
+		t.Errorf("a limit no one reached should not report truncation")
+	}
+}
