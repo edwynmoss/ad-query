@@ -533,34 +533,14 @@ func (a *App) WhatIf(changes []gpo.Change) (*gpo.WhatIf, error) {
 	w := &gpo.WhatIf{Changes: changes, Description: strings.Join(described, "; ")}
 	w.Users = gpo.Evaluate(changes, nodes, set, "user")
 	w.Computers = gpo.Evaluate(changes, nodes, set, "computer")
-	// Count the accounts under each impact root, a dozen at most, all at once:
-	// run one after another they are the whole wait on a large directory.
-	var roots []*gpo.Effect
-	allRoots := 0
-	for _, list := range []*[]gpo.Effect{&w.Users, &w.Computers} {
-		for i := range *list {
-			if e := &(*list)[i]; e.Root {
-				allRoots++
-				if len(roots) < 12 {
-					roots = append(roots, e)
-				}
-			}
-		}
-	}
-	var wg sync.WaitGroup
-	for _, e := range roots {
-		wg.Add(1)
-		go func(e *gpo.Effect) {
-			defer wg.Done()
-			if c, err := a.CountUnder(e.ContainerDN); err == nil {
-				e.Users, e.Computers = c.Users, c.Computers
-			}
-		}(e)
-	}
-	wg.Wait()
-	if allRoots > len(roots) {
-		notes = append(notes, "Counts were fetched for the first twelve containers where the impact starts; the rest are listed without counts.")
-	}
+	// No counting here. Which containers gain and lose a policy is worked out
+	// in memory and is ready at once; how many accounts sit under each one
+	// means asking the directory to hand over every object underneath, which
+	// on a large domain takes far longer than the answer itself. Counting
+	// inline made trying a change feel slow for a number that is context
+	// rather than the answer, so the window asks for the counts separately
+	// (CountUnder) and fills them in as they arrive. Effects come back with
+	// -1, which reads as "not counted yet".
 	w.Notes = append(notes, "Worked out for containers, so links filtered by group membership count as arriving on both sides. Nothing was changed in the directory.")
 	return w, nil
 }
@@ -579,17 +559,18 @@ var countCache = struct {
 	at map[string]time.Time
 }{m: map[string]Counts{}, at: map[string]time.Time{}}
 
-// countCap is where counting stops. A directory has no count operation, so
+// countCap is where counting gives up. A directory has no count operation, so
 // the only way to a total is to fetch every matching object's name and add
-// them up, and a domain with fifty thousand accounts in it takes the better
-// part of a minute to hand them all over. The number is here to say how big
-// a change would be, and past a few thousand "or more" says that just as
-// well, so the answer is capped and the caller is told it was.
-const countCap = 5000
+// them up. Nothing waits on this: every caller shows the answer first and the
+// count when it arrives, so the cap is a guard against a runaway directory
+// rather than a way to be quick, and it sits well above the size of the
+// organisations this is for. Under it the number is exact, which is the point
+// of showing a number at all.
+const countCap = 200000
 
-// CountUnder counts the users and computers in a container's subtree, up to
-// countCap of each. DN-only pages keep it cheap, the two counts run at the
-// same time, and the answer is kept for five minutes.
+// CountUnder counts the users and computers in a container's subtree. DN-only
+// pages keep it cheap, the two counts run at the same time, and the answer is
+// kept for five minutes.
 func (a *App) CountUnder(dn string) (*Counts, error) {
 	conn, _, _, err := a.policyRoots()
 	if err != nil {
