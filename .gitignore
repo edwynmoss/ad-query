@@ -27,3 +27,8 @@ Thumbs.db
 *.xlsx
 *.xls
 *.csv
+
+# Editor and assistant scratch config. Local to whoever is working on the
+# machine, useful to nobody cloning this, and settings.local.json records the
+# machine's own domain, which is not ours to publish.
+.claude/
